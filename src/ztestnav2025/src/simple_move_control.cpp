@@ -15,7 +15,7 @@ bool setSpeedCallback(ztestnav2025::getpose_server::Request &req,ztestnav2025::g
         // 业务逻辑：检测成功时设置为正向速度，失败时为0
         speed = req.getpose_start / 100.0;
         start = true;
-        ROS_INFO("运动控制节点运行中");
+        // ROS_INFO("运动控制节点运行中");
     }
     resp.pose_at.resize(1);
     resp.pose_at[0] = 1.0;

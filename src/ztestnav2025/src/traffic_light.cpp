@@ -99,11 +99,61 @@ int detectTrafficLightStatus() {
         }
     }
 
-    imshow("Detection Result", frame);
-    waitKey(1);
+    // imshow("Detection Result", frame);
+    // waitKey(1);
     cap.release();
 
     return status;
+}
+
+// 计算机器人目标位置和朝向
+// 输入: 
+//   cx, cy - 板子的中心坐标
+//   slope - 板子的斜率
+//   square_size - 正方形区域尺寸 (默认2.5m)
+// 返回: RobotPose结构体包含目标位置和朝向
+RobotPose calculate_destination(double cx, double cy, double slope, double square_size){//利用雷达数据计算机器人拣货区的目的地，板前定位
+    const double center_x = square_size / 2.0;
+    const double center_y = square_size / 2.0;
+    const double distance = 0.3;  // 30cm
+
+    // 计算指向正方形中心的向量
+    const double cp_x = center_x - cx;
+    const double cp_y = center_y - cy;
+
+    // 计算两个可能的法向量
+    double nx, ny;
+    const double dot_product = (-slope) * cp_x + 1.0 * cp_y;
+    
+    // 计算法向量的模长
+    const double norm_length = std::sqrt(slope * slope + 1.0);
+    
+    // 根据点积选择正确的法线方向
+    if (dot_product < 0) {
+        // 选择法向量 (-m, 1)
+        nx = -slope / norm_length;
+        ny = 1.0 / norm_length;
+    } else {
+        // 选择法向量 (m, -1)
+        nx = slope / norm_length;
+        ny = -1.0 / norm_length;
+    }
+
+    // 计算目标位置
+    RobotPose pose;
+    pose.x = cx - distance * nx;
+    pose.y = cy - distance * ny;
+    
+    // 计算朝向角度（atan2返回弧度，转换为度）
+    double angle_rad = std::atan2(ny, nx);
+    pose.heading = angle_rad;
+
+    return pose;
+}
+
+// 播放语音函数
+void play_audio(const std::string& command) {
+    system(command.c_str()); // 直接调用系统命令播放音频
 }
 
 int main() {

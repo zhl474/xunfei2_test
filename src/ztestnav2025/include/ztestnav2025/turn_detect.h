@@ -49,6 +49,8 @@ private:
     dynamic_reconfigure::Server<ztestnav2025::drConfig> server_;//动态参数
 
     ros::Timer timer;
+    ros::Time start_time_;
+    ros::Time now_;
     bool exit_flag = false;
     void timerCallback(const ros::TimerEvent&);
 

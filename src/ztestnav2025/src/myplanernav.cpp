@@ -51,118 +51,6 @@ private:
     ros::Subscriber sub_;
 };
 
-// 语音命令数组（二维数组，按类别分组）
-std::vector<std::vector<std::string>> voice = {
-    // 第0组：任务类型（甜点/水果/蔬菜）
-    {
-        "aplay ~/ucar_car/src/broadcast/20_wav/1_task_vegetable.wav",
-        "aplay ~/ucar_car/src/broadcast/20_wav/1_task_fruit.wav",
-        "aplay ~/ucar_car/src/broadcast/20_wav/1_task_dessert.wav",
-        
-    },
-    // 第1组：物品获取（苹果/香蕉/蛋糕等）
-    {
-        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_chili.wav",
-        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_tomato.wav",
-        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_poatato.wav",  
-        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_banana.wav",
-        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_apple.wav",
-        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_watermelon.wav"
-        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_cola.wav",
-        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_cake.wav",
-        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_milk.wav",  
-    },
-    // 第2组：房间提示（gaozeboA/B/C）
-    {
-        "aplay ~/ucar_car/src/broadcast/20_wav/3_gaozebo_A.wav",
-        "aplay ~/ucar_car/src/broadcast/20_wav/3_gaozebo_B.wav",
-        "aplay ~/ucar_car/src/broadcast/20_wav/3_gaozebo_C.wav"
-    },
-    // 第3组：路径提示（道路1/道路2）
-    {
-        "aplay ~/ucar_car/src/broadcast/20_wav/4_road_1.wav",
-        "aplay ~/ucar_car/src/broadcast/20_wav/4_road_2.wav"
-    }
-};
-
-// 费用相关语音（一维数组）
-std::vector<std::string> cost = {
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_apple.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_banana.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_watermelon.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_banana.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_watermelon.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_cake_cola.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_chili.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_potato.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_tomato.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_cola_cola.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cake.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cola.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_milk.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_potato_potato.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_potato.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_tomato.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_watermelon_watermelon.wav"
-};
-
-// 播放语音函数
-void play_audio(const std::string& command) {
-    system(command.c_str()); // 直接调用系统命令播放音频
-}
-
-
-// 定义结构体存储机器人的位置和朝向
-struct RobotPose {
-    double x;        // 机器人的x坐标
-    double y;        // 机器人的y坐标
-    double heading;  // 机器人的朝向角度（度）
-};
-
-// 计算机器人目标位置和朝向
-// 输入: 
-//   cx, cy - 板子的中心坐标
-//   slope - 板子的斜率
-//   square_size - 正方形区域尺寸 (默认2.5m)
-// 返回: RobotPose结构体包含目标位置和朝向
-RobotPose calculate_destination(double cx, double cy, double slope, double square_size = 2.5){//利用雷达数据计算机器人拣货区的目的地，板前定位
-    const double center_x = square_size / 2.0;
-    const double center_y = square_size / 2.0;
-    const double distance = 0.3;  // 30cm
-
-    // 计算指向正方形中心的向量
-    const double cp_x = center_x - cx;
-    const double cp_y = center_y - cy;
-
-    // 计算两个可能的法向量
-    double nx, ny;
-    const double dot_product = (-slope) * cp_x + 1.0 * cp_y;
-    
-    // 计算法向量的模长
-    const double norm_length = std::sqrt(slope * slope + 1.0);
-    
-    // 根据点积选择正确的法线方向
-    if (dot_product < 0) {
-        // 选择法向量 (-m, 1)
-        nx = -slope / norm_length;
-        ny = 1.0 / norm_length;
-    } else {
-        // 选择法向量 (m, -1)
-        nx = slope / norm_length;
-        ny = -1.0 / norm_length;
-    }
-
-    // 计算目标位置
-    RobotPose pose;
-    pose.x = cx - distance * nx;
-    pose.y = cy - distance * ny;
-    
-    // 计算朝向角度（atan2返回弧度，转换为度）
-    double angle_rad = std::atan2(ny, nx);
-    pose.heading = angle_rad;
-
-    return pose;
-}
 
 void goal_set(move_base_msgs::MoveBaseGoal &goal,double x,double y,double yaw,tf2::Quaternion q){
     q.setRPY(0, 0, yaw);
@@ -190,6 +78,17 @@ void go_destination(move_base_msgs::MoveBaseGoal &goal,double x,double y,double 
 int main(int argc, char *argv[])
 {
     setlocale(LC_ALL,"");
+    std::map<int, std::string> name = {
+        {0, "辣椒"},
+        {1, "番茄"},
+        {2, "土豆"},
+        {3, "香蕉"},
+        {4, "苹果"},
+        {5, "西瓜"},
+        {6, "可乐"},
+        {7, "蛋糕"},
+        {8, "牛奶"}
+    };
     ROS_INFO("主干代码开始，初始化对象，等待服务中"); 
     //-----------------------------------初始化movebase，实例对象---------------------------//
     ros::init(argc,argv,"zhltest");
@@ -285,6 +184,7 @@ int main(int argc, char *argv[])
     std::vector<int> a = {-1,-1,-1,-1,-1,-1};
     mecanumController.detect(a,-1);
     board_name = mecanumController.turn_and_find(1,1,board_class,0.4);//请求视觉识别板子服务
+    if (board_name>=0 && board_name<9) std::cout << name.at(board_name) << std::endl;
     if(board_name != -1){
         if (poseget_client.call(pose_result)){
             ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
@@ -296,7 +196,7 @@ int main(int argc, char *argv[])
         for(int i=0;i<board_count;i++){
             lidar_yaw = std::atan2(where_board.response.lidar_results[i*4+1], where_board.response.lidar_results[i*4]);//计算雷达找到的板子在什么方向，是否和视觉识别结果匹配double atan2(double y, double x); 
             ROS_INFO("板子相对小车夹角%f",lidar_yaw);
-            if (std::fabs(lidar_yaw-pose_result.response.pose_at[2])<0.2){
+            if (std::fabs(lidar_yaw-pose_result.response.pose_at[2])<0.3){
                 flag = 1;
                 float slope = where_board.response.lidar_results[i*4+3] / where_board.response.lidar_results[i*4+2];
                 RobotPose robot = calculate_destination(where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1],slope);//计算小车位姿
@@ -326,6 +226,7 @@ int main(int argc, char *argv[])
             return 1;
         }
         board_name = mecanumController.turn_and_find(1,1,board_class);//请求视觉识别板子服务
+        if (board_name>=0 && board_name<9) std::cout << name.at(board_name) << std::endl;
         if (board_name != -1){
             if (poseget_client.call(pose_result)){
                 ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
@@ -336,7 +237,7 @@ int main(int argc, char *argv[])
             for(int i=0;i<board_count;i++){
                 lidar_yaw = std::atan2(where_board.response.lidar_results[i*4+1], where_board.response.lidar_results[i*4]);//计算雷达找到的板子在什么方向，是否和视觉识别结果匹配double atan2(double y, double x); 
                 ROS_INFO("板子相对小车夹角%f",lidar_yaw);
-                if (std::fabs(lidar_yaw-pose_result.response.pose_at[2])<0.2){
+                if (std::fabs(lidar_yaw-pose_result.response.pose_at[2])<0.3){
                     flag = 1;
                     float slope = where_board.response.lidar_results[i*4+3] / where_board.response.lidar_results[i*4+2];
                     RobotPose robot = calculate_destination(where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1],slope);//计算小车位姿
@@ -373,40 +274,20 @@ int main(int argc, char *argv[])
     ROS_INFO("前往红绿灯区域路口1");
     go_destination(goal,3.25,4.50,1.57,q,ac);
     if (detectTrafficLightStatus()==2){
-        goal.target_pose.header.stamp = ros::Time::now();
-        goal_set(goal,2.75,3.50,-0.78,q);
-        ac.sendGoal(goal);
-        ac.waitForResult();
-        if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-            ROS_INFO("路口1可通过");
-        else
-            ROS_INFO("路口1红灯");
+        ROS_INFO("路口1可通过");
+        go_destination(goal,2.75,3.50,-0.78,q,ac);
     } 
     else {
         ROS_INFO("前往红绿灯区域路口2");
         go_destination(goal,4.25,4.50,1.57,q,ac);
         if (detectTrafficLightStatus()==2){
-            goal.target_pose.header.stamp = ros::Time::now();
-            goal_set(goal,4.75,3.50,-2.31,q);
-            ac.sendGoal(goal);
-            ac.waitForResult();
-            if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-                ROS_INFO("路口2可通过");
-            else
-                ROS_INFO("路口2红灯");
+            ROS_INFO("路口2可通过");
+            go_destination(goal,4.75,3.50,-2.31,q,ac);
         } 
     }
     while(1);
 
     //-----------------------------------------视觉巡线---------------------------------------------//
-    goal.target_pose.header.stamp = ros::Time::now();
-    goal_set(goal,2.75,3.45,-1.57,q);
-    ac.sendGoal(goal);
-    ac.waitForResult();
-    if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-        ROS_INFO("到达视觉巡线区域");
-    else
-        ROS_INFO("无法到达视觉巡线区域");
     if(line_client.call(linefollow_start)){
         ROS_INFO("视觉巡线结束");
     }

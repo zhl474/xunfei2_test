@@ -32,7 +32,7 @@ MecanumController::MecanumController(ros::NodeHandle& nh) :
     detect_client_(nh.serviceClient<ros_nanodet::detect_result_srv>("nanodet_detect")),
     getpose_client_(nh.serviceClient<ztestnav2025::getpose_server>("getpose_server")),
     set_speed_client_(nh.serviceClient<ztestnav2025::getpose_server>("set_speed")),
-    timer(nh.createTimer(ros::Duration(12.0), &MecanumController::timerCallback, this, false, false))
+    timer(nh.createTimer(ros::Duration(17.0), &MecanumController::timerCallback, this, false, false))
 {
     if (!detect_client_.waitForExistence()) {
         ROS_FATAL("检测服务 nanodet_detect 不可用！");
@@ -108,18 +108,22 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
     double integral = 0, prev_error = 0;
     // ros::Rate rate(20);     // 控制频率20Hz
     geometry_msgs::Twist twist;
-    timer.start();
-    ROS_INFO("Timer active: %s", timer.hasStarted() ? "YES" : "NO");
+    start_time_ = ros::Time::now();
     while(ros::ok()&&!exit_flag){
         detect(result, z);     // 持续检测目标
-        if(result[4] != z){
+        // ROS_INFO("%d",result[4]);
+        if(result[4] < (z-1)*3 || result[4] >= z*3){
             set_speed_.request.getpose_start= static_cast<int>(angular_speed*100);
             set_speed_client_.call(set_speed_);
             integral = 0;
-            ros::spinOnce();
+            if ((ros::Time::now() - start_time_).toSec()>17){
+                exit_flag = true;
+                result[4] = -1;
+                ROS_INFO("找板超时");
+            }
             continue;
         }  // 目标丢失则旋转寻找目标
-        
+        start_time_ = ros::Time::now();//找到目标就刷新开始时间免得一帧没检测到板子又退出去了
         // 计算中心点偏差（误差输入）
         int center_x = (result[0]+result[2])/2;
         // 退出条件：误差<7像素
@@ -128,7 +132,8 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
             integral = 0;
             set_speed_.request.getpose_start = 0;
             set_speed_client_.call(set_speed_);
-            return result[5];
+            exit_flag = false;
+            return result[4];
         } 
         double error = (img_width/2.0 - center_x)/100; 
         
@@ -137,18 +142,19 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
         double derivative = (error - prev_error)/0.05;
         double output = Kp_*error + Ki_*integral + Kd_*derivative;
         output = clamp(output, -1.0, 1.0);
-        // ROS_INFO("速度发布:%f",output);
+        // ROS_INFO("速度发布:%f",output*0.2);
         
         // 执行旋转（限制输出范围）
-        set_speed_.request.getpose_start = static_cast<int>(angular_speed*100*output);
+        set_speed_.request.getpose_start = static_cast<int>(0.2*100*output);
         set_speed_client_.call(set_speed_);
         
         prev_error = error;
         
     }
+    exit_flag = false;
     set_speed_.request.getpose_start = 0;
     set_speed_client_.call(set_speed_);
-    return result[5];
+    return result[4];
 }
 
     //解析动态参数
