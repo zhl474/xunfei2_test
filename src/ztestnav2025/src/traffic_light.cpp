@@ -1,5 +1,4 @@
-#include <opencv2/opencv.hpp>
-#include <iostream>
+#include "ztestnav2025/traffic_light.h"
 
 using namespace cv;
 using namespace std;
@@ -11,7 +10,7 @@ Scalar lower_green = Scalar(50, 100, 100); // 绿色下限
 Scalar upper_green = Scalar(80, 255, 255); // 绿色上限
 
 // 判断红绿灯状态
-string detectTrafficLightStatus(Mat frame) {
+int detectTrafficLightStatus(Mat frame) {
     // 转换为 HSV 颜色空间
     Mat hsv_frame;
     cvtColor(frame, hsv_frame, COLOR_BGR2HSV);
@@ -31,7 +30,7 @@ string detectTrafficLightStatus(Mat frame) {
     findContours(red_mask, red_contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
     findContours(green_mask, green_contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
-    string status = "Unknown";
+    int status = 0;
 
     // 检查红色区域
     for (const auto& contour : red_contours) {
@@ -46,16 +45,16 @@ string detectTrafficLightStatus(Mat frame) {
 
         // 圆度判断
         if (roundness > 0.5 && roundness < 1.0 && radius > 10) {
-            Rect rbox = boundingRect(contour);
-            rectangle(frame, rbox, Scalar(0, 0, 255), 2);  // 绘制红色边界框 [[3]]
+            // Rect rbox = boundingRect(contour);
+            // rectangle(frame, rbox, Scalar(0, 0, 255), 2);  // 绘制红色边界框 [[3]]
 
-            // 格式化文本并绘制到图像上 [[6]]
-            string info = "Red: R=" + to_string((int)radius) +
-                ", A=" + to_string((int)area) +
-                ", Round=" + to_string(roundness).substr(0, 4);
-            putText(frame, info, Point(center.x - 50, center.y - 20),
-                FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255), 1);
-            status = "Red";
+            // // 格式化文本并绘制到图像上 [[6]]
+            // string info = "Red: R=" + to_string((int)radius) +
+            //     ", A=" + to_string((int)area) +
+            //     ", Round=" + to_string(roundness).substr(0, 4);
+            // putText(frame, info, Point(center.x - 50, center.y - 20),
+            //     FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255), 1);
+            status = 1;
         }
     }
 
@@ -71,16 +70,16 @@ string detectTrafficLightStatus(Mat frame) {
         double roundness = area / circle_area;  // 计算圆度 [[3]]
 
         if (roundness > 0.5 && roundness < 1.0 && radius > 10) {
-            Rect gbox = boundingRect(contour);
-            rectangle(frame, gbox, Scalar(0, 255, 0), 2);  // 绘制绿色边界框 [[4]]
+            // Rect gbox = boundingRect(contour);
+            // rectangle(frame, gbox, Scalar(0, 255, 0), 2);  // 绘制绿色边界框 [[4]]
 
-            // 格式化文本并绘制到图像上 [[6]]
-            string info = "Green: R=" + to_string((int)radius) +
-                ", A=" + to_string((int)area) +
-                ", Round=" + to_string(roundness).substr(0, 4);
-            putText(frame, info, Point(center.x - 50, center.y - 20),
-                FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1);
-            status = "Green";
+            // // 格式化文本并绘制到图像上 [[6]]
+            // string info = "Green: R=" + to_string((int)radius) +
+            //     ", A=" + to_string((int)area) +
+            //     ", Round=" + to_string(roundness).substr(0, 4);
+            // putText(frame, info, Point(center.x - 50, center.y - 20),
+            //     FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 1);
+            status = 2;
         }
     }
 
@@ -98,7 +97,7 @@ int main() {
     }
 
     // 调用检测函数
-    string status = detectTrafficLightStatus(image);
+    int status = detectTrafficLightStatus(image);
 
     // 显示结果
     cout << "Traffic Light Status: " << status << endl;

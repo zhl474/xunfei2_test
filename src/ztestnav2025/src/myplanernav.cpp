@@ -8,6 +8,7 @@
 #include "ztestnav2025/getpose_server.h"
 #include "ztestnav2025/turn_detect.h"
 #include "ztestnav2025/lidar_process.h"
+#include "ztestnav2025/traffic_light.h"
 #include "line_follow/line_follow.h"
 #include "qr_01/qr_srv.h"
 #include "communication/msg_1.h"
@@ -411,14 +412,7 @@ int main(int argc, char *argv[])
     //-----------------------------------------------仿真开始--------------------------------------------//
     ROS_INFO("前往仿真区域");
     goal.target_pose.header.stamp = ros::Time::now();
-    q.setRPY(0, 0, 0);
-    goal.target_pose.pose.position.x = 1.25;
-    goal.target_pose.pose.position.y = 3.75;
-    goal.target_pose.pose.position.z = 0.0;
-    goal.target_pose.pose.orientation.x = q.x();
-    goal.target_pose.pose.orientation.y = q.y();
-    goal.target_pose.pose.orientation.z = q.z();
-    goal.target_pose.pose.orientation.w = q.w();
+    goal_set(goal,1.25,3.75,0.0,q);
     ac.sendGoal(goal);
     ac.waitForResult();
     if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
@@ -437,23 +431,26 @@ int main(int argc, char *argv[])
     // }
 
     //--------------------------------------------前往红绿灯识别区域--------------------------------------------//
-    q.setRPY(0, 0, -1.57);
-    goal.target_pose.pose.position.x = 2.75;
-    goal.target_pose.pose.position.y = 3.45;
-    goal.target_pose.pose.position.z = 0.0;
-    goal.target_pose.pose.orientation.x = q.x();
-    goal.target_pose.pose.orientation.y = q.y();
-    goal.target_pose.pose.orientation.z = q.z();
-    goal.target_pose.pose.orientation.w = q.w();
+
     goal.target_pose.header.stamp = ros::Time::now();
+    goal_set(goal,3.25,4.50,1.57,q);
     ac.sendGoal(goal);
     ac.waitForResult();
     if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
         ROS_INFO("到达视觉巡线区域");
     else
         ROS_INFO("无法到达视觉巡线区域");
+    
 
     //-----------------------------------------视觉巡线---------------------------------------------//
+    goal.target_pose.header.stamp = ros::Time::now();
+    goal_set(goal,2.75,3.45,-1.57,q);
+    ac.sendGoal(goal);
+    ac.waitForResult();
+    if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+        ROS_INFO("到达视觉巡线区域");
+    else
+        ROS_INFO("无法到达视觉巡线区域");
     if(line_client.call(linefollow_start)){
         ROS_INFO("视觉巡线结束");
     }

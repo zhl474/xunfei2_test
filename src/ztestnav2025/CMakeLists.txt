@@ -144,6 +144,10 @@ add_library(turn_detect
   include/${PROJECT_NAME}/turn_detect.h
   src/turn_detect.cpp
 )
+add_library(traffic_light
+  include/${PROJECT_NAME}/traffic_light.h
+  src/traffic_light.cpp
+)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -192,6 +196,9 @@ target_link_libraries(myplanernav
   ${catkin_LIBRARIES}
 )
 target_link_libraries(simple_move_control
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(traffic_light
   ${catkin_LIBRARIES}
 )
 # target_link_libraries(lidar_test

@@ -3,7 +3,7 @@ import cv2
 
 video = cv2.VideoCapture('/dev/video0')     # 调用摄像头，PC电脑中0为内置摄像头，1为外接摄像头
 judge = video.isOpened()      # 判断video是否打开
-i = 0
+i = 247
 while judge:
     ret, frame = video.read()
     

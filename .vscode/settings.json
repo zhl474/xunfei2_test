@@ -7,7 +7,7 @@
         "/opt/ros/melodic/lib/python2.7/dist-packages",
         "/home/ucar/ucar_car/devel/lib/python3/dist-packages/ros_nanodet"
     ],
-    "cmake.sourceDirectory": "/home/ucar/ucar_car/src/geometry/kdl_conversions",
+    "cmake.sourceDirectory": "/home/ucar/ucar_car/src/awake",
     "files.associations": {
         "cctype": "cpp",
         "clocale": "cpp",
