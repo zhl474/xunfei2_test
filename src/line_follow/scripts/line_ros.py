@@ -173,8 +173,9 @@ class PIDController:
         while not rospy.is_shutdown():
             rospy.loginfo("开始巡线")
             lidar_resp = self.lidar_client.call(self.lidar_Req)
-            print(lidar_resp)
+            # print(lidar_resp)
             if lidar_resp.lidar_results[0] != -1:
+                # cv2.waitKey(0)
                 self.avoid_move()
             ret, frame = cap.read()
             if not ret:
@@ -284,21 +285,26 @@ class PIDController:
         flag = 1
         # integration_y = 0
         integration_z = 0
+        self.vel_msg.linear.y = 0
+        self.vel_msg.linear.x = 0
+        self.vel_msg.angular.z = 0
         while flag:
             lidar_resp = self.lidar_client.call(self.lidar_Req)
             if(lidar_resp.lidar_results[0]!=-1):
                 # integration_y = max(min(integration_y + lidar_resp.lidar_results[1],-0.1),0.1)
-                integration_z = max(min(integration_z + lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3],-0.1),0.1)
+                integration_z = max(min(integration_z + lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3],-0.2),0.2)
                 # self.vel_msg.linear.y = max(min(lidar_resp.lidar_results[1]+integration_y, 0.1), -0.1)
-                self.vel_msg.angular.z = max(min((lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3]+integration_z) * -1, 0.1), -0.1)
+                self.vel_msg.angular.z = max(min((lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3]+integration_z) * -1, 0.2), -0.2)
                 self.vel_publisher.publish(self.vel_msg) 
                 # if abs(self.vel_msg.linear.y) < 0.03:
                 #     integration_y = 0
-                if abs(self.vel_msg.angular.z) > 0.1:
+                print(self.vel_msg.angular.z)
+                if abs(self.vel_msg.angular.z) > 0.2:
                     integration_z = 0
-                if abs(self.vel_msg.linear.y) < 0.03 and abs(self.vel_msg.angular.z) < 0.05:
+                if abs(self.vel_msg.angular.z) < 0.05:
                     print("done")
                     break
+        rospy.loginfo("平移")
         start = time.time()
         while flag :
             if time.time()-start > 2:
@@ -310,7 +316,7 @@ class PIDController:
         flag = 1
         start = time.time()
         while flag :
-            if time.time()-start > 1.4:
+            if time.time()-start > 1.6:
                 flag = 0
             self.vel_msg.linear.x = 0.4
             self.vel_msg.angular.z = 0

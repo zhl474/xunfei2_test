@@ -2,8 +2,8 @@
 #include "ros_nanodet/detect_result_srv.h"
 #include "ztestnav2025/getpose_server.h"
 
-#include <actionlib/client/simple_action_client.h>
-#include <move_base_msgs/MoveBaseAction.h>
+// #include <actionlib/client/simple_action_client.h>
+// #include <move_base_msgs/MoveBaseAction.h>
 #include <boost/algorithm/string/join.hpp>
 
 #include <geometry_msgs/PoseStamped.h>
@@ -17,12 +17,12 @@
 
 #include <cmath>
 
-#include "dynamic_reconfigure/server.h"
-#include "ztestnav2025/drConfig.h"
+// #include "dynamic_reconfigure/server.h"
+// #include "ztestnav2025/drConfig.h"
 
 //-------------------------调试的时候把43行和80行代码map改成odom就行-------------//
 
-typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
+// typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
 
 class TF_position_get {

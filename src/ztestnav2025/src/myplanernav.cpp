@@ -16,6 +16,11 @@
 #include <std_msgs/Int8.h>
 
 #include <cmath>
+//找板优化新增头文件
+#include <tf2/utils.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+
 // 全局变量定义
 int room_index = 0;       // 当前房间号
 int awake_flag = 0;      // 语音唤醒标志位
@@ -322,7 +327,83 @@ int main(int argc, char *argv[])
         ROS_INFO("播报");
         play_audio(voice[1][board_name]);
     }
+    //------------------------数学方法优化找板导航逻辑部分，临时方案----------------------------------------
+    // ROS_INFO("进入目标检测区域...");
+    
+    // // 1. 前往房间中心区域
+    // ROS_INFO("导航至房间中心 [1.25, 3.75]...");
+    // go_destination(goal, 1.25, 3.75, 0, q, ac);
 
+    // // 2. 启动视觉服务
+    // std::vector<int> a = {-1, -1, -1, -1, -1, -1};
+    // mecanumController.detect(a, -1); // 传入-1以打开摄像头
+    
+    // // 3. 核心流程：对准与导航
+    // int board_name = -1;
+    // bool task_success = false;
+    
+    // ROS_INFO("开始原地旋转，搜索目标板类型 %d...", board_class);
+    // board_name = mecanumController.turn_and_find(1, 1, board_class, 0.6); // 步骤A: 原地旋转对准
+
+    // if (board_name != -1) {
+    //     ROS_INFO("目标板 %d 对准成功！开始精确导航...", board_name);
+
+    //     // 步骤B: 调用雷达服务，获取正前方距离
+    //     ztestnav2025::lidar_process where_board;
+    //     where_board.request.lidar_process_start = 1;
+    //     double distance_to_board = -1.0;
+
+    //     if (client_find_board.call(where_board) && !where_board.response.lidar_results.empty()) {
+    //         distance_to_board = where_board.response.lidar_results[0];
+    //         if (distance_to_board <= 0) {
+    //             ROS_ERROR("雷达服务返回距离无效(%.2f)，放弃导航。", distance_to_board);
+    //         }
+    //     } else {
+    //         ROS_ERROR("调用雷达服务失败，放弃导航。");
+    //         distance_to_board = -1.0; // 确保距离为无效值
+    //     }
+
+    //     if (distance_to_board > 0) { // 仅在获取到有效距离时继续
+    //         // 步骤C: 使用TF获取机器人当前在map坐标系下的位姿
+    //         geometry_msgs::TransformStamped robot_pose_transform;
+    //         try {
+    //             robot_pose_transform = tfBuffer.lookupTransform("map", "base_link", ros::Time(0), ros::Duration(1.0));
+                
+    //             // 步骤D: 计算目标和导航点
+    //             double robot_x = robot_pose_transform.transform.translation.x;
+    //             double robot_y = robot_pose_transform.transform.translation.y;
+    //             double robot_yaw = tf2::getYaw(robot_pose_transform.transform.rotation);
+    //             ROS_INFO("机器人当前位姿: [x: %.2f, y: %.2f, yaw: %.2f]", robot_x, robot_y, robot_yaw);
+
+    //             double board_x = robot_x + distance_to_board * cos(robot_yaw);
+    //             double board_y = robot_y + distance_to_board * sin(robot_yaw);
+
+    //             const double APPROACH_DISTANCE = 0.6; // 目标距离60cm
+    //             double goal_x = board_x - APPROACH_DISTANCE * cos(robot_yaw);
+    //             double goal_y = board_y - APPROACH_DISTANCE * sin(robot_yaw);
+    //             ROS_INFO("计算出的导航目标点: [x: %.2f, y: %.2f]", goal_x, goal_y);
+
+    //             // 步骤E: 执行导航
+    //             go_destination(goal, goal_x, goal_y, robot_yaw, q, ac);
+    //             if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
+    //                 task_success = true;
+    //             }
+    //         } catch (tf2::TransformException &ex) {
+    //             ROS_WARN("无法获取机器人当前位姿: %s", ex.what());
+    //         }
+    //     }
+    // } else {
+    //     ROS_INFO("在中心位置未找到目标板。");
+    // }
+
+    // if (task_success) {
+    //     ROS_INFO("成功导航至目标板 %d 前方！任务完成。", board_name);
+    // } else {
+    //     ROS_ERROR("目标检测与导航任务失败。");
+    // }
+    
+    // mecanumController.cap_close(); // 关闭摄像头
+    //--------------------------------------------分界线--------------------------------------------
     //-----------------------------------------------仿真开始--------------------------------------------//
     ROS_INFO("前往仿真区域");
     go_destination(goal,1.25,3.75,0.0,q,ac);
