@@ -14,6 +14,9 @@
 #include "communication/msg_2.h"
 
 #include <cmath>
+// 全局变量定义
+int room_index = 0;       // 当前房间号
+int awake_flag = 0;      // 语音唤醒标志位
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
@@ -46,6 +49,66 @@ private:
     communication::msg_1 target_msg_;
     ros::Subscriber sub_;
 };
+
+// 语音命令数组（二维数组，按类别分组）
+std::vector<std::vector<std::string>> voice = {
+    // 第0组：任务类型（甜点/水果/蔬菜）
+    {
+        "aplay ~/ucar_car/src/broadcast/20_wav/1_task_vegetable.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/1_task_fruit.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/1_task_dessert.wav",
+        
+    },
+    // 第1组：物品获取（苹果/香蕉/蛋糕等）
+    {
+        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_chili.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_tomato.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_poatato.wav",  
+        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_banana.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_apple.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_watermelon.wav"
+        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_cola.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_cake.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_milk.wav",  
+    },
+    // 第2组：房间提示（gaozeboA/B/C）
+    {
+        "aplay ~/ucar_car/src/broadcast/20_wav/3_gaozebo_A.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/3_gaozebo_B.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/3_gaozebo_C.wav"
+    },
+    // 第3组：路径提示（道路1/道路2）
+    {
+        "aplay ~/ucar_car/src/broadcast/20_wav/4_road_1.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/4_road_2.wav"
+    }
+};
+
+// 费用相关语音（一维数组）
+std::vector<std::string> cost = {
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_apple.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_banana.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_watermelon.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_banana.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_watermelon.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_cake_cola.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_chili.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_potato.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_tomato.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_cola_cola.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cake.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cola.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_milk.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_potato_potato.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_potato.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_tomato.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_watermelon_watermelon.wav"
+};
+
+// 播放语音函数
+void play_audio(const std::string& command) {
+    system(command.c_str()); // 直接调用系统命令播放音频
+}
 
 void init_goals( std::vector<move_base_msgs::MoveBaseGoal> &goals, tf2::Quaternion q)
 {
@@ -183,8 +246,8 @@ int main(int argc, char *argv[])
 
     //--------------------------------------走廊环境导航，发布目标点--------------------------------//
     ROS_INFO("走廊环境导航开始");
-    mecanumController.rotateCircle(3.14,1,0.6);
-    mecanumController.rotateCircle(3.14,1,0.6);
+    mecanumController.rotateCircle(3.14,1,1.0);
+    mecanumController.rotateCircle(3.14,1,1.0);
     for(int i=0;i<2;i++){        //循环次数为目标点个数，发布目标点
         goal.target_pose.header.stamp = ros::Time::now();
 
@@ -207,14 +270,27 @@ int main(int argc, char *argv[])
         if(i==0){//请求二维码识别服务
             ros::Duration(1).sleep();
             what_qr.request.qr_start = 1;
-            if (client_qr.call(what_qr)){
+            while(ros::ok()){
+                if (!client_qr.call(what_qr)){
+                    ROS_INFO("没有请求到服务");
+                }
                 board_class = what_qr.response.qr_result;
-                ROS_INFO("二维码结果:%d",what_qr.response.qr_result);
+                ROS_INFO("二维码结果:%d",board_class);
+                if (board_class>0){
+                    
+                    ROS_INFO("二维码结果:%d",what_qr.response.qr_result);
+                    break;
+                }
+                else{
+                    ROS_ERROR("请求二维码失败");
+                }
             }
-            else{
-                ROS_ERROR("请求二维码失败");
-            }
+
         }
+        // board_class 为 1（蔬菜）、2（水果）、3（甜品）
+        if (board_class >= 1 && board_class <= 3) {
+            play_audio(voice[0][board_class-1]);
+    }
     }
     ROS_INFO("走廊环境导航完成");
 
@@ -222,6 +298,7 @@ int main(int argc, char *argv[])
     //----------------------------------------目标检测区域开始-------------------------------------------//
     ROS_INFO("拣货区域任务开始");
     size_t board_count;
+    int board_name;
     where_board.request.lidar_process_start = 1;//请求雷达识别板子服务
     if (client_find_board.call(where_board)){
         size_t len_of_where_board = where_board.response.lidar_results.size();
@@ -238,7 +315,7 @@ int main(int argc, char *argv[])
     //视觉识别开始，先传个-1把摄像头打开
     std::vector<int> a = {-1,-1,-1,-1,-1,-1};
     mecanumController.detect(a,-1);
-    mecanumController.turn_and_find(1,1,board_class);//请求视觉识别板子服务
+    board_name = mecanumController.turn_and_find(1,1,board_class);//请求视觉识别板子服务
     if (poseget_client.call(pose_result)){
         ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
     }
@@ -277,6 +354,7 @@ int main(int argc, char *argv[])
     }
     else{
         //前往区域中心找板子
+        ROS_INFO("前往中心找板");
         goal_set(goal,1.25,3.75,0,q);
         ac.sendGoal(goal);
         ac.waitForResult();
@@ -284,9 +362,50 @@ int main(int argc, char *argv[])
             ROS_INFO("到达中心开始找板");
         else
             ROS_INFO("无法到达中心");
+        where_board.request.lidar_process_start = 2;//请求雷达识别板子服务
+        if (client_find_board.call(where_board)){
+            size_t len_of_where_board = where_board.response.lidar_results.size();
+            board_count = len_of_where_board / 4;
+            ROS_INFO("找到%zu个板子",board_count);
+            for(size_t i=0;i<board_count;i++){
+                ROS_INFO("第%zu个板子位于%.2f,%.2f",i,where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1]);
+            }
+        }
+        else{
+            ROS_ERROR("找板服务请求失败");
+            return 1;
+        }
+        board_name = mecanumController.turn_and_find(1,1,board_class);//请求视觉识别板子服务
+        if (poseget_client.call(pose_result)){
+            ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
+        }
+        else{
+            ROS_ERROR("获取位姿失败");
+        }
+        for(int i=0;i<board_count;i++){
+            lidar_yaw = std::atan2(where_board.response.lidar_results[i*4+1], where_board.response.lidar_results[i*4]);//计算雷达找到的板子在什么方向，是否和视觉识别结果匹配double atan2(double y, double x); 
+            ROS_INFO("板子相对小车夹角%f",lidar_yaw);
+            if (std::fabs(lidar_yaw-pose_result.response.pose_at[2])<0.2){
+                flag = 1;
+                float slope = where_board.response.lidar_results[i*4+3] / where_board.response.lidar_results[i*4+2];
+                RobotPose robot = calculate_destination(where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1],slope);//计算小车位姿
+                goal_set(goal,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading,q);
+                ROS_INFO("第%d个板是目标板,即将前往，%.2f,%.2f,%.2f",i,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading);
+            }
+        }
+        if(flag){
+            ac.sendGoal(goal);
+            ac.waitForResult();
+            if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+                ROS_INFO("到达板前");
+            else
+                ROS_INFO("无法到达板前");
+        }
     }
     mecanumController.cap_close();
-
+   if (board_name >= 0 && board_name <= 9 && flag==1) {
+        play_audio(voice[1][board_name]);
+    }
 
     //-----------------------------------------------仿真开始--------------------------------------------//
     ROS_INFO("前往仿真区域");

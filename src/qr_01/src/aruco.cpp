@@ -34,7 +34,7 @@ bool qr_detect(qr_01::qr_srv::Request& req,qr_01::qr_srv::Response& resp){
     }
     cv::flip(frame,frame, 1);
     cv::imshow("QR",frame);
-    
+    cv::waitKey(0);
     // 转换为灰度图（ZBar需要Y800格式）
     cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
     

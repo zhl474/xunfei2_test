@@ -32,8 +32,6 @@ private:
     ros::Publisher cmd_pub;
     ros::Rate loop_rate;
 
-    VideoCapture cap;
-
     Mat frame, gray, processed;
     geometry_msgs::Twist twist;
     
@@ -43,13 +41,6 @@ public:
         kp(p), ki(i), kd(d), integral(0), error(0),
         nh_(),loop_rate(20)
         {
-            cap.open("/dev/video0", cv::CAP_V4L2);
-            if (!cap.isOpened()) {
-                ROS_ERROR("无法打开摄像头");
-                throw std::runtime_error("Camera initialization failed");
-            }
-            cap.set(CAP_PROP_FRAME_WIDTH, 640);
-            cap.set(CAP_PROP_FRAME_HEIGHT, 480);
             cmd_pub = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 5);
             line_server_ = nh_.advertiseService("line_server", &PIDController::line_follow_start, this);
             ROS_INFO("视觉巡线初始化");
@@ -147,6 +138,14 @@ public:
     }
 
     bool line_follow_start(line_follow::line_follow::Request& req,line_follow::line_follow::Response& resp){
+        VideoCapture cap;
+        cap.open("/dev/video0", cv::CAP_V4L2);
+        if (!cap.isOpened()) {
+            ROS_ERROR("无法打开摄像头");
+            throw std::runtime_error("Camera initialization failed");
+        }
+        cap.set(CAP_PROP_FRAME_WIDTH, 640);
+        cap.set(CAP_PROP_FRAME_HEIGHT, 480);
         while(ros::ok()) {
             cap.read(frame);
             if (frame.empty()) continue;

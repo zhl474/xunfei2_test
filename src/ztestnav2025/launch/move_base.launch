@@ -26,4 +26,5 @@
     <rosparam file="$(find ztestnav2025)/movebase_config/global_costmap_params.yaml" command="load" />
     <rosparam file="$(find ztestnav2025)/movebase_config/costmap_converter_params.yaml" command="load" />
   </node>
+  <node pkg="line_follow" type="follower_line_server" name="follower_line_server" output="screen"/>
 </launch>

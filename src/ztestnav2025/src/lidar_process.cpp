@@ -40,11 +40,21 @@ private:
             });
         }
         std::vector<int> mask(num_points_,-1);//筛选掉不要的，以及给障碍板分类
-        for (size_t i = 0; i < num_points_; ++i) {//筛选掉不要的，以及给障碍板分类
-            if(result[i][0]>2.7 || result[i][0]<-0.2 || result[i][1]>0.3 || result[i][1]<-2.0 || result[i][0] == 0){//去掉和墙壁重合的点
-                mask[i] = 0;
+        if(req.lidar_process_start==1){
+            for (size_t i = 0; i < num_points_; ++i) {//筛选掉不要的，以及给障碍板分类
+                if(result[i][0]>2.7 || result[i][0]<-0.2 || result[i][1]>0.3 || result[i][1]<-2.0 || result[i][0] == 0){//去掉和墙壁重合的点
+                    mask[i] = 0;
+                }
             }
         }
+        else if(req.lidar_process_start==2){
+            for (size_t i = 0; i < num_points_; ++i) {//筛选掉不要的，以及给障碍板分类
+                if(result[i][0]>1.2 || result[i][0]<-1.7 || result[i][1]>1.25 || result[i][1]<-1.25 || result[i][0] == 0){//去掉和墙壁重合的点
+                    mask[i] = 0;
+                }
+            }
+        }
+        
         int number = 0;
         int last_eq_first=0;//第一个点和最后一个可能属于同一个板子
         if(mask[0]==-1){

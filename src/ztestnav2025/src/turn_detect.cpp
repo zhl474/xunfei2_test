@@ -97,7 +97,7 @@ void MecanumController::rotateCircle(double rotate,int direction, double angular
     }
 }
 
-void MecanumController::turn_and_find(double x,int y,int z,double angular_speed){//原地旋转小车x度，执行y次目标检测,寻找z号目标
+int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){//原地旋转小车x度，执行y次目标检测,寻找z号目标
     std::vector<int> result = {-1,-1,-1,-1,-1,-1};
         
         double integral = 0, prev_error = 0;
@@ -118,7 +118,7 @@ void MecanumController::turn_and_find(double x,int y,int z,double angular_speed)
             if(std::abs(center_x - img_width/2) < 7){
                 ROS_INFO("已经对准");
                 integral = 0;
-                return;
+                return -1;
             } 
             double error = (img_width/2.0 - center_x)/100; 
             
@@ -135,6 +135,7 @@ void MecanumController::turn_and_find(double x,int y,int z,double angular_speed)
             
             prev_error = error;
         }
+    return result[5];
 }
 
     //解析动态参数
