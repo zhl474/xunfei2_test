@@ -15,3 +15,6 @@
 
 
 
+ cp src/mp3/B_MAXmp3 ./
+ chmod +x B_shuiguo.mp3  # 添加可执行权限（非必要）
+ play B.mp3

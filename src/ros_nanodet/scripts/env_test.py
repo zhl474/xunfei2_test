@@ -28,8 +28,8 @@ def process_video_stream(yaml_path, video_source=0):
         return
 
     # 计算最优新相机矩阵
-    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    h = 480
+    w = 640
     new_camera_matrix, roi = cv2.getOptimalNewCameraMatrix(
         camera_matrix, dist_coeffs, (w,h), 1, (w,h)
     )
@@ -48,10 +48,6 @@ def process_video_stream(yaml_path, video_source=0):
             None, 
             new_camera_matrix
         )
-
-        # 裁剪ROI区域 (可选)
-        x, y, w, h = roi
-        undistorted = undistorted[y:y+h, x:x+w]
 
         # 并排显示对比
         combined = np.hstack((frame, undistorted))

@@ -15,13 +15,13 @@ video_ext = ['mp4', 'mov', 'avi', 'mkv']
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--demo', default='image', help='demo type, eg. image, video and webcam')
-    parser.add_argument('--config', help='model config file path')
-    parser.add_argument('--model', help='model file path')
-    parser.add_argument('--path', default='./demo', help='path to images or video')
+    parser.add_argument('demo', default='image', nargs='?', help='demo type, eg. image, video and webcam')
+    parser.add_argument('--config', default='/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/config/nanodet-m-416-copy.yml', help='model config file path')
+    parser.add_argument('--model', default='/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/workspace/nanodet_m_416/model_best/best.pth', help='model file path')
+    parser.add_argument('--path', default='/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/2/1_augmented_0_augmented_4.png', help='path to images or video')
     parser.add_argument('--camid', type=int, default=0, help='webcam demo camera id')
     parser.add_argument('--save_result', action='store_true', help='whether to save the inference result of image/video')
-    args = parser.parse_args()
+    args = parser.parse_args(args=[])
     return args
 
 
@@ -102,16 +102,16 @@ def init():
     # args = parse_args()
     path = '/dev/video0'
     # path = '0'
-    # model = '/home/ucar/hdu_detect/src/ros_nanodet/src/nanodet-0.2.0/workspace/nanodet_m/model_best/nanodet_model_83.pth'
-    model = '/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/workspace/nanodet_m/model_best/model_last.pth'
-    # config = '/home/ucar/hdu_detect/src/ros_nanodet/src/nanodet-0.2.0/config/nanodet_83.yml'
-    config = '/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/config/nanodet_custom_xml_dataset.yml'
+    model = '/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/workspace/nanodet_m_416/model_best/best.pth'
+    # model = '/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/workspace/nanodet_m/model_best/model_last.pth'
+    config = '/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/config/nanodet-m-416-copy.yml'
+    # config = '/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/config/nanodet_custom_xml_dataset.yml'
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True
     load_config(cfg, config)
     logger = Logger(-1, use_tensorboard=False)
     predictor = Predictor(cfg, model, logger, device='cuda:0')
-    print(2)
+    print("nanoedt ready")
     # if demo == 'video' or demo == 'webcam':
     # cap = cv2.VideoCapture(path)
     # cap = cv2.VideoCapture(path)
