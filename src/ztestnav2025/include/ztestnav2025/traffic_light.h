@@ -21,7 +21,7 @@ std::vector<std::vector<std::string>> voice = {
     {
         "aplay ~/ucar_car/src/broadcast/20_wav/1_task_vegetable.wav",
         "aplay ~/ucar_car/src/broadcast/20_wav/1_task_fruit.wav",
-        "aplay ~/ucar_car/src/broadcast/20_wav/1_task_dessert.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/1_task_dessert.wav"
         
     },
     // 第1组：物品获取（苹果/香蕉/蛋糕等）
@@ -34,7 +34,7 @@ std::vector<std::vector<std::string>> voice = {
         "aplay ~/ucar_car/src/broadcast/20_wav/2_get_watermelon.wav"
         "aplay ~/ucar_car/src/broadcast/20_wav/2_get_cola.wav",
         "aplay ~/ucar_car/src/broadcast/20_wav/2_get_cake.wav",
-        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_milk.wav",  
+        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_milk.wav" 
     },
     // 第2组：房间提示（gaozeboA/B/C）
     {
@@ -51,23 +51,24 @@ std::vector<std::vector<std::string>> voice = {
 
 // 费用相关语音（一维数组）
 std::vector<std::string> cost = {
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_apple.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_banana.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_watermelon.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_banana.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_watermelon.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_cake_cola.wav",
     "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_chili.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_potato.wav",
     "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_tomato.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_cola_cola.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cake.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cola.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_milk.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_potato_potato.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_potato.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_potato.wav",
     "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_tomato.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_potato.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_potato_potato.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_banana.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_banana.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_watermelon.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_apple.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_watermelon.wav",
     "aplay ~/ucar_car/src/broadcast/20_wav/5_watermelon_watermelon.wav"
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_cola_cola.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_cake_cola.wav",    
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cola.wav",  
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_cake_cake.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cake.wav",    
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_milk.wav"    
 };
 
 void play_audio(const std::string& command);

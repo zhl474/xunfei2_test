@@ -29,14 +29,14 @@ class PIDController:
         self.integral = 0
         self.last_error = 0
 
-def fixed_threshold_binarization(image, threshold=210, max_value=255, threshold_type=cv2.THRESH_BINARY_INV):
+def fixed_threshold_binarization(image, threshold=200, max_value=255, threshold_type=cv2.THRESH_BINARY_INV):
     try:
         # 转换为灰度图像
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
         # 只保留图像下半部分
         height = gray.shape[0]
-        cropped_gray = gray[height//2+30:, :]  # 裁剪下半部分
+        cropped_gray = gray[height//2+110:, :]  # 裁剪下半部分
         
         # 高斯滤波降噪
         blur = cv2.GaussianBlur(cropped_gray, (5,5), 0)
@@ -71,8 +71,8 @@ def detect_center_line(binary_image):
     # 判断使用哪侧作为基准线
     use_right = len(nonzero_y_right) >= len(nonzero_y_left)
     
-    k1 = 0.7
-    k2 = 0.6
+    k1 = 1.5
+    k2 =1.5
     # 初始化基准线数据
     if use_right and len(nonzero_y_right) > 0:
         # 右侧基准线处理
@@ -85,7 +85,7 @@ def detect_center_line(binary_image):
             
         # 计算偏移中线（右侧减偏移）
         centers = np.zeros(height, dtype=np.int32)
-        centers[valid_rows] = max_x_right[valid_rows] - (380 - k1 * (209 - y_coords))
+        centers[valid_rows] = max_x_right[valid_rows] - (300 - k1 * (130 - y_coords))
         
     elif len(nonzero_y_left) > 0:
         # 左侧基准线处理
@@ -98,7 +98,7 @@ def detect_center_line(binary_image):
             
         # 计算偏移中线（左侧加偏移）
         centers = np.zeros(height, dtype=np.int32)
-        centers[valid_rows] = min_x_left[valid_rows] + (380 - k2 * (209 - y_coords))
+        centers[valid_rows] = min_x_left[valid_rows] + (320 - k2 * (130 - y_coords))
         
     else:
         # 默认中线
@@ -135,6 +135,16 @@ def detect_center_line(binary_image):
 
     return center_line_x, visual_img
 
+def detect_stopping_line(binary_image):
+    height, width = binary_image.shape
+    # 检查图像底部10%的区域
+    stop_section = binary_image[int(height * 0.99):, :]
+    
+    for row in stop_section:
+        black_pixels = np.sum(row == 0)  # 统计黑色像素数量
+        if black_pixels > width * 0.25:   # 黑色像素超过80%
+            return True
+    return False
 
 # 初始化节点
 rospy.init_node('line', anonymous=True)
@@ -146,7 +156,7 @@ if not cap.isOpened():
     rospy.logerr("打开摄像头失败")
 rospy.loginfo("视觉巡线节点已启动!")
 
-pid = PIDController(Kp=-0.01, Ki=0, Kd=-0.001)
+pid = PIDController(Kp=-0.1, Ki=0, Kd=-0.1)
 
 while not rospy.is_shutdown():
     ret, frame = cap.read()
@@ -158,11 +168,15 @@ while not rospy.is_shutdown():
     
     binary_image = fixed_threshold_binarization(frame)
     
+    if detect_stopping_line(binary_image):
+        rospy.loginfo("检测到停车线，停止小车!")
+        vel_msg = Twist()
+        vel_msg.linear.x = 0.0
+        vel_msg.angular.z = 0.0
+        vel_publisher.publish(vel_msg)
+        break  # 退出循环
+
     height, width = binary_image.shape
-    # cv2.imshow('frame',frame)
-    # cv2.imshow('Binary', binary_image)
-    # cv2.waitKey(1)
-    
     # 检测中线并获取中心点位置
     center_line_x,visual_img = detect_center_line(binary_image)
 
@@ -173,10 +187,10 @@ while not rospy.is_shutdown():
     height, width = frame.shape[:2]
     error = center_line_x - width // 2
     angular_z = pid.compute(error)
-    angular_z = np.clip(angular_z, -0.28, 0.28)  # 限制角速度范围
+    angular_z = np.clip(angular_z, -0.2, 0.2)  # 限制角速度范围
     
     # 动态调整线速度
-    max_speed = 0.2
+    max_speed = 0.3
     max_error = width // 2  # 图像中心到边缘的最大误差
     decay_factor = max(0.0, 1 - abs(error) / max_error)
     linear_x = max_speed * decay_factor

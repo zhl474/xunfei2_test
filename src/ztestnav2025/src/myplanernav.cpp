@@ -272,7 +272,7 @@ int main(int argc, char *argv[])
             ROS_ERROR("找板服务请求失败");
             return 1;
         }
-        board_name = mecanumController.turn_and_find(1,1,board_class);//请求视觉识别板子服务
+        board_name = mecanumController.turn_and_find(1,1,board_class,0.6);//请求视觉识别板子服务
         // if (board_name>=0 && board_name<9) std::cout << name.at(board_name) << std::endl;
         // if (board_name != -1){
         //     if (poseget_client.call(pose_result)){
@@ -306,23 +306,32 @@ int main(int argc, char *argv[])
         ROS_INFO("找不到板子，直接走了");
     }
     mecanumController.cap_close();
+    ROS_INFO("%d",board_name);
     if (board_name >= 0 && board_name <= 9 && flag==1) {
+        ROS_INFO("播报");
         play_audio(voice[1][board_name]);
     }
 
     //-----------------------------------------------仿真开始--------------------------------------------//
     ROS_INFO("前往仿真区域");
     go_destination(goal,1.25,3.75,0.0,q,ac);
-    // //发送仿真消息
-    // ros::Rate rate(1);
-    // while (ros::ok()) {
-    //     sim_talkto_car.car_msg_publish(board_class);
-    //     rate.sleep();
-    //     ros::spinOnce();
-    //     if(sim_talkto_car.sim_done==1){
-    //         break;
-    //     }
-    // }
+    //发送仿真消息
+    ros::Rate rate(1);
+    while (ros::ok()) {
+        sim_talkto_car.car_msg_publish(board_name);
+        rate.sleep();
+        ros::spinOnce();
+        if(sim_talkto_car.sim_done==1){
+            break;
+        }
+    }
+    if(sim_talkto_car.sim_room>=0){
+        play_audio(voice[2][sim_talkto_car.sim_room-1]);
+    }
+    else {
+        ROS_INFO("仿真失败");
+    }
+    
 
     //--------------------------------------------前往红绿灯识别区域--------------------------------------------//
     ROS_INFO("前往红绿灯区域路口1");
@@ -349,7 +358,9 @@ int main(int argc, char *argv[])
     else{
         ROS_ERROR("视觉巡线失败....");
     }
-
+    
+    play_audio(cost[board_name*3+sim_talkto_car.sim_detect_class]);
+    // play_audio(voice[board_name*3][1]);
     ros::spin();
 
     return 0;

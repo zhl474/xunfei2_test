@@ -152,6 +152,7 @@ RobotPose calculate_destination(double cx, double cy, double slope, double cente
 
 // 播放语音函数
 void play_audio(const std::string& command) {
+    ROS_INFO("播报test");
     system(command.c_str()); // 直接调用系统命令播放音频
 }
 
