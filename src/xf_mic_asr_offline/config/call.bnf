@@ -1,0 +1,12 @@
+﻿﻿#BNF+IAT 1.0 UTF-8;
+!grammar call;
+
+!slot <action>;
+
+!start <callstart>;
+
+<callstart>:任务领取|小车<choose>;
+<choose>:<action>|<turn>|<move>;
+<action>:前进|后退|出发|休眠;
+<turn>:(左|右)转;
+<move>:(左|右)移;

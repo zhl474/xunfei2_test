@@ -1,0 +1,45 @@
+<launch>
+  <node pkg="run_test" name="run_test" type="run_test" output="screen" ></node>
+  <include file="$(find opencv_test)/launch/opencv_test.launch"></include>
+  <node pkg="control_test" name="control_test" type="control_test" output="screen" >
+  
+    <!-- stop_point  -->
+    <param name="stop_point"     type="int"     value="0  "/>
+    
+    <!-- B  -->
+    <param name="goal0_x"     type="double"     value="2.868  "/>  
+    <param name="goal0_y"     type="double"     value="2.5  "/>
+    <param name="goal0_z"     type="double"     value="-1.7 "/>
+
+		<!-- D1 -->
+    <param name="goal1_x"     type="double"     value="1.35 	"/>
+    <param name="goal1_y"     type="double"     value="1.25 	"/>
+    <param name="goal1_z"     type="double"     value="-3.14 	"/>
+
+		<!-- D2 -->
+    <param name="goal2_x"     type="double"     value="1.35 	"/>  
+    <param name="goal2_y"     type="double"     value="0.75  	"/>
+    <param name="goal2_z"     type="double"     value="-3.14	"/>
+
+		<!-- D3 -->
+    <param name="goal3_x"     type="double"     value="1.35		"/>
+    <param name="goal3_y"     type="double"     value="0.3	"/>
+    <param name="goal3_z"     type="double"     value="-3.14	"/>
+
+		<!-- C  -->
+    <param name="goal4_x"     type="double"     value="2.75"/>
+    <param name="goal4_y"     type="double"     value="0.25"/>
+    <param name="goal4_z"     type="double"     value="3.20"/><!-- 3.20 -->
+
+		<!-- 预留1，goal5_x大于20不停留  -->
+    <param name="goal5_x"     type="double"     value="0.75"/>
+    <param name="goal5_y"     type="double"     value="2.15"/>
+    <param name="goal5_z"     type="double"     value="1.57"/>
+    
+		<!-- 预留2，goal6_x大于20不停留  -->
+    <param name="goal6_x"     type="double"     value="2.25"/>
+    <param name="goal6_y"     type="double"     value="1.85"/>
+    <param name="goal6_z"     type="double"     value="0.0"/>
+  </node>
+</launch> 
+

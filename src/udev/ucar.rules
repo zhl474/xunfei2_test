@@ -1,0 +1,6 @@
+KERNEL=="ttyUSB*", SUBSYSTEMS=="usb",ATTRS{idVendor}=="10c4",ATTRS{idProduct}=="ea60",KERNELS=="1-2.4",NAME="ttyUSB0",SYMLINK+="base_serial_port"
+KERNEL=="video*", SUBSYSTEMS=="usb",ATTRS{idVendor}=="0edc",ATTRS{idProduct}=="2050",KERNELS=="1-1",NAME="video0",SYMLINK+="ucar_video"
+ATTRS{idVendor}=="10d6", ATTRS{idProduct}=="b003", MODE="0666"
+KERNEL=="ttyTHS1", MODE="0666", SYMLINK+="lidar_serial_port"
+
+KERNEL=="ttyUSB*", SUBSYSTEMS=="usb",ATTRS{idVendor}=="1a86",ATTRS{idProduct}=="7523",MODE="0666",SYMLINK+="rc_port"

@@ -1,0 +1,5 @@
+<launch>
+  <include file="$(find xf_mic_asr_offline)/launch/mic_init.launch"/>
+  <!--  -->
+  <node pkg="voice_test" name="voice_test" type="voice_test" output="screen" ></node>
+</launch> 

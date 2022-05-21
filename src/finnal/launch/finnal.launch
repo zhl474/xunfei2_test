@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="finnal" name="finnal" type="finnal" output="screen" ></node>
+</launch> 
+

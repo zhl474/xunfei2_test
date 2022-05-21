@@ -1,0 +1,4 @@
+<launch>
+  <node name="yolo" pkg="yolo" type="yolo2.sh" output="screen" ></node>
+  <include file="$(find finnal)/launch/finnal.launch"></include>
+</launch>
