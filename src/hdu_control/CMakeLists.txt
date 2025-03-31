@@ -12,14 +12,19 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   move_base_msgs
   roscpp
+  cv_bridge
   rospy
   std_msgs
   std_srvs
+  sensor_msgs
 )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-
+## 找到OpenCV
+find_package(OpenCV REQUIRED)
+set(cv_bridge_DIR ~/ucar_car/devel/share/cv_bridge/cmake)#大家根据自己的情况修改就好！
+set(OpenCV_DIR "/usr/local/include/opencv4/opencv2")
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -49,6 +54,12 @@ find_package(catkin REQUIRED COMPONENTS
 ##     and list every .msg/.srv/.action file to be processed
 ##   * uncomment the generate_messages entry below
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
+catkin_package(
+  #  INCLUDE_DIRS include
+  #  LIBRARIES my_package
+  CATKIN_DEPENDS roscpp sensor_msgs cv_bridge geometry_msgs
+  DEPENDS OpenCV
+)
 
 ## Generate messages in the 'msg' folder
 # add_message_files(
@@ -122,6 +133,7 @@ catkin_package(
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -138,7 +150,9 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(control_start src/control_start.cpp)
-
+add_executable(mid_c.cpp src/mid_c.cpp)
+add_executable(midd.cpp src/midd.cpp)
+add_executable(mid_circle.cpp src/mid_circle.cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -148,12 +162,27 @@ add_executable(control_start src/control_start.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(control_start ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
+add_dependencies(mid_c.cpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(midd.cpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(mid_circle.cpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 ## Specify libraries to link a library or executable target against
 target_link_libraries(control_start
   ${catkin_LIBRARIES}
 )
+target_link_libraries(mid_c.cpp
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+)
 
+target_link_libraries(midd.cpp
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+)
+
+target_link_libraries(mid_circle.cpp
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+)
 #############
 ## Install ##
 #############
@@ -173,6 +202,7 @@ target_link_libraries(control_start
 # install(TARGETS ${PROJECT_NAME}_node
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 # )
+
 
 ## Mark libraries for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_libraries.html

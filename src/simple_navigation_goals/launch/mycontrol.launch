@@ -1,0 +1,62 @@
+<launch>
+  <node pkg="simple_navigation_goals" name="mycontrol_start" type="mycontrol_start" output="screen" >
+  
+    <!-- 设置目标点个数  -->
+    <param name="goal_num"     type="int"     value="9"/>
+    
+    <!-- goal0 读取恐怖分子数量 -->
+    <param name="goal0_x"     type="double"     value="1.168"/>  
+    <param name="goal0_y"     type="double"     value="1.245"/>
+    <param name="goal0_oz"     type="double"     value="-0.016"/>
+    <param name="goal0_ow"     type="double"     value="1.000"/>
+
+
+		<!-- goal1  过坡前的点-->
+    <param name="goal1_x"     type="double"     value="0.196"/>
+    <param name="goal1_y"     type="double"     value="0.019"/>
+    <param name="goal1_oz"     type="double"     value="1.000"/>
+    <param name="goal1_ow"     type="double"     value="0.005"/>
+
+		<!-- goal2 过坡之后到的点-->
+    <param name="goal2_x"     type="double"     value="-1.914"/>  
+    <param name="goal2_y"     type="double"     value="-0.043"/>
+    <param name="goal2_oz"     type="double"     value="1.000"/>
+    <param name="goal2_ow"     type="double"     value="0.005"/>
+
+		<!-- goal3 读取急救包位置-->
+    <param name="goal3_x"     type="double"     value="-2.353"/>
+    <param name="goal3_y"     type="double"     value="-1.670"/>
+    <param name="goal3_oz"     type="double"     value="-0.715"/>
+    <param name="goal3_ow"     type="double"     value="0.699"/>
+
+		<!-- goal4  读取急救物品区域-->
+    <param name="goal4_x"     type="double"     value="-2.211"/>
+    <param name="goal4_y"     type="double"     value="0.648"/>
+    <param name="goal4_oz"     type="double"     value="0.932"/>
+    <param name="goal4_ow"     type="double"     value="0.362"/>
+
+		<!-- goal5 坡道前停止区域-->
+    <param name="goal5_x"     type="double"     value="-1.628"/>
+    <param name="goal5_y"     type="double"     value="0.052"/>
+    <param name="goal5_oz"     type="double"     value="0.001"/>
+    <param name="goal5_ow"     type="double"     value="1.000"/>
+    
+		<!-- goal6  坡道后停止区域-->
+    <param name="goal6_x"     type="double"     value="1.023"/>
+    <param name="goal6_y"     type="double"     value="-0.500"/>
+    <param name="goal6_oz"     type="double"     value="0.000"/>
+    <param name="goal6_ow"     type="double"     value="1.000"/>
+
+    <!-- goal7  终点前停止区域-->
+    <param name="goal7_x"     type="double"     value="0.994"/>
+    <param name="goal7_y"     type="double"     value="-0.454"/>
+    <param name="goal7_oz"     type="double"     value="0.018"/>
+    <param name="goal7_ow"     type="double"     value="1.000"/>
+
+    <!-- goal8  到达终点-->
+    <param name="goal8_x"     type="double"     value="2.062"/>
+    <param name="goal8_y"     type="double"     value="0.066"/>
+    <param name="goal8_oz"     type="double"     value="0.704"/>
+    <param name="goal8_ow"     type="double"     value="0.711"/>
+  </node>
+</launch> 

@@ -1,0 +1,7 @@
+image: 19map519.pgm
+resolution: 0.025000
+origin: [-3.75, -3.75, 0.000000]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196
+

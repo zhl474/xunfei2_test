@@ -33,8 +33,8 @@ baseBringup::baseBringup() :x_(0), y_(0), th_(0)
   pravite_nh.param("base_shape_a", base_shape_a_, 0.2169);  //   m
   pravite_nh.param("base_shape_b", base_shape_b_, 0.0);  //   m
 
-  pravite_nh.param("linear_speed_max",   linear_speed_max_, 3.0);  //   m/s
-  pravite_nh.param("angular_speed_max", angular_speed_max_, 3.14);// rad/s
+  pravite_nh.param("linear_speed_max",   linear_speed_max_, 3.0);  //   3m/s
+  pravite_nh.param("angular_speed_max", angular_speed_max_, 6.28);//3.14 rad/s
   pravite_nh.setParam("linear_speed_max" ,linear_speed_max_);
   pravite_nh.setParam("angular_speed_max",angular_speed_max_);
 
@@ -800,7 +800,9 @@ void baseBringup::processIMU(uint8_t head_type)
     imu_data.linear_acceleration.x = -imu_frame_.frame.data.data_pack.accelerometer_x;
     imu_data.linear_acceleration.y = imu_frame_.frame.data.data_pack.accelerometer_y;
     imu_data.linear_acceleration.z = imu_frame_.frame.data.data_pack.accelerometer_z;
-
+    imu_data.orientation_covariance = {0.0017,0,0,
+                                                                                  0,0.0017,0,
+                                                                                  0,0,0.0017};
     imu_pub_.publish(imu_data);
     if(imu_flag==0){
         imu_data1=imu_data;

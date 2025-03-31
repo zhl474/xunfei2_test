@@ -118,14 +118,14 @@ fi
 
 export CUDA_HOME=/usr/local/cuda-10.0
 export LD_LIBRARY_PATH=/usr/local/cuda-10.0/lib64:$LD_LIBRARY_PATH
-export PATH=/usr/local/cuda-10.0/bin:$PATH
+export PATH=/usr/local/cuda-10.0/bin:$PATHros
 
 source /opt/ros/melodic/setup.bash
 source /home/ucar/ucar_ws/devel/setup.bash
 xrandr --fb 1920x1080
 source /home/ucar/nanodet_ros/devel/setup.bash
-export ROS_IP=192.168.1.115
-export ROS_MASTER_URI=http://192.168.1.115:11311
+export ROS_IP=192.168.102.172
+export ROS_MASTER_URI=http://192.168.102.172:11311
 
 alias git-log="git log --pretty=oneline --all --graph --abbrev-commit"
 alias hdu_1="roslaunch hdu_control base_start.launch"

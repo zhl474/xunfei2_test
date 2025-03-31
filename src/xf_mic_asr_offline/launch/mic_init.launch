@@ -5,8 +5,12 @@
   <node pkg="xf_mic_asr_offline" type="voice_control" name="xf_asr_offline_node" output="screen">
     <param name="source_path" type="string" value="$(find xf_mic_asr_offline)"/>
   </node>
+<!-- <node pkg="simple_navigation_goals" type="shujuchuli" name="shujuchuli" output="screen" >
+  </node>
+  <node pkg="simple_navigation_goals" type="send_goal_circle_final_copy_pt_copy" name="send_goal_circle_final_copy_pt_copy" output="screen" >
+  </node> -->
 
-  <!--node pkg="xf_mic_asr_offline" type="call_recognition" name="call_recognition" output="screen" /-->
-
+  <!-- <node pkg="simple_navigation_goals" type="send_goal_circle_final" name="send_goal_circle_final" output="screen" >
+  </node> -->
   
 </launch>

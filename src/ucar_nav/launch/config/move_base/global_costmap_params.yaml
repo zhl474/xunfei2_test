@@ -6,12 +6,17 @@
 global_costmap:
   global_frame: map
   robot_base_frame: base_link
-  update_frequency: 0.5
-  publish_frequency: 0.5
+  update_frequency: 10.0
+  publish_frequency: 10.0
+
+  cost_scaling_factor: 16.0     #22.0
+  inflation_radius: 0.38             #0.7
+
+  
   static_map: true
-  rolling_window: false
-  transform_tolerance: 10
-  track_unknown_space: true
+  rolling_window: ture
+  transform_tolerance: 2
+  track_unknown_space: false
   plugins:
     - {name: static_layer,    type: "costmap_2d::StaticLayer"}
     - {name: obstacle_layer,  type: "costmap_2d::ObstacleLayer"}
