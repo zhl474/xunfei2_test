@@ -1,0 +1,15 @@
+<launch>
+    <!-- 设置地图的配置文件 -->
+    <!-- 运行地图服务器，并且加载设置的地图-->
+    <include file="$(find ztestnav2025)/launch/base_start.launch" />
+
+    <include file="$(find ztestnav2025)/launch/map_server.launch"/>
+    <!-- 启动AMCL节点 -->
+    <include file="$(find ztestnav2025)/launch/amcl.launch" />
+
+    <!-- 运行move_base节点 -->
+    <include file="$(find ztestnav2025)/launch/move_base.launch" />
+
+    <node pkg="ztestnav2025" type="zhltest" name="zhltest" output="screen" />
+
+</launch>
