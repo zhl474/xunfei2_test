@@ -8,7 +8,8 @@
       "includePath": [
         "/opt/ros/melodic/include/**",
         "/home/tianbot/jwf_ws/src/my_rviz/include/**",
-        "/usr/include/**"
+        "/usr/include/**",
+        "/home/ucar/ucar_car/devel/include/**"
       ],
       "name": "ROS",
       "intelliSenseMode": "gcc-x64",
