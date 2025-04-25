@@ -3,6 +3,7 @@
 import numpy as np
 import time
 import cv2
+from pyzbar.pyzbar import decode
 import cv2.aruco as aruco
 import rospy
 from sensor_msgs.msg import Image
@@ -44,7 +45,7 @@ def aruco_demo():
     #创立节点
     rospy.init_node('aruco_demo', anonymous=True) 
     
-    #订阅usb_cam发出的图像消息，接收到消息后进入回调函数callback()
+    # 订阅usb_cam发出的图像消息，接收到消息后进入回调函数callback()
     rospy.Subscriber('usb_cam/image_raw', Image, callback)  
     
     #等待

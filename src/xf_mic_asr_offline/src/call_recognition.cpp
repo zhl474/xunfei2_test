@@ -173,11 +173,21 @@ int main(int argc, char *argv[])
 	nh.param("/seconds_per_order", seconds_per_order, 3);
 
   /***请求修改唤醒词服务***/
-	//xf_mic_asr_offline::Set_Awake_Word_srv SetAwakeWord_srv;
-	//SetAwakeWord_srv.request.awake_word="小车小车";
-	//Set_Awake_Word_client.call(SetAwakeWord_srv);
+	xf_mic_asr_offline::Set_Awake_Word_srv SetAwakeWord_srv;
+	SetAwakeWord_srv.request.awake_word="小车小车";
+	//  if(Set_Awake_Word_client.call(SetAwakeWord_srv))
+    // {
+    //     ROS_INFO("succeed to call service \"set_awake_word_srv\"!");
+    //     std::cout << "result: " << SetAwakeWord_srv.response.result << endl;
+    //     std::cout << "fail reason: " << SetAwakeWord_srv.response.fail_reason << endl;
+    // }
+    // else
+    // {
+    //     ROS_INFO("failed to call service \"set_awake_word_srv\"!");
+    // }
+	// Set_Awake_Word_client.call(SetAwakeWord_srv);
   /***等待服务应答***/
-	//std::cout << "Set_Awake_Word: " << SetAwakeWord_srv.response.result << endl;
+	std::cout << "Set_Awake_Word: " << SetAwakeWord_srv.response.result << endl;
 
   /***离线命令词识别服务参数设置***/
 	xf_mic_asr_offline::Get_Offline_Result_srv GetOfflineResult_srv;
@@ -241,9 +251,9 @@ int main(int argc, char *argv[])
 			}
 			
 		}		
-		//printf("awake_flag=%d\n",awake_flag);
-		//printf("-----confidence_threshold =%d\n",confidence_threshold);
-		//printf("seconds_per_order =%d\n",seconds_per_order); 
+		printf("awake_flag=%d\n",awake_flag);
+		printf("-----confidence_threshold =%d\n",confidence_threshold);
+		printf("seconds_per_order =%d\n",seconds_per_order); 
 		ros::spinOnce();    
 		loop_rate.sleep();    //10Hz循环
 		

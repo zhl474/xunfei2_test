@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>qr_01</name>
+  <version>0.0.0</version>
+  <description>The qr_01 package</description>
+
+  <!-- 维护者信息保留 -->
+  <maintainer email="ucar@todo.todo">ucar</maintainer>
+  <license>TODO</license>
+
+  <!-- 新增关键依赖项（保持原始注释完整） -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- ============== 新增内容开始 ============== -->
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>image_transport</build_depend>
+  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>image_transport</exec_depend>
+  <build_depend>opencv</build_depend>
+  <exec_depend>opencv</exec_depend>
+  <!-- ============== 新增内容结束 ============== -->
+
+  <!-- 原始依赖结构完全保留 -->
+  <build_depend>roscpp</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_export_depend>roscpp</build_export_depend>
+  <build_export_depend>rospy</build_export_depend>
+  <build_export_depend>std_msgs</build_export_depend>
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+
+  <export>
+    <!-- 保持原始空export标签 -->
+  </export>
+</package>

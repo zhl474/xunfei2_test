@@ -634,7 +634,7 @@ bool Set_Awake_Word(xf_mic_asr_offline::Set_Awake_Word_srv::Request &req,
 					xf_mic_asr_offline::Set_Awake_Word_srv::Response &res)
 {
 	ROS_INFO("got request,start to correct awake word ...\n");
-	if (strlen(req.awake_word.c_str()) >= 12 && strlen(req.awake_word.c_str()) <= 18) //4-6个汉字
+	if (strlen(req.awake_word.c_str()) >= 36 && strlen(req.awake_word.c_str()) <= 48) //4-6个汉字
 	{
 		Set_request_awake_word = false;
 		int ret = set_awake_word(const_cast<char *>(req.awake_word.c_str()));

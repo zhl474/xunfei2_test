@@ -13,7 +13,6 @@ from ros_nanodet.srv import aruco_cmd,aruco_cmdRequest,aruco_cmdResponse
 
 kp=0.00275
 
-
 def Stopcar(req):
     pub = rospy.Publisher("/cmd_vel",Twist,queue_size=1000)
     dis=0
