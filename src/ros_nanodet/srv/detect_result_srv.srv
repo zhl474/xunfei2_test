@@ -1,0 +1,9 @@
+# 客户端请求
+int32 detect_start
+---
+# 服务器响应发送的数据
+int32 class_name
+int32 x0
+int32 y0
+int32 x1
+int32 y1

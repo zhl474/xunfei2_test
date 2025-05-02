@@ -58,6 +58,8 @@
   <build_depend>std_msgs</build_depend>
   <build_depend>actionlib</build_depend>
   <build_depend>move_base_msgs</build_depend>
+  <build_depend>message_generation</build_depend>
+
   <build_export_depend>amcl</build_export_depend>
   <build_export_depend>gmapping</build_export_depend>
   <build_export_depend>map_server</build_export_depend>
@@ -67,6 +69,7 @@
   <build_export_depend>std_msgs</build_export_depend>
   <build_export_depend>actionlib</build_export_depend>
   <build_export_depend>move_base_msgs</build_export_depend>
+
   <exec_depend>amcl</exec_depend>
   <exec_depend>gmapping</exec_depend>
   <exec_depend>map_server</exec_depend>
@@ -76,6 +79,7 @@
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>actionlib</exec_depend>
   <exec_depend>move_base_msgs</exec_depend>
+  <exec_depend>message_runtime</exec_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

@@ -17,6 +17,9 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   actionlib          
   move_base_msgs      
+  tf2
+  tf2_ros
+  message_generation  # 生成自定义消息头文件[7](@ref)
 )
 
 ## System dependencies are found with CMake's conventions
@@ -111,7 +114,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES ztestnav2025
-#  CATKIN_DEPENDS amcl gmapping map_server move_base roscpp rospy std_msgs
+ CATKIN_DEPENDS amcl gmapping map_server move_base roscpp rospy std_msgs message_runtime
 #  DEPENDS system_lib
 )
 
@@ -140,6 +143,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(zhltest src/zhltest.cpp)
+add_executable(camera_test src/camera_test.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -153,6 +157,9 @@ add_executable(zhltest src/zhltest.cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(zhltest
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(camera_test
   ${catkin_LIBRARIES}
 )
 

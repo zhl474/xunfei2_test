@@ -57,6 +57,7 @@ add_message_files(
 add_service_files(
   FILES
   aruco_cmd.srv
+  detect_result_srv.srv
 )
 
 ## Generate actions in the 'action' folder
