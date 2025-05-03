@@ -3,6 +3,7 @@
 
 #include <actionlib/client/simple_action_client.h>
 #include <move_base_msgs/MoveBaseAction.h>
+#include <boost/algorithm/string/join.hpp>
 
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Twist.h>
@@ -24,12 +25,33 @@ public:
         cmd_pub_(nh.advertise<geometry_msgs::Twist>("cmd_vel", 10)) 
     {}
 
+    bool waitForTransform() {
+        ros::Time start_time = ros::Time::now();
+        // 设置超时时间（例如10秒）
+        ros::Duration timeout(10.0);
+        
+        while (ros::ok() && (ros::Time::now() - start_time < timeout)) {
+            if (tf_buffer_.canTransform("map", "base_link", ros::Time(0))) {
+                return true;
+            }
+            ROS_WARN_THROTTLE(1, "等待坐标系变换中...");
+            ros::Duration(0.1).sleep();  // 降低CPU占用
+        }
+        ROS_ERROR("等待超时:map到base_link的坐标变换未就绪");
+        return false;
+    }
+
     void rotateFullCircle(double rotate) {//rotate是弧度
         geometry_msgs::Twist twist;
         ros::Rate rate(20);     // 控制频率20Hz
-        auto start = getCurrentPose();
-        if (!start) ROS_INFO("坐标获取失败");
-        double target = getYawFromTransform(*start)+rotate;
+        auto start_opt = getCurrentPose();
+        if (!start_opt) ROS_INFO("坐标获取失败");
+        double start = getYawFromTransform(*start_opt);
+        double target = start+rotate;
+        if(target>=3.14){
+            target = 3.14 - target;//最大就3.14，超过3.14变成-3.14
+        }
+        ROS_INFO("起点和目标:%f,%f",start,target);
         while (ros::ok()) {
             // 获取当前姿态（参考网页7的TF查询方法）
             auto now_yaw = getCurrentPose();
@@ -64,9 +86,15 @@ private:
     // 坐标变换查询（参考网页8的异常处理）
     boost::optional<geometry_msgs::TransformStamped> getCurrentPose() {
         try {
+            waitForTransform();
             return tf_buffer_.lookupTransform("map", "base_link", ros::Time(0));
         } catch (tf2::TransformException &ex) {
             ROS_WARN("TF查询失败: %s", ex.what());
+            if (!tf_buffer_._frameExists("map")) {
+                ROS_ERROR("map坐标系未发布");
+            } else if (!tf_buffer_._frameExists("base_link")) {
+                ROS_ERROR("base_link坐标系未发布");
+            }
             return boost::none;
         }
     }
@@ -121,6 +149,8 @@ int main(int argc, char *argv[])
     ros::service::waitForService("detect_result");
     ros_nanodet::detect_result_srv start_detect;
     start_detect.request.detect_start = 1;
+
+    controller.rotateFullCircle(3.1);
 
     while(ros::ok()){
         // controller.rotateFullCircle(0.52);

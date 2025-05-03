@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
-
+import os
+import time
 # 1. 加载标定参数
 def load_calibration(yaml_path):
     fs = cv2.FileStorage(yaml_path, cv2.FILE_STORAGE_READ)
@@ -21,21 +22,23 @@ def process_video_stream(yaml_path, video_source=0):
     
     # 创建视频捕获对象
     cap = cv2.VideoCapture(video_source)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)   # 匹配标定宽度
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)  # 匹配标定高度
+    h = 480
+    w = 640
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)   # 匹配标定宽度
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)  # 匹配标定高度
     if not cap.isOpened():
         print("无法打开视频源")
         return
 
     # 计算最优新相机矩阵
-    h = 480
-    w = 640
     new_camera_matrix, roi = cv2.getOptimalNewCameraMatrix(
         camera_matrix, dist_coeffs, (w,h), 1, (w,h)
     )
 
     # 实时校正循环
     while True:
+        start_time = time.time()  
+        
         ret, frame = cap.read()
         if not ret:
             break
@@ -48,6 +51,9 @@ def process_video_stream(yaml_path, video_source=0):
             None, 
             new_camera_matrix
         )
+
+        end_time = time.time()
+        print(f'Time elapsed: {end_time - start_time:.2f} seconds')
 
         # 并排显示对比
         combined = np.hstack((frame, undistorted))
@@ -65,8 +71,6 @@ def process_video_stream(yaml_path, video_source=0):
     cap.release()
     cv2.destroyAllWindows()
 
-import cv2
-import os
 
 def debug_calibration(yaml_path):
     # 基础检查
@@ -102,14 +106,15 @@ def debug_calibration(yaml_path):
             fs.release()
 
 # 使用示例
-if debug_calibration("/home/ucar/ucar_car/src/ros_nanodet/srv/head_camera.yaml"):
+if debug_calibration("/home/ucar/ucar_car/src/ros_nanodet/srv/head_camera800_600.yaml"):
     print("文件可正常读取")
 else:
     print("请根据上述提示修正文件")
 
 # 使用示例
 if __name__ == "__main__":
-    calibration_file = "/home/ucar/ucar_car/src/ros_nanodet/srv/head_camera.yaml"  # YAML文件路径
+    calibration_file = "/home/ucar/ucar_car/src/ros_nanodet/srv/head_camera800_600.yaml"  # YAML文件路径
     video_source = 0  # 0=默认摄像头，或视频文件路径
     
     process_video_stream(calibration_file, video_source)
+    
