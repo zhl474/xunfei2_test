@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2
   tf2_ros
   message_generation  # 生成自定义消息头文件[7](@ref)
+  dynamic_reconfigure
 )
 
 ## System dependencies are found with CMake's conventions
@@ -97,10 +98,9 @@ find_package(catkin REQUIRED COMPONENTS
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
-#   cfg/DynReconf2.cfg
-# )
+generate_dynamic_reconfigure_options(
+  cfg/dr.cfg
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -144,6 +144,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(zhltest src/zhltest.cpp)
 add_executable(camera_test src/camera_test.cpp)
+add_executable(move_function_test src/move_function_test.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -160,6 +161,9 @@ target_link_libraries(zhltest
   ${catkin_LIBRARIES}
 )
 target_link_libraries(camera_test
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(move_function_test
   ${catkin_LIBRARIES}
 )
 
