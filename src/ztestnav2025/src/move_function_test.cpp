@@ -21,6 +21,10 @@
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
+template<typename T>
+T clamp(T value, T low, T high) {
+    return (value < low) ? low : (value > high) ? high : value;
+}
 
 class MecanumController {
 public:
@@ -31,7 +35,7 @@ public:
         cmd_pub_(nh.advertise<geometry_msgs::Twist>("cmd_vel", 10)),
         client_(nh.serviceClient<ros_nanodet::detect_result_srv>("detect_result")) 
     {
-        if (!client_.waitForExistence(ros::Duration(7.0))) {
+        if (!client_.waitForExistence()) {
             ROS_FATAL("检测服务 detect_result 不可用！");
             throw std::runtime_error("Service detect_result not found");
         }
@@ -100,49 +104,44 @@ public:
 
     void turn_and_find(double x,int y,int z){//原地旋转小车x度，执行y次目标检测,寻找z号目标
         std::vector<int> result = {-1,-1,-1,-1,-1};
-        for(int i=0;i<y+1;i++){
-            detect(result);
-            if(result[4] == z){
-                ROS_INFO("找到目标");
-                break;
-            }
-            rotateCircle(x/y,1);
-        }
-        if(result[4] == -1){
-            ROS_INFO("这个位置看不到目标");
-        }
-        else{//让小车对准目标
-            if(result[0]+result[2] == img_width){//如果一开始就是准的直接退出
-                return;
-            }
-            else{
-                double integral = 0, prev_error = 0;
-                ros::Rate rate(20);     // 控制频率20Hz
+            
+            double integral = 0, prev_error = 0;
+            ros::Rate rate(20);     // 控制频率20Hz
+            geometry_msgs::Twist twist;
+            while(ros::ok()){
+                detect(result);     // 持续检测目标
+                if(result[4] != z){
+                    twist.angular.z = angular_speed_;
+                    cmd_pub_.publish(twist);
+                    integral = 0;
+                    continue;
+                }  // 目标丢失则旋转寻找目标
                 
-                while(ros::ok()){
-                    detect(result);     // 持续检测目标
-                    if(result[4] != z) break;  // 目标丢失则退出
-                    
-                    // 计算中心点偏差（误差输入）
-                    int center_x = (result[0]+result[2])/2;
-                    double error = (img_width/2.0 - center_x)/img_width; 
-                    
-                    // 离散PID计算
-                    integral += error * 0.05;       // dt=1/20≈0.05
-                    double derivative = (error - prev_error)/0.05;
-                    double output = Kp_*error + Ki_*integral + Kd_*derivative;
-                    
-                    // 执行旋转（限制输出范围）
-                    rotateCircle( std::abs(output)*0.5,  // 幅度限幅到0.5rad/s
-                                (output>0)?1:-1 );      // 方向
-                    
-                    // 退出条件：误差<3像素
-                    if(std::abs(error*img_width) < 3) break; 
-                    prev_error = error;
-                    rate.sleep();
-                }
+                // 计算中心点偏差（误差输入）
+                int center_x = (result[0]+result[2])/2;
+                // 退出条件：误差<7像素
+                if(std::abs(center_x - img_width/2) < 7){
+                    ROS_INFO("center,wid:%d,%d",center_x,img_width);
+                    integral = 0;
+                    break;
+                } 
+                double error = (img_width/2.0 - center_x)/10; 
+                
+                // 离散PID计算
+                integral += error * 0.05;       // dt=1/20≈0.05
+                double derivative = (error - prev_error)/0.05;
+                double output = Kp_*error + Ki_*integral + Kd_*derivative;
+                output = clamp(output, -1.0, 1.0);
+                ROS_INFO("速度发布:%f",output);
+                
+                // 执行旋转（限制输出范围）
+                twist.angular.z = angular_speed_ * output;
+                cmd_pub_.publish(twist);
+                
+                prev_error = error;
             }
-        }
+        
+        // }
     }
 
     //解析动态参数
@@ -152,32 +151,6 @@ public:
         Kd_ = config.Kd;
         ROS_INFO("PID参数修改,P:%f,I:%f,D:%f",config.Kp,config.Ki,config.Kd);
     }
-
-private:
-    // TF坐标变换核心对象（参考网页6的TF生命周期管理）
-    tf2_ros::Buffer tf_buffer_;
-    tf2_ros::TransformListener tf_listener_;
-    
-    // ROS通信接口
-    ros::NodeHandle nh_;
-    ros::Publisher cmd_pub_;
-    
-    // 运动学参数
-    double angular_speed_ = 0.2;   // 默认角速度(rad/s)
-    double angle_error_ = 0.034;   //容忍2度偏差
-    double Kp_ = 0.5;  // 先调这个参数
-    double Ki_ = 0.0;  // 最后调积分项
-    double Kd_ = 0.0;  // 中间调微分项
-
-    ros::ServiceClient client_;
-    ros_nanodet::detect_result_srv start_detect_;//目标检测客户端
-    dynamic_reconfigure::Server<ztestnav2025::drConfig> server_;//动态参数
-
-    int img_width = 800;
-    int img_height = 600;
-    int focal_distance = 2.8;//单位毫米
-    double width_per_pixel = 10.7118/img_width;
-    double height_per_pixel = 3.7066/img_height;
 
     // 坐标变换查询（参考网页8的异常处理）
     boost::optional<geometry_msgs::TransformStamped> getCurrentPose() {
@@ -194,6 +167,33 @@ private:
             return boost::none;
         }
     }
+
+
+private:
+    // TF坐标变换核心对象（参考网页6的TF生命周期管理）
+    tf2_ros::Buffer tf_buffer_;
+    tf2_ros::TransformListener tf_listener_;
+    
+    // ROS通信接口
+    ros::NodeHandle nh_;
+    ros::Publisher cmd_pub_;
+    
+    // 运动学参数
+    double angular_speed_ = 0.2;   // 默认角速度(rad/s)
+    double angle_error_ = 0.034;   //容忍2度偏差
+    double Kp_ = 0.5;  // 先调这个参数
+    double Ki_ = 0.1;  // 最后调积分项
+    double Kd_ = 0.1;  // 中间调微分项
+
+    ros::ServiceClient client_;
+    ros_nanodet::detect_result_srv start_detect_;//目标检测客户端
+    dynamic_reconfigure::Server<ztestnav2025::drConfig> server_;//动态参数
+
+    int img_width = 640;
+    int img_height = 480;
+    int focal_distance = 2.8;//单位毫米
+    double width_per_pixel = 10.7118/img_width;
+    double height_per_pixel = 3.7066/img_height;
 
     // 四元数转欧拉角（参考网页7的转换方法）
     double getYawFromTransform(const geometry_msgs::TransformStamped& tf) {
@@ -215,6 +215,7 @@ int main(int argc, char *argv[])
     ros::NodeHandle nh;
     MecanumController controller(nh);
 
-    // controller.turn_and_find(6.28,24,0);
+    controller.turn_and_find(360,8,0);
+    ROS_INFO("done");
     ros::spin();
 }

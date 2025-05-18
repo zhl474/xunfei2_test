@@ -1,0 +1,12 @@
+# 启动小车的步骤：
+## 1.终端打开底盘 ：
+```roslaunch ucar_controller base_driver.launch ```
+
+## 2.启动mapserver ：
+``` ```
+
+## 3.启动amcl ：
+``` ```
+
+## 4.启动movebase ：
+``` ```

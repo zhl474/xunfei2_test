@@ -22,6 +22,8 @@ FONT = cv2.FONT_HERSHEY_SIMPLEX
 FONT_SCALE = 0.6
 THICKNESS = 2
 
+save_count = 76
+
 while True:
     rec, frame = cap.read()
     print(rec)
@@ -51,5 +53,17 @@ while True:
                           color,
                           THICKNESS)
     cv2.imshow('Detection Results', frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    key = cv2.waitKey(20) & 0xFF
+
+    if key in (ord('0'), 0x1000000 + ord('0')) or key in (96, 0x1000000 + 96):
+        # 确保保存前已调整分辨率
+        if frame.shape[1] != 640 or frame.shape[0] != 480:
+            frame = cv2.resize(frame, (640, 480))
+            
+        filename = f"capture_{save_count}.jpg"
+        cv2.imwrite(filename, frame)
+        print(f"已保存640x480截图：{filename}")
+        save_count += 1
+    elif key == ord('q'):
+        print("正在退出...")
         break

@@ -102,7 +102,7 @@ def init():
     # args = parse_args()
     path = '/dev/video0'
     # path = '0'
-    model = '/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/workspace/nanodet_m_416/model_best/best.pth'
+    model = '/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/workspace/nanodet_m_416/model_best/model_best.pth'
     # model = '/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/workspace/nanodet_m/model_best/model_last.pth'
     config = '/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/config/nanodet-m-416-copy.yml'
     # config = '/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/config/nanodet_custom_xml_dataset.yml'
