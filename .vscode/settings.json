@@ -69,7 +69,9 @@
         "thread": "cpp",
         "cfenv": "cpp",
         "typeindex": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "forward_list": "cpp",
+        "future": "cpp"
     },
     "ros.distro": "melodic"
 }

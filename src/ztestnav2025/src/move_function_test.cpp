@@ -225,7 +225,7 @@ private:
 int main(int argc, char *argv[])
 {
     setlocale(LC_ALL,"");
-    ros::init(argc,argv,"zhltest");
+    ros::init(argc,argv,"move_func_test");
     ros::NodeHandle nh;
     MecanumController controller(nh);
 
