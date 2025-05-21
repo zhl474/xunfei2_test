@@ -1,0 +1,4 @@
+int32 room   #目标所在房间  
+int32 class  #目标类别
+---
+int32 target_class  #实际环境中的目标类别

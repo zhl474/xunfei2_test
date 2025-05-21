@@ -1,5 +1,6 @@
 #include "ros/ros.h"
 #include "ros_nanodet/detect_result_srv.h"
+#include "ztestnav2025/getpose_server.h"
 
 #include <actionlib/client/simple_action_client.h>
 #include <move_base_msgs/MoveBaseAction.h>
@@ -33,7 +34,8 @@ public:
         tf_buffer_(),
         tf_listener_(tf_buffer_),
         cmd_pub_(nh.advertise<geometry_msgs::Twist>("cmd_vel", 10)),
-        client_(nh.serviceClient<ros_nanodet::detect_result_srv>("detect_result")) 
+        client_(nh.serviceClient<ros_nanodet::detect_result_srv>("detect_result")),
+        getpose(nh_.advertiseService("getpose_server", &MecanumController::getpose_server, this))
     {
         if (!client_.waitForExistence()) {
             ROS_FATAL("检测服务 detect_result 不可用！");
@@ -140,8 +142,6 @@ public:
                 
                 prev_error = error;
             }
-        
-        // }
     }
 
     //解析动态参数
@@ -153,19 +153,16 @@ public:
     }
 
     // 坐标变换查询（参考网页8的异常处理）
-    boost::optional<geometry_msgs::TransformStamped> getCurrentPose() {
-        try {
-            waitForTransform();
-            return tf_buffer_.lookupTransform("odom", "base_link", ros::Time(0));
-        } catch (tf2::TransformException &ex) {
-            ROS_WARN("TF查询失败: %s", ex.what());
-            if (!tf_buffer_._frameExists("map")) {
-                ROS_ERROR("odom坐标系未发布");
-            } else if (!tf_buffer_._frameExists("base_link")) {
-                ROS_ERROR("base_link坐标系未发布");
-            }
-            return boost::none;
-        }
+    bool getpose_server(ztestnav2025::getpose_server::Request &req,ztestnav2025::getpose_server::Response &resp) {
+        auto pose = getCurrentPose();
+        if (!pose) ROS_INFO("坐标获取失败");
+        auto pose1 = *pose;
+        double yaw = getYawFromTransform(pose1);
+        resp.pose_at.resize(3);
+        resp.pose_at[0] = pose1.transform.translation.x;
+        resp.pose_at[1] = pose1.transform.translation.y;
+        resp.pose_at[2] = yaw;
+        return true;
     }
 
 
@@ -177,6 +174,7 @@ private:
     // ROS通信接口
     ros::NodeHandle nh_;
     ros::Publisher cmd_pub_;
+    ros::ServiceServer getpose;
     
     // 运动学参数
     double angular_speed_ = 0.2;   // 默认角速度(rad/s)
@@ -194,6 +192,22 @@ private:
     int focal_distance = 2.8;//单位毫米
     double width_per_pixel = 10.7118/img_width;
     double height_per_pixel = 3.7066/img_height;
+
+    // 坐标变换查询（参考网页8的异常处理）
+    boost::optional<geometry_msgs::TransformStamped> getCurrentPose() {
+        try {
+            waitForTransform();
+            return tf_buffer_.lookupTransform("odom", "base_link", ros::Time(0));
+        } catch (tf2::TransformException &ex) {
+            ROS_WARN("TF查询失败: %s", ex.what());
+            if (!tf_buffer_._frameExists("map")) {
+                ROS_ERROR("odom坐标系未发布");
+            } else if (!tf_buffer_._frameExists("base_link")) {
+                ROS_ERROR("base_link坐标系未发布");
+            }
+            return boost::none;
+        }
+    }
 
     // 四元数转欧拉角（参考网页7的转换方法）
     double getYawFromTransform(const geometry_msgs::TransformStamped& tf) {
@@ -215,7 +229,7 @@ int main(int argc, char *argv[])
     ros::NodeHandle nh;
     MecanumController controller(nh);
 
-    controller.turn_and_find(360,8,0);
+    // controller.turn_and_find(360,8,0);
     ROS_INFO("done");
     ros::spin();
 }

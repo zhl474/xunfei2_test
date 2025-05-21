@@ -11,12 +11,12 @@ using namespace cv;
 
 class PIDController {
 private:
-    double kp, ki, kd;
+    double kp = 0.1, ki = 0, kd = 0;  // 合理的初始值
     double integral;
     double error;
     ros::Time prev_time;
     int stop_flag = 1;
-    int halfWidth = 340;
+    int halfWidth = 320;
     int half = halfWidth;
     int mid_output = half;
     double prev_error;
@@ -81,7 +81,7 @@ public:
                 }
             }
         }
-
+        ROS_INFO("左边边界%d",left);
         // 如果还是没找到边界，使用默认值
         if (!left_found) {
             left = max(0, half - halfWidth);
@@ -115,7 +115,7 @@ public:
                 }
             }
         }
-
+        ROS_INFO("右边边界%d",right);
         // 如果还是没找到边界，使用默认值
         if (!right_found) {
             right = min(mask.cols, half + halfWidth);
@@ -152,7 +152,7 @@ public:
 double twist_linear_x, twist_angular_z;
 
 bool use_binary_thresh = true;      // 是否使用二值化阈值
-int threshold_value = 125;          // 阈值
+int threshold_value = 160;          // 阈值
 int threshold_type = THRESH_BINARY; // 默认使用BINARY阈值
 
 int main(int argc, char **argv){
@@ -203,21 +203,36 @@ int main(int argc, char **argv){
             twist_angular_z = pid_controller.compute(error);
             twist_linear_x = 0.1;
             
-            if(fabs(error) > 1.0) {
-                twist_linear_x = 0.05;
-            }
-         else {
-            ROS_WARN_THROTTLE(1, "Line not found!");
-            pid_controller.reset();
-            twist_linear_x = 0.0;
-            twist_angular_z = -0.1;
-        }
+           
         
-        // 发布控制指令
-        // geometry_msgs::Twist twist;
-        // twist.linear.x = min(0.2,twist_linear_x);
-        // twist.angular.z = min(0.2,twist_linear_x);
-        // cmd_pub.publish(twist);
+        if (should_stop) {
+            twist_linear_x = 0.0;
+            twist_angular_z = 0.0;
+        } else {
+            if (abs(error) < 10) {  // 小偏差时保持直行
+                twist_angular_z = 0.0;
+                twist_linear_x = 0.1;
+            } else {
+                twist_angular_z = pid_controller.compute(error);
+                twist_linear_x = 0.1 - 0.05 * (abs(error)/320.0);  // 偏差越大速度越慢
+            }
+        }
+            
+        //     if(fabs(error) > 1.0) {
+        //         twist_linear_x = 0.05;
+        //     }
+        //  else {
+        //     ROS_WARN_THROTTLE(1, "Line not found!");
+        //     pid_controller.reset();
+        //     twist_linear_x = 0.0;
+        //     twist_angular_z = -0.1;
+        // }
+        
+          // 发布控制指令
+        geometry_msgs::Twist twist;
+        twist.linear.x = min(0.2,twist_linear_x);
+        twist.angular.z = min(0.2,twist_linear_x);
+        cmd_pub.publish(twist);
         
         loop_rate.sleep();
     }
