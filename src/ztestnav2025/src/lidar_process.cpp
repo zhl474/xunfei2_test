@@ -29,9 +29,7 @@ private:
                 result.push_back({0.0f, 0.0f});
                 continue;
             }
-
             theta = i * angle_step;
-
             result.push_back({
                 ranges_[i] * cos(theta), // x坐标
                 ranges_[i] * sin(theta)  // y坐标

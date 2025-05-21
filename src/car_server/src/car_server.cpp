@@ -13,7 +13,7 @@ public:
     CarServer(int port) : m_port(port), m_request_count(0) {
         m_server.init_asio();
         m_server.set_open_handler(std::bind(&CarServer::on_open, this, _1));
-        m_server.set_message_handler(std::bind(&CarServer::on_mes
+        m_server.set_message_handler(std::bind(&CarServer::on_message, this, _1, _2));
     }
 
     void on_open(websocketpp::connection_hdl hdl) {
