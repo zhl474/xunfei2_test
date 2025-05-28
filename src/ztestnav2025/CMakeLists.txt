@@ -149,7 +149,7 @@ add_executable(zhltest src/zhltest.cpp)
 add_executable(camera_test src/camera_test.cpp)
 add_executable(move_function_test src/move_function_test.cpp)
 add_executable(lidar_process src/lidar_process.cpp)
-
+add_executable(lidar_test src/lidar_test.cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -173,7 +173,9 @@ target_link_libraries(move_function_test
 target_link_libraries(lidar_process
   ${catkin_LIBRARIES}
 )
-
+target_link_libraries(lidar_test
+  ${catkin_LIBRARIES}
+)
 #############
 ## Install ##
 #############

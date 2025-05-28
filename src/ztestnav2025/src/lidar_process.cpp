@@ -31,8 +31,8 @@ private:
             }
             theta = i * angle_step;
             result.push_back({
-                ranges_[i] * cos(theta), // x坐标
-                ranges_[i] * sin(theta)  // y坐标
+                ranges_[i] * cos(theta) * -1, // x坐标与小车同向
+                ranges_[i] * sin(theta) * -1  // y坐标朝左
             });
         }
         std::vector<int> mask(num_points_,-1);//筛选掉不要的，以及给障碍板分类
@@ -66,6 +66,21 @@ private:
                 if(mask[i]==last_number) mask[i] = 1;
             }
         }
+        ROS_INFO("打印雷达数据");
+        std::cout << "[";
+        for (size_t i = 0; i < num_points_; ++i) {
+            std::cout << "[";
+            std::cout << result[i][0] << ",";
+            std::cout << result[i][1];
+            std::cout << "]";
+            std::cout << ",";
+        } 
+        std::cout << "]";
+        std::cout << "\n";
+        for (int j=0;j<mask.size();j++){
+            std::cout << mask[j] << ",";
+        }
+        std::cout << "\n";
         return true;
     }
     

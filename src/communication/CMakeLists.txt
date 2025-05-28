@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(car_server)
+project(communication)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -10,10 +10,9 @@ project(car_server)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
-  std_msgs
   sensor_msgs
+  std_msgs
   message_generation
-  move_base_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -50,17 +49,18 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+add_message_files(
+  FILES
+  msg_1.msg
+  msg_2.msg
+)
 
 ## Generate services in the 'srv' folder
-add_service_files(
-  FILES
-  SimCarComm.srv
-)
+# add_service_files(
+#   FILES
+#   Service1.srv
+#   Service2.srv
+# )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -73,7 +73,6 @@ add_service_files(
 generate_messages(
   DEPENDENCIES
   std_msgs
-  sensor_msgs
 )
 
 ################################################
@@ -83,13 +82,7 @@ generate_messages(
 ## To declare and build dynamic reconfigure parameters within this
 ## package, follow these steps:
 ## * In the file package.xml:
-##   * add a build_depend and a exec_depend tag for "dynamic_reconfigure"
-## * In this file (CMakeLists.txt):
-##   * add "dynamic_reconfigure" to
-##     find_package(catkin REQUIRED COMPONENTS ...)
-##   * uncomment the "generate_dynamic_reconfigure_options" section below
-##     and list every .cfg file to be processed
-
+##   * add a build_depend and a excatkin_make -DCATKIN_WHITELIST_PACKAGES="communication"
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
 # generate_dynamic_reconfigure_options(
 #   cfg/DynReconf1.cfg
@@ -107,8 +100,8 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES car_server
- CATKIN_DEPENDS roscpp rospy std_msgs sensor_msgs message_runtime
+#  LIBRARIES communication
+  CATKIN_DEPENDS roscpp rospy sensor_msgs std_msgs message_runtime
 #  DEPENDS system_lib
 )
 
@@ -125,7 +118,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/car_server.cpp
+#   src/${PROJECT_NAME}/communication.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -136,7 +129,8 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(car_server src/car_server.cpp)
+add_executable(car_class_pub src/car_class_pub.cpp)
+add_executable(sim_class_sub src/sim_class_sub.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -146,10 +140,13 @@ add_executable(car_server src/car_server.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(car_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(car_class_pub ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(car_server
+target_link_libraries(car_class_pub
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(sim_class_sub
   ${catkin_LIBRARIES}
 )
 
@@ -200,7 +197,7 @@ target_link_libraries(car_server
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_car_server.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_communication.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
