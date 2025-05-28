@@ -28,38 +28,26 @@ void init_goals( std::vector<move_base_msgs::MoveBaseGoal> &goals)
     goals[1].target_pose.pose.orientation.z = q.z();    
     goals[1].target_pose.pose.orientation.w = q.w();
 
-    q.setRPY(0, 0, 1.57);
-    goals[2].target_pose.pose.position.x = 1.75;
-    goals[2].target_pose.pose.position.y = 0.77;
-    goals[2].target_pose.pose.position.z = 0.0;
-    goals[2].target_pose.pose.orientation.x = q.x();
-    goals[2].target_pose.pose.orientation.y = q.y();
-    goals[2].target_pose.pose.orientation.z = q.z();    
-    goals[2].target_pose.pose.orientation.w = q.w();
-
 }
 
 int main(int argc, char *argv[])
 {
     setlocale(LC_ALL,"");
+    //-------------初始化movebase------------------//
     ros::init(argc,argv,"zhltest");
     ros::NodeHandle nh;
-
-    std::vector<move_base_msgs::MoveBaseGoal> goals(12);
-    init_goals(goals);
-
-    MoveBaseClient ac("move_base", true); 
-    
+    MoveBaseClient ac("move_base", true);     
     //等待action回应
     while(!ac.waitForServer(ros::Duration(5.0)))
     {
-    ROS_INFO("Waiting for the move_base action server to come up");
-    }
-    
+        ROS_INFO("Waiting for the move_base action server to come up");
+    } 
     move_base_msgs::MoveBaseGoal goal;
     goal.target_pose.header.frame_id = "map";
     
-    for(int i=0;i<23;i++)        //循环次数为目标点个数，发布目标点
+
+    //--------------寻找板子，发布目标点-------------//
+    for(int i=0;i<2;i++)        //循环次数为目标点个数，发布目标点
     {
         
         goal.target_pose.header.stamp = ros::Time::now();

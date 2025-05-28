@@ -297,7 +297,7 @@ int otsu(const Mat &src_image)
             threshold = i;
         }
     }
-    ROS_INFO("阈值是: %d", threshold);  // 修改为打印threshold而不是i
+    
     return threshold;
 }
 
@@ -427,28 +427,32 @@ int main(int argc, char **argv) {
     Mat frame, gray, processed;
     geometry_msgs::Twist twist;
     
-    while(ros::ok()) {
+   while(ros::ok()) {
     cap.read(frame);
     if (frame.empty()) continue;
     
     // 裁剪图像 - 去掉最上面的200行
     Rect roi(0, 200, frame.cols, frame.rows - 200); // x,y,width,height
     Mat cropped_frame = frame(roi);
-    imshow("cropped_frame", cropped_frame);
+    
+    // 镜像对称（水平翻转）
+    flip(cropped_frame, cropped_frame, 1);  // 参数1表示水平翻转
+    
+    //imshow("cropped_frame", cropped_frame);
     
     // 图像处理
     cvtColor(cropped_frame, gray, COLOR_BGR2GRAY);
     
     // 使用大津法自动计算阈值并进行二值化
     int threshold_value = otsu(gray);
-    threshold(gray, processed, threshold_value, 255, THRESH_BINARY);//1111
+    threshold(gray, processed, threshold_value, 255, THRESH_BINARY);
     
     int error = 0;
     int should_stop = 0;
     
     // 中线检测
     pid_controller.mid(processed, processed, error, should_stop);
-    ROS_INFO("误差: %d", error);
+    
     
         // 控制逻辑
         if (should_stop) {
@@ -471,17 +475,19 @@ int main(int argc, char **argv) {
             ROS_DEBUG("Error: %d, Linear: %.2f, Angular: %.2f", 
                      error, twist.linear.x, twist.angular.z);
         }
+
+        ROS_INFO("x速度%f",twist.linear.x);
+        ROS_INFO("z速度%f",twist.linear.z);
         
         cmd_pub.publish(twist);
         imshow("Processed", processed);
         waitKey(1);
-        loop_rate.sleep();
+        // loop_rate.sleep();
     }
     
     cap.release();
     return 0;
 }
-
 // #include<ros/ros.h>
 // #include<opencv2/opencv.hpp>
 // #include <opencv2/core.hpp>
