@@ -11,7 +11,8 @@
                 "/usr/include/**",
                 "/home/ucar/ucar_car/devel/include/**",
                 "/usr/include/websocketpp/**",
-                "/usr/include/websocketpp/config/"
+                "/usr/include/websocketpp/config/",
+                "${workspaceFolder}/src/my_planner/include"
             ],
             "name": "ROS",
             "intelliSenseMode": "gcc-x64",

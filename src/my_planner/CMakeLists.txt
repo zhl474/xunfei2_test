@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(ztestnav2025)
+project(my_planner)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -8,25 +8,14 @@ project(ztestnav2025)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  amcl
-  gmapping
-  map_server
-  move_base
+  nav_core
+  pluginlib
   roscpp
-  rospy
-  std_msgs
-  sensor_msgs
-  actionlib          
-  move_base_msgs      
-  tf2
-  tf2_ros
-  message_generation  # 生成自定义消息头文件[7](@ref)
-  dynamic_reconfigure
 )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-
+find_package(OpenCV REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -65,11 +54,11 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate services in the 'srv' folder
-add_service_files(
-  FILES
-  getpose_server.srv
-  lidar_process.srv
-)
+# add_service_files(
+#   FILES
+#   Service1.srv
+#   Service2.srv
+# )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -79,12 +68,10 @@ add_service_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-  sensor_msgs
-  actionlib_msgs
-)
+# generate_messages(
+#   DEPENDENCIES
+#   std_msgs  # Or other packages containing msgs
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -101,9 +88,10 @@ generate_messages(
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-generate_dynamic_reconfigure_options(
-  cfg/dr.cfg
-)
+# generate_dynamic_reconfigure_options(
+#   cfg/DynReconf1.cfg
+#   cfg/DynReconf2.cfg
+# )
 
 ###################################
 ## catkin specific configuration ##
@@ -116,8 +104,8 @@ generate_dynamic_reconfigure_options(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES ztestnav2025
- CATKIN_DEPENDS amcl gmapping map_server move_base roscpp rospy std_msgs message_runtime dynamic_reconfigure
+#  LIBRARIES my_planner
+#  CATKIN_DEPENDS cv_bridge nav_core pluginlib roscpp
 #  DEPENDS system_lib
 )
 
@@ -128,15 +116,22 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/ztestnav2025.cpp
-# )
+add_library(my_planner
+  src/my_planner.cpp
+)
 
+add_dependencies(my_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+target_link_libraries(my_planner
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+)
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
@@ -145,12 +140,8 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(zhltest src/zhltest.cpp)
-add_executable(camera_test src/camera_test.cpp)
-add_executable(move_function_test src/move_function_test.cpp)
-add_executable(lidar_process src/lidar_process.cpp)
-add_executable(lidar_test src/lidar_test.cpp)
-add_executable(lidar_test_zhn src/lidar_test_zhn.cpp)
+# add_executable(${PROJECT_NAME}_node src/my_planner_node.cpp)
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -162,24 +153,10 @@ add_executable(lidar_test_zhn src/lidar_test_zhn.cpp)
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(zhltest
-  ${catkin_LIBRARIES}
-)
-target_link_libraries(camera_test
-  ${catkin_LIBRARIES}
-)
-target_link_libraries(move_function_test
-  ${catkin_LIBRARIES}
-)
-target_link_libraries(lidar_process
-  ${catkin_LIBRARIES}
-)
-target_link_libraries(lidar_test
-  ${catkin_LIBRARIES}
-)
-target_link_libraries(lidar_test_zhn
-  ${catkin_LIBRARIES}
-)
+# target_link_libraries(${PROJECT_NAME}_node
+#   ${catkin_LIBRARIES}
+# )
+
 #############
 ## Install ##
 #############
@@ -216,18 +193,17 @@ target_link_libraries(lidar_test_zhn
 # )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
-# install(FILES
-#   # myfile1
-#   # myfile2
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-# )
+install(FILES
+  my_planner_plugin.xml
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
 
 #############
 ## Testing ##
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_ztestnav2025.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_my_planner.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

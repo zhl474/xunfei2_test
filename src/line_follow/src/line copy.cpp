@@ -54,7 +54,7 @@ void mid(Mat &follow, const Mat &mask, int &error) {
             if (!leftIndices.empty()) {
                 left = std::accumulate(leftIndices.begin(), leftIndices.end(), 0.0) / leftIndices.size();
             }
-        }
+        }ROS_INFO("左边边界%d",left);
 
         // 右半部分处理
         Mat rightPart = mask.row(y).colRange(half, std::min(follow.cols, half + halfWidth));
@@ -70,7 +70,7 @@ void mid(Mat &follow, const Mat &mask, int &error) {
             if (!rightIndices.empty()) {
                 right = std::accumulate(rightIndices.begin(), rightIndices.end(), 0.0) / rightIndices.size();
             }
-        }
+        }ROS_INFO("右边边界%d",right);
 
         if (y == 245) {
             int WhiteCount = 0;
@@ -92,10 +92,11 @@ void mid(Mat &follow, const Mat &mask, int &error) {
         if (y == 235) {
             mid_output = mid;
         }
-    }
+    
 
     circle(follow, Point(mid_output, 235), 5, Scalar(255), -1);
     error = follow.cols / 2 - mid_output;
+    }
 }
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg, PIDController* pid_controller) {

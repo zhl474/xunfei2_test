@@ -37,7 +37,7 @@ private:
         }
         std::vector<int> mask(num_points_,-1);//筛选掉不要的，以及给障碍板分类
         for (size_t i = 0; i < num_points_; ++i) {//筛选掉不要的，以及给障碍板分类
-            if(result[i][0]>2.7 || result[i][0]<-0.2 || result[i][1]>0.2 || result[i][1]<-2.2){//去掉和墙壁重合的点
+            if(result[i][0]>2.7 || result[i][0]<-0.2 || result[i][1]>0.3 || result[i][1]<-2.0){//去掉和墙壁重合的点
                 mask[i] = 0;
             }
         }
@@ -81,12 +81,13 @@ private:
             std::cout << mask[j] << ",";
         }
         std::cout << "\n";
+        
         return true;
     }
     
 public:
     LidarProcessor() : nh_("~") {
-        // 订阅雷达数据（队列大小10）
+        // 订阅雷达数据（队列大小10
         sub_ = nh_.subscribe("/scan", 10, &LidarProcessor::scanCallback, this);
         server = nh_.advertiseService("lidar_process", &LidarProcessor::lidar_process, this);
         ROS_INFO("雷达初始化");
@@ -112,7 +113,7 @@ public:
 
             result.push_back({
                 ranges_[i] * cos(theta), // x坐标
-                ranges_[i] * sin(theta)  // y坐标
+                ranges_[i] * sin(theta)  // y坐标11
             });
         }
         for (size_t i = 0; i < num_points_; ++i) {
