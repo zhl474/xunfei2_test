@@ -72,10 +72,10 @@ int main(int argc, char** argv) {
         }
         
         // 发布带标记的图像（用于调试）
-        sensor_msgs::ImagePtr msg = cv_bridge::CvImage(
-            std_msgs::Header(), "bgr8", frame
-        ).toImageMsg();
-        pub.publish(msg);
+        // sensor_msgs::ImagePtr msg = cv_bridge::CvImage(
+        //     std_msgs::Header(), "bgr8", frame
+        // ).toImageMsg();
+        // pub.publish(msg);
         
         ros::spinOnce();
     }

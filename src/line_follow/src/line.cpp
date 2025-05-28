@@ -1,3 +1,227 @@
+// #include<ros/ros.h>
+// #include<opencv2/opencv.hpp>
+// #include <opencv2/core.hpp>
+// #include <opencv2/videoio.hpp>
+// #include <opencv2/highgui.hpp>
+// #include<geometry_msgs/Twist.h>
+// #include <vector>
+// #include <numeric>
+// #include <cmath>
+
+// using namespace cv;
+
+// class PIDController {
+// private:
+//     // PID控制参数
+//     double kp = 0.2;   // 比例系数
+//     double ki = 0.0;    // 积分系数
+//     double kd = 0.05;   // 微分系数
+    
+//     double integral;    // 积分项累计值
+//     double error;       // 当前误差值
+//     ros::Time prev_time; // 上一次计算时间
+//     int stop_flag = 0;   // 停止标志位
+//     double prev_error;   // 上一次误差值
+//     double straight_line_threshold = 15.0; // 直线判断阈值(像素)
+    
+//     // 弯道检测参数
+//     const int top_row = 380;      // 上部扫描线(远场)
+//     const int bottom_row = 420;   // 下部扫描线(近场)
+//     const int curve_threshold = 50; // 弯道检测阈值(像素差)
+//     const double angle_threshold = 10.0; // 弯道角度阈值(度)
+    
+// public:
+//     PIDController(double p, double i, double d) : 
+//         kp(p), ki(i), kd(d), integral(0), error(0) {}
+    
+//     void reset() {
+//         integral = 0;
+//     }
+    
+//     double compute(double error) {
+//         ros::Time now = ros::Time::now();
+//         double dt = (now - prev_time).toSec();
+//         prev_time = now;
+        
+//         if (dt <= 0) dt = 0.01;
+        
+//         if (fabs(error) < straight_line_threshold) {
+//             integral = 0;
+//         } else {
+//             integral += error * dt;
+//         }
+        
+//         double derivative = (error - prev_error) / dt;
+//         prev_error = error;
+        
+//         integral = std::min(0.5, std::max(-0.5, integral));
+        
+//         return kp * error + ki * integral + kd * derivative;
+//     }
+
+//     /**
+//      * @brief 计算两点之间的角度
+//      */
+//     double calcAngle(int x1, int y1, int x2, int y2) {
+//         if (x1 == x2) return 90.0;
+//         double k = static_cast<double>(y1 - y2) / (x1 - x2);
+//         return 90.0 - std::abs(std::atan(k) * 180.0 / CV_PI);
+//     }
+
+//     /**
+//      * @brief 改进的巡线算法，先判断直道/弯道
+//      */
+//     void mid(Mat &follow, const Mat &mask, int &error, int &should_stop) {
+//         int halfWidth = follow.cols / 2;
+//         should_stop = 0;
+        
+//         // 1. 首先进行传统中线检测
+//         double weighted_error_sum = 0;
+//         double weight_sum = 0;
+//         int valid_lines = 0;
+        
+//         for (int y = follow.rows - 1; y >= bottom_row; --y) {
+//             int left = 0, right = follow.cols - 1;
+            
+//             // 左边界检测
+//             for (int x = halfWidth - 1; x >= 2; --x) {
+//                 if (mask.at<uchar>(y, x) == 255 && 
+//                     mask.at<uchar>(y, x-1) == 0 && 
+//                     mask.at<uchar>(y, x-2) == 0) {
+//                     left = x;
+//                     break;
+//                 }
+//             }
+            
+//             // 右边界检测
+//             for (int x = halfWidth; x < mask.cols - 2; ++x) {
+//                 if (mask.at<uchar>(y, x) == 255 && 
+//                     mask.at<uchar>(y, x+1) == 0 && 
+//                     mask.at<uchar>(y, x+2) == 0) {
+//                     right = x;
+//                     break;
+//                 }
+//             }
+
+//             if (right > left) {  
+//                 int mid = (left + right) / 2;
+//                 follow.at<uchar>(y, mid) = 255;
+                
+//                 double line_error = halfWidth - mid;
+//                 double weight = (double)(y + 1) / follow.rows;
+//                 weighted_error_sum += line_error * weight;
+//                 weight_sum += weight;
+//                 valid_lines++;
+//             }
+//         }
+
+//         if (valid_lines > 0) {
+//             error = weighted_error_sum / weight_sum;
+            
+//             // 2. 检查是否是弯道(仅当误差较大时)
+//             if (fabs(error) > straight_line_threshold) {
+//                 // 获取上下扫描线的中点
+//                 std::vector<int> top_points, bottom_points;
+                
+//                 for (int x = 0; x < follow.cols; ++x) {
+//                     if (mask.at<uchar>(top_row, x) == 255) top_points.push_back(x);
+//                     if (mask.at<uchar>(bottom_row, x) == 255) bottom_points.push_back(x);
+//                 }
+                
+//                 if (!top_points.empty() && !bottom_points.empty()) {
+//                     int top_mid = (top_points.front() + top_points.back()) / 2;
+//                     int bottom_mid = (bottom_points.front() + bottom_points.back()) / 2;
+//                     int x_diff = top_mid - bottom_mid;
+//                     double angle = calcAngle(top_mid, top_row, bottom_mid, bottom_row);
+                    
+//                     // 弯道确认条件：角度和水平差都超过阈值
+//                     if (std::abs(x_diff) > curve_threshold && angle < angle_threshold) {
+//                         if (x_diff > 0) {
+//                             ROS_WARN("确认右弯道! 角度: %.1f°, 水平差: %d", angle, x_diff);
+//                             error = -curve_threshold; // 设置固定右转误差
+//                         } else {
+//                             ROS_WARN("确认左弯道! 角度: %.1f°, 水平差: %d", angle, x_diff);
+//                             error = curve_threshold; // 设置固定左转误差
+//                         }
+                        
+//                         // 可视化弯道检测结果
+//                         circle(follow, Point(top_mid, top_row), 5, Scalar(255), -1);
+//                         circle(follow, Point(bottom_mid, bottom_row), 5, Scalar(255), -1);
+//                         line(follow, Point(top_mid, top_row), Point(bottom_mid, bottom_row), Scalar(255), 2);
+//                     }
+//                 }
+//             }
+            
+//             // 可视化中线
+//             int last_mid = halfWidth - error;
+//             circle(follow, Point(last_mid, follow.rows - 1), 5, Scalar(255), -1);
+//         } else {
+//             error = 0;
+//             should_stop = 1;
+//         }
+//     }
+// };
+
+// int main(int argc, char **argv) {
+//     setlocale(LC_ALL,"");
+//     ros::init(argc, argv, "follower_line_pid");
+//     ros::NodeHandle nh;
+//     ros::Publisher cmd_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
+//     ros::Rate loop_rate(20);
+
+//     PIDController pid_controller(0.2, 0.0, 0.05);
+    
+//     VideoCapture cap("/dev/video0", CAP_V4L2);
+//     if (!cap.isOpened()) {
+//         ROS_ERROR("摄像头打开失败!");
+//         return -1;
+//     }
+//     cap.set(CAP_PROP_FRAME_WIDTH, 640);
+//     cap.set(CAP_PROP_FRAME_HEIGHT, 480);
+    
+//     Mat frame, gray, processed;
+//     geometry_msgs::Twist twist;
+    
+//     while(ros::ok()) {
+//         cap.read(frame);
+//         if (frame.empty()) continue;
+        
+//         cvtColor(frame, gray, COLOR_BGR2GRAY);
+//         threshold(gray, processed, 160, 255, THRESH_BINARY);
+        
+//         int error = 0;
+//         int should_stop = 0;
+        
+//         pid_controller.mid(processed, processed, error, should_stop);
+        
+//         if (should_stop) {
+//             twist.linear.x = 0.0;
+//             twist.angular.z = 0.0;
+//             ROS_WARN("停止!");
+//         } else {
+//             double base_speed = 0.15;
+//             double speed_reduction = 0.08 * (fabs(error)/320.0);
+//             twist.linear.x = std::max(0.1, base_speed - speed_reduction);
+            
+//             twist.angular.z = pid_controller.compute(error);
+            
+//             twist.linear.x = std::min(0.2, std::max(0.1, twist.linear.x));
+//             twist.angular.z = std::min(0.5, std::max(-0.5, twist.angular.z));
+            
+//             ROS_DEBUG("误差: %d, 线速度: %.2f, 角速度: %.2f", 
+//                      error, twist.linear.x, twist.angular.z);
+//         }
+        
+//         cmd_pub.publish(twist);
+//         imshow("处理画面", processed);
+//         waitKey(1);
+//         loop_rate.sleep();
+//     }
+    
+//     cap.release();
+//     return 0;
+// }
+
 #include<ros/ros.h>
 #include<opencv2/opencv.hpp>
 #include <opencv2/core.hpp>
@@ -8,6 +232,74 @@
 #include <numeric>
 
 using namespace cv;
+using namespace std;
+
+// 大津法求阈值
+int otsu(const Mat &src_image)  
+{
+    double sum = 0.0;
+    double w0 = 0.0;
+    double w1 = 0.0;
+    double u0_temp = 0.0;
+    double u1_temp = 0.0;
+    double u0 = 0.0;
+    double u1 = 0.0;
+    double delta_temp = 0.0;
+    double delta_max = 0.0;
+
+    // src_image灰度级  
+    int pixel_count[256] = { 0 };
+    float pixel_pro[256] = { 0 };
+    int threshold = 0;
+    
+    // 统计每个灰度级中像素的个数  
+    for (int i = 0; i < src_image.rows; i++)
+    {
+        for (int j = 0; j < src_image.cols; j++)
+        {
+            pixel_count[(int)src_image.at<uchar>(i, j)]++; // 每个灰度级的像素数目
+            sum += (int)src_image.at<uchar>(i, j); // 灰度之和
+        }
+    }
+    ROS_DEBUG("平均灰度：%f", sum / (src_image.rows * src_image.cols));
+    
+    // 计算每个灰度级的像素数目占整幅图像的比例  
+    for (int i = 0; i < 256; i++)
+    {
+        pixel_pro[i] = (float)pixel_count[i] / (src_image.rows * src_image.cols);
+    }
+    
+    // 遍历灰度级[0,255],寻找合适的threshold
+    for (int i = 0; i < 256; i++)
+    {
+        w0 = w1 = u0_temp = u1_temp = u0 = u1 = delta_temp = 0;
+        for (int j = 0; j < 256; j++)
+        {
+            if (j <= i)   // 背景部分  
+            {
+                w0 += pixel_pro[j]; // 背景像素比例
+                u0_temp += j * pixel_pro[j];
+            }
+            else   // 前景部分  
+            {
+                w1 += pixel_pro[j]; // 前景像素比例
+                u1_temp += j * pixel_pro[j];
+            }
+        }
+        u0 = u0_temp / w0; // 背景像素点的平均灰度
+        u1 = u1_temp / w1; // 前景像素点的平均灰度
+        delta_temp = (float)(w0 * w1 * pow((u0 - u1), 2)); // 类间方差 g=w0*w1*(u0-u1)^2
+        
+        // 当类间方差delta_temp最大时，对应的i就是阈值T
+        if (delta_temp > delta_max)
+        {
+            delta_max = delta_temp;
+            threshold = i;
+        }
+    }
+    ROS_INFO("阈值是: %d", threshold);  // 修改为打印threshold而不是i
+    return threshold;
+}
 
 class PIDController {
 private:
@@ -65,7 +357,8 @@ public:
         double weight_sum = 0;
         int valid_lines = 0;
 
-        for (int y = 200; y >= 0; --y) {
+        // 修改循环条件，防止数组越界
+        for (int y = follow.rows - 1; y >= 200; --y) {
             int left = 0, right = follow.cols - 1;
             
             // 左边界检测
@@ -76,7 +369,7 @@ public:
                     left = x;
                     break;
                 }
-            }//ROS_INFO("左边边界%d",left);
+            }
             
             // 右边界检测
             for (int x = halfWidth; x < mask.cols - 2; ++x) {
@@ -86,17 +379,7 @@ public:
                     right = x;
                     break;
                 }
-            }//ROS_INFO("右边边界%d",right);
-
-            // 停车检测
-            // if (y == 245) {
-            //     int WhiteCount = countNonZero(mask.row(245));
-            //     if (WhiteCount >= 250) {
-            //         stop_flag = 1;
-            //         should_stop = 1;
-            //         ROS_INFO("Stop line detected! White pixels: %d", WhiteCount);
-            //     }
-            // }
+            }
             
             // 计算中线
             if (right > left) {  // 有效检测
@@ -110,17 +393,17 @@ public:
                 weight_sum += weight;
                 valid_lines++;
             }
-        
         }
+        
         // 计算加权平均误差
         error = valid_lines > 0 ? weighted_error_sum / weight_sum : 0;
-        ROS_INFO("中线%d",error);
-            // 可视化最后的中线位置
-            if (valid_lines > 0) {
-                int last_mid = halfWidth - error;
-                circle(follow, Point(last_mid, follow.rows - 1), 5, Scalar(255), -1);
-            }
         
+        // 可视化最后的中线位置
+        if (valid_lines > 0) {
+            int last_mid = halfWidth - error;
+            circle(follow, Point(last_mid, follow.rows - 1), 5, Scalar(255), -1);
+        }
+
     }
 };
 
@@ -145,22 +428,28 @@ int main(int argc, char **argv) {
     geometry_msgs::Twist twist;
     
     while(ros::ok()) {
-        cap.read(frame);
-        if (frame.empty()) continue;
-        
-        // 图像处理
-        cvtColor(frame, gray, COLOR_BGR2GRAY);
-        threshold(gray, processed, 160, 255, THRESH_BINARY);
-        imshow("frame", frame);
-        
-        
-        int error = 0;
-        int should_stop = 0;
-        
-        // 中线检测
-        pid_controller.mid(processed, processed, error, should_stop);
-        ROS_INFO("\n误差%d",error);
-        
+    cap.read(frame);
+    if (frame.empty()) continue;
+    
+    // 裁剪图像 - 去掉最上面的200行
+    Rect roi(0, 200, frame.cols, frame.rows - 200); // x,y,width,height
+    Mat cropped_frame = frame(roi);
+    imshow("cropped_frame", cropped_frame);
+    
+    // 图像处理
+    cvtColor(cropped_frame, gray, COLOR_BGR2GRAY);
+    
+    // 使用大津法自动计算阈值并进行二值化
+    int threshold_value = otsu(gray);
+    threshold(gray, processed, threshold_value, 255, THRESH_BINARY);//1111
+    
+    int error = 0;
+    int should_stop = 0;
+    
+    // 中线检测
+    pid_controller.mid(processed, processed, error, should_stop);
+    ROS_INFO("误差: %d", error);
+    
         // 控制逻辑
         if (should_stop) {
             twist.linear.x = 0.0;
@@ -175,7 +464,6 @@ int main(int argc, char **argv) {
             // PID控制
             twist.angular.z = pid_controller.compute(error);
             
-            
             // 限幅
             twist.linear.x = std::min(0.2, std::max(0.1, twist.linear.x));
             twist.angular.z = std::min(0.3, std::max(-0.3, twist.angular.z));  // 减小最大角速度
@@ -183,7 +471,7 @@ int main(int argc, char **argv) {
             ROS_DEBUG("Error: %d, Linear: %.2f, Angular: %.2f", 
                      error, twist.linear.x, twist.angular.z);
         }
-        ROS_INFO("z速度%",twist.angular.z);
+        
         cmd_pub.publish(twist);
         imshow("Processed", processed);
         waitKey(1);
@@ -193,6 +481,202 @@ int main(int argc, char **argv) {
     cap.release();
     return 0;
 }
+
+// #include<ros/ros.h>
+// #include<opencv2/opencv.hpp>
+// #include <opencv2/core.hpp>
+// #include <opencv2/videoio.hpp>
+// #include <opencv2/highgui.hpp>
+// #include<geometry_msgs/Twist.h>
+// #include <vector>
+// #include <numeric>
+
+// using namespace cv;
+
+// class PIDController {
+// private:
+//     double kp = 0.2, ki = 0.0, kd = 0.05;  // 更温和的PID参数
+//     double integral;
+//     double error;
+//     ros::Time prev_time;
+//     int stop_flag = 0;
+//     double prev_error;
+//     double straight_line_threshold = 15.0; // 直线判断阈值(像素)
+    
+// public:
+//     PIDController(double p, double i, double d) : 
+//         kp(p), ki(i), kd(d), integral(0), error(0) {}
+    
+//     void reset() {
+//         integral = 0;
+//     }
+    
+//     double compute(double error) {
+//         ros::Time now = ros::Time::now();
+//         double dt = (now - prev_time).toSec();
+//         prev_time = now;
+        
+//         if (dt <= 0) dt = 0.01;
+        
+//         // 当误差很小时重置积分项，防止积分饱和
+//         if (fabs(error) < straight_line_threshold) {
+//             integral = 0;
+//         } else {
+//             integral += error * dt;
+//         }
+        
+//         double derivative = (error - prev_error) / dt;
+//         prev_error = error;
+        
+//         // 积分限幅
+//         integral = std::min(0.5, std::max(-0.5, integral));
+        
+//         // 当检测到近似直线时，减小P项的影响
+//         double effective_kp = kp;
+//         if (fabs(error) < straight_line_threshold) {
+//             effective_kp *= 0.3;  // 直线时减小比例系数
+//         }
+        
+//         return effective_kp * error + ki * integral + kd * derivative;
+//     }
+
+//     void mid(Mat &follow, const Mat &mask, int &error, int &should_stop) {
+//         int halfWidth = follow.cols / 2;
+//         should_stop = 0;
+        
+//         // 使用加权平均误差，近处行权重更大
+//         double weighted_error_sum = 0;
+//         double weight_sum = 0;
+//         int valid_lines = 0;
+
+//         for (int y = 200; y >= 0; --y) {
+//             int left = 0, right = follow.cols - 1;
+            
+//             // 左边界检测
+//             for (int x = halfWidth - 1; x >= 2; --x) {
+//                 if (mask.at<uchar>(y, x) == 255 && 
+//                     mask.at<uchar>(y, x-1) == 0 && 
+//                     mask.at<uchar>(y, x-2) == 0) {
+//                     left = x;
+//                     break;
+//                 }
+//             }//ROS_INFO("左边边界%d",left);
+            
+//             // 右边界检测
+//             for (int x = halfWidth; x < mask.cols - 2; ++x) {
+//                 if (mask.at<uchar>(y, x) == 255 && 
+//                     mask.at<uchar>(y, x+1) == 0 && 
+//                     mask.at<uchar>(y, x+2) == 0) {
+//                     right = x;
+//                     break;
+//                 }
+//             }//ROS_INFO("右边边界%d",right);
+
+//             // 停车检测
+//             // if (y == 245) {
+//             //     int WhiteCount = countNonZero(mask.row(245));
+//             //     if (WhiteCount >= 250) {
+//             //         stop_flag = 1;
+//             //         should_stop = 1;
+//             //         ROS_INFO("Stop line detected! White pixels: %d", WhiteCount);
+//             //     }
+//             // }
+            
+//             // 计算中线
+//             if (right > left) {  // 有效检测
+//                 int mid = (left + right) / 2;
+//                 follow.at<uchar>(y, mid) = 255;
+                
+//                 // 计算当前行误差并加权累加(近处行权重更大)
+//                 double line_error = halfWidth - mid;
+//                 double weight = (double)(y + 1) / follow.rows;  // y越大(越近)，权重越大
+//                 weighted_error_sum += line_error * weight;
+//                 weight_sum += weight;
+//                 valid_lines++;
+//             }
+        
+//         }
+//         // 计算加权平均误差
+//         error = valid_lines > 0 ? weighted_error_sum / weight_sum : 0;
+//         ROS_INFO("中线%d",error);
+//             // 可视化最后的中线位置
+//             if (valid_lines > 0) {
+//                 int last_mid = halfWidth - error;
+//                 circle(follow, Point(last_mid, follow.rows - 1), 5, Scalar(255), -1);
+//             }
+        
+//     }
+// };
+
+// int main(int argc, char **argv) {
+//     setlocale(LC_ALL,"");
+//     ros::init(argc, argv, "follower_line_pid");
+//     ros::NodeHandle nh;
+//     ros::Publisher cmd_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
+//     ros::Rate loop_rate(20);
+
+//     PIDController pid_controller(0.2, 0.0, 0.05);  // 使用更温和的参数
+    
+//     VideoCapture cap("/dev/video0", CAP_V4L2);
+//     if (!cap.isOpened()) {
+//         ROS_ERROR("Failed to open camera!");
+//         return -1;
+//     }
+//     cap.set(CAP_PROP_FRAME_WIDTH, 640);
+//     cap.set(CAP_PROP_FRAME_HEIGHT, 480);
+    
+//     Mat frame, gray, processed;
+//     geometry_msgs::Twist twist;
+    
+//     while(ros::ok()) {
+//         cap.read(frame);
+//         if (frame.empty()) continue;
+        
+//         // 图像处理
+//         cvtColor(frame, gray, COLOR_BGR2GRAY);
+//         threshold(gray, processed, 160, 255, THRESH_BINARY);
+//         //imshow("frame", frame);
+        
+        
+//         int error = 0;
+//         int should_stop = 0;
+        
+//         // 中线检测
+//         pid_controller.mid(processed, processed, error, should_stop);
+//         ROS_INFO("\n误差%d",error);
+        
+//         // 控制逻辑
+//         if (should_stop) {
+//             twist.linear.x = 0.0;
+//             twist.angular.z = 0.0;
+//             ROS_WARN("Stopping!");
+//         } else {
+//             // 动态速度控制 - 误差越大速度越小
+//             double base_speed = 0.15;
+//             double speed_reduction = 0.08 * (fabs(error)/320.0);
+//             twist.linear.x = std::max(0.1, base_speed - speed_reduction);
+            
+//             // PID控制
+//             twist.angular.z = pid_controller.compute(error);
+            
+            
+//             // 限幅
+//             twist.linear.x = std::min(0.2, std::max(0.1, twist.linear.x));
+//             twist.angular.z = std::min(0.3, std::max(-0.3, twist.angular.z));  // 减小最大角速度
+            
+//             ROS_DEBUG("Error: %d, Linear: %.2f, Angular: %.2f", 
+//                      error, twist.linear.x, twist.angular.z);
+//         }
+//         ROS_INFO("z速度%",twist.angular.z);
+//         cmd_pub.publish(twist);
+//         imshow("Processed", processed);
+//         waitKey(1);
+//         loop_rate.sleep();
+//     }
+    
+//     cap.release();
+//     return 0;
+// }
 
 // #include<ros/ros.h>
 // #include<opencv2/opencv.hpp>
@@ -303,7 +787,7 @@ int main(int argc, char **argv) {
 //         int valid_lines = 0;           // 有效检测行数
 
 //         // 从图像底部向上扫描(从近到远)
-//         for (int y = follow.rows - 1; y >= 0; --y) {
+//         for (int y = follow.rows - 1; y >= 280; --y) {
 //             int left = 0, right = follow.cols - 1;
             
 //             /******************** 左边界检测 ********************

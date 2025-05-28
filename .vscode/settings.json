@@ -73,5 +73,6 @@
         "forward_list": "cpp",
         "future": "cpp"
     },
-    "ros.distro": "melodic"
+    "ros.distro": "melodic",
+    "C_Cpp.errorSquiggles": "disabled"
 }

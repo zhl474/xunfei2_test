@@ -3,6 +3,7 @@
 #include "ztestnav2025/lidar_process.h"
 
 #include <vector>  
+#include <algorithm>
 #include <cmath>  
 
 class LidarProcessor {
@@ -37,13 +38,13 @@ private:
         }
         std::vector<int> mask(num_points_,-1);//筛选掉不要的，以及给障碍板分类
         for (size_t i = 0; i < num_points_; ++i) {//筛选掉不要的，以及给障碍板分类
-            if(result[i][0]>2.7 || result[i][0]<-0.2 || result[i][1]>0.3 || result[i][1]<-2.0){//去掉和墙壁重合的点
+            if(result[i][0]>2.7 || result[i][0]<-0.2 || result[i][1]>0.3 || result[i][1]<-2.0 || result[i][0] == 0){//去掉和墙壁重合的点
                 mask[i] = 0;
             }
         }
         int number = 0;
         int last_eq_first=0;//第一个点和最后一个可能属于同一个板子
-        if(mask[0]==1){
+        if(mask[0]==-1){
             number=1;//如果第一个点就是障碍物，直接记录
             if(mask[-1]==1) last_eq_first=1;
         }
@@ -66,22 +67,46 @@ private:
                 if(mask[i]==last_number) mask[i] = 1;
             }
         }
-        ROS_INFO("打印雷达数据");
-        std::cout << "[";
+        // ROS_INFO("打印雷达数据");        //调试信息，打印雷达数据
+        // std::cout << "[";
+        // for (size_t i = 0; i < num_points_; ++i) {
+        //     std::cout << "[";
+        //     std::cout << result[i][0] << ",";
+        //     std::cout << result[i][1];
+        //     std::cout << "]";
+        //     std::cout << ",";
+        // } 
+        // std::cout << "]";
+        // std::cout << "\n";
+        // for (int j=0;j<mask.size();j++){
+        //     std::cout << mask[j] << ",";
+        // }
+        // std::cout << "\n";
+
+        //获取板子坐标
+        auto max_it = std::max_element(mask.begin(), mask.end());
+        std::vector<int> board_position_x(max_it,0);
+        std::vector<int> board_position_y(max_it,0);
+        std::vector<int> point_number(max_it,0);
         for (size_t i = 0; i < num_points_; ++i) {
-            std::cout << "[";
-            std::cout << result[i][0] << ",";
-            std::cout << result[i][1];
-            std::cout << "]";
-            std::cout << ",";
-        } 
-        std::cout << "]";
-        std::cout << "\n";
-        for (int j=0;j<mask.size();j++){
-            std::cout << mask[j] << ",";
+            if(mask[i] != 0){//去掉和墙壁重合的点
+                board_position_x[mask[i]] += result[i][0];
+                board_position_y[mask[i]] += result[i][1];
+                point_number[mask[i]]++;
+            }
         }
-        std::cout << "\n";
+        //求板子中心
+        for (size_t i = 0; i < max_it; i++)
+        {
+            if (point_number[i] != 0)//如果不是0个
+            {
+                board_position_x[i] = board_position_x[i] / point_number[i];
+                board_position_y[i] = board_position_y[i] / point_number[i];
+            }
+            
+        }
         
+
         return true;
     }
     
