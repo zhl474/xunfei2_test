@@ -427,67 +427,82 @@ int main(int argc, char **argv) {
     Mat frame, gray, processed;
     geometry_msgs::Twist twist;
     
-   while(ros::ok()) {
-    cap.read(frame);
-    if (frame.empty()) continue;
-    
-    // 裁剪图像 - 去掉最上面的200行
-    Rect roi(0, 200, frame.cols, frame.rows - 200); // x,y,width,height
-    Mat cropped_frame = frame(roi);
-    
-    // 镜像对称（水平翻转）
-    flip(cropped_frame, cropped_frame, 1);  // 参数1表示水平翻转
-    
-    //imshow("cropped_frame", cropped_frame);
-    
-    // 图像处理
-    cvtColor(cropped_frame, gray, COLOR_BGR2GRAY);
-    
-    // 使用大津法自动计算阈值并进行二值化
-    int threshold_value = otsu(gray);
-    threshold(gray, processed, threshold_value, 255, THRESH_BINARY);
-    
-    int error = 0;
-    int should_stop = 0;
-    
-    // 中线检测
-    pid_controller.mid(processed, processed, error, should_stop);
-    
-    
-        // 控制逻辑
+    while(ros::ok()) {
+        cap.read(frame);
+        if (frame.empty()) continue;
+        
+        // 裁剪图像 - 去掉最上面的200行
+        Rect roi(0, 200, frame.cols, frame.rows - 200);
+        Mat cropped_frame = frame(roi);
+        
+        // 镜像对称（水平翻转）
+        flip(cropped_frame, cropped_frame, 1);
+        
+        // ============== 新增的HSV处理部分开始 ==============
+        Mat hsv, blue_mask;
+        // 转换为HSV色彩空间
+        cvtColor(cropped_frame, hsv, COLOR_BGR2HSV);
+        
+        // 定义蓝色范围（H:100-140, S:50-255, V:50-255）
+        Scalar lower_blue(100, 50, 50);
+        Scalar upper_blue(140, 255, 255);
+        
+        // 创建蓝色掩膜
+        inRange(hsv, lower_blue, upper_blue, blue_mask);
+        
+        // 将原始图像转为灰度，并应用蓝色掩膜
+        cvtColor(cropped_frame, gray, COLOR_BGR2GRAY);
+        gray.setTo(0, ~blue_mask);  // 非蓝色区域设为黑色
+        // ============== 新增的HSV处理部分结束 ==============
+        
+        // 显示处理后的图像（调试用）
+        //imshow("Blue Channel", gray);
+        
+        // 使用大津法自动计算阈值并进行二值化
+        int threshold_value = otsu(gray);
+        threshold(gray, processed, threshold_value, 255, THRESH_BINARY);
+        
+        int error = 0;
+        int should_stop = 0;
+        
+        // 中线检测
+        pid_controller.mid(processed, processed, error, should_stop);
+        
+        // [保持原有的控制逻辑不变]
         if (should_stop) {
             twist.linear.x = 0.0;
             twist.angular.z = 0.0;
             ROS_WARN("Stopping!");
         } else {
-            // 动态速度控制 - 误差越大速度越小
             double base_speed = 0.15;
             double speed_reduction = 0.08 * (fabs(error)/320.0);
             twist.linear.x = std::max(0.1, base_speed - speed_reduction);
             
-            // PID控制
             twist.angular.z = pid_controller.compute(error);
             
             // 限幅
             twist.linear.x = std::min(0.2, std::max(0.1, twist.linear.x));
-            twist.angular.z = std::min(0.3, std::max(-0.3, twist.angular.z));  // 减小最大角速度
+            twist.angular.z = std::min(0.3, std::max(-0.3, twist.angular.z));
             
             ROS_DEBUG("Error: %d, Linear: %.2f, Angular: %.2f", 
                      error, twist.linear.x, twist.angular.z);
         }
 
         ROS_INFO("x速度%f",twist.linear.x);
-        ROS_INFO("z速度%f",twist.linear.z);
+        ROS_INFO("z速度%f",twist.angular.z);
         
         cmd_pub.publish(twist);
         imshow("Processed", processed);
         waitKey(1);
-        // loop_rate.sleep();
+        loop_rate.sleep();
     }
     
     cap.release();
     return 0;
 }
+
+
+
 // #include<ros/ros.h>
 // #include<opencv2/opencv.hpp>
 // #include <opencv2/core.hpp>

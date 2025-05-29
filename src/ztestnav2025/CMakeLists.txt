@@ -24,6 +24,12 @@ find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
 )
 
+find_package(OpenCV REQUIRED COMPONENTS
+  core
+  highgui
+  imgproc
+)
+
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -130,6 +136,7 @@ catkin_package(
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -173,6 +180,7 @@ target_link_libraries(move_function_test
 )
 target_link_libraries(lidar_process
   ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
 )
 target_link_libraries(lidar_test
   ${catkin_LIBRARIES}
