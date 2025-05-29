@@ -31,38 +31,19 @@ class MecanumController {
 public:
     MecanumController(ros::NodeHandle& nh) : 
         nh_(nh),
-        tf_buffer_(),
-        tf_listener_(tf_buffer_),
         cmd_pub_(nh.advertise<geometry_msgs::Twist>("cmd_vel", 10)),
-        client_(nh.serviceClient<ros_nanodet::detect_result_srv>("detect_result")),
-        getpose(nh_.advertiseService("getpose_server", &MecanumController::getpose_server, this))
+        detect_client_(nh.serviceClient<ros_nanodet::detect_result_srv>("detect_result")),
     {
-        if (!client_.waitForExistence()) {
+        if (!detect_client_.waitForExistence()) {
             ROS_FATAL("检测服务 detect_result 不可用！");
             throw std::runtime_error("Service detect_result not found");
         }
         server_.setCallback(boost::bind(&MecanumController::PID_change, this, _1, _2));
     }
 
-    bool waitForTransform() {//等待TF初始化完成
-        ros::Time start_time = ros::Time::now();
-        // 设置超时时间（例如10秒）
-        ros::Duration timeout(10.0);
-        
-        while (ros::ok() && (ros::Time::now() - start_time < timeout)) {
-            if (tf_buffer_.canTransform("odom", "base_link", ros::Time(0))) {
-                return true;
-            }
-            ROS_WARN_THROTTLE(1, "等待坐标系变换中...");
-            ros::Duration(0.1).sleep();  // 降低CPU占用
-        }
-        ROS_ERROR("等待超时:odom到base_link的坐标变换未就绪");
-        return false;
-    }
-
     void detect(std::vector<int>& result){//封装目标检测功能
         start_detect_.request.detect_start = 1;
-        bool flag = client_.call(start_detect_);
+        bool flag = detect_client_.call(start_detect_);
         if (flag)
         {
             result[0] = start_detect_.response.x0;result[1] = start_detect_.response.y0;result[2] = start_detect_.response.x1;result[3] = start_detect_.response.y1;result[4] = start_detect_.response.class_name;
@@ -152,24 +133,8 @@ public:
         ROS_INFO("PID参数修改,P:%f,I:%f,D:%f",config.Kp,config.Ki,config.Kd);
     }
 
-    // 坐标变换查询（参考网页8的异常处理）
-    bool getpose_server(ztestnav2025::getpose_server::Request &req,ztestnav2025::getpose_server::Response &resp) {
-        auto pose = getCurrentPose();
-        if (!pose) ROS_INFO("坐标获取失败");
-        auto pose1 = *pose;
-        double yaw = getYawFromTransform(pose1);
-        resp.pose_at.resize(3);
-        resp.pose_at[0] = pose1.transform.translation.x;
-        resp.pose_at[1] = pose1.transform.translation.y;
-        resp.pose_at[2] = yaw;
-        return true;
-    }
-
 
 private:
-    // TF坐标变换核心对象（参考网页6的TF生命周期管理）
-    tf2_ros::Buffer tf_buffer_;
-    tf2_ros::TransformListener tf_listener_;
     
     // ROS通信接口
     ros::NodeHandle nh_;
@@ -183,7 +148,7 @@ private:
     double Ki_ = 0.1;  // 最后调积分项
     double Kd_ = 0.1;  // 中间调微分项
 
-    ros::ServiceClient client_;
+    ros::ServiceClient detect_client_;
     ros_nanodet::detect_result_srv start_detect_;//目标检测客户端
     dynamic_reconfigure::Server<ztestnav2025::drConfig> server_;//动态参数
 
@@ -193,33 +158,6 @@ private:
     double width_per_pixel = 10.7118/img_width;
     double height_per_pixel = 3.7066/img_height;
 
-    // 坐标变换查询（参考网页8的异常处理）
-    boost::optional<geometry_msgs::TransformStamped> getCurrentPose() {
-        try {
-            waitForTransform();
-            return tf_buffer_.lookupTransform("odom", "base_link", ros::Time(0));
-        } catch (tf2::TransformException &ex) {
-            ROS_WARN("TF查询失败: %s", ex.what());
-            if (!tf_buffer_._frameExists("map")) {
-                ROS_ERROR("odom坐标系未发布");
-            } else if (!tf_buffer_._frameExists("base_link")) {
-                ROS_ERROR("base_link坐标系未发布");
-            }
-            return boost::none;
-        }
-    }
-
-    // 四元数转欧拉角（参考网页7的转换方法）
-    double getYawFromTransform(const geometry_msgs::TransformStamped& tf) {
-        return tf2::getYaw(tf.transform.rotation);
-    }
-
-    // 用户自定义操作接口
-    void executeCustomOperation(double current_angle) {
-        ROS_INFO("触发操作：当前角度 %.2f rad (%.1f°)", 
-                current_angle, current_angle*180/M_PI);
-        // 此处添加用户自定义逻辑（如数据采集、传感器触发等）
-    }
 };
 
 int main(int argc, char *argv[])
