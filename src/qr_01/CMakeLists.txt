@@ -4,9 +4,7 @@ project(qr_01)
 # 查找 ROS 依赖
 find_package(catkin REQUIRED COMPONENTS
   roscpp
-  image_transport
-  cv_bridge
-  sensor_msgs
+  message_generation
 )
 
 # 使用 pkg-config 查找 ZBar
@@ -20,11 +18,21 @@ find_package(OpenCV REQUIRED COMPONENTS
   imgproc
 )
 
+add_service_files(
+  FILES
+  qr_srv.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+
 # 配置 catkin 包
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES qr_01
-  CATKIN_DEPENDS roscpp image_transport cv_bridge
+  CATKIN_DEPENDS roscpp std_msgs message_runtime
 )
 
 # 包含目录
@@ -37,7 +45,7 @@ include_directories(
 
 # 生成可执行文件
 add_executable(aruco src/aruco.cpp)
-add_executable(aruco_sub src/aruco_sub.cpp)
+# add_executable(aruco_sub src/aruco_sub.cpp)
 
 # 链接库（规范写法）
 target_link_libraries(aruco
@@ -46,7 +54,7 @@ target_link_libraries(aruco
   ${OpenCV_LIBS}  # 使用 OpenCV 的变量名 OpenCV_LIBS
 )
 
-target_link_libraries(aruco_sub
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
-)
+# target_link_libraries(aruco_sub
+#   ${catkin_LIBRARIES}
+#   ${OpenCV_LIBS}
+# )
