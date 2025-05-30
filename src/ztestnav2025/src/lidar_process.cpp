@@ -6,6 +6,9 @@
 #include <algorithm>
 #include <cmath>  
 
+#include <opencv2/opencv.hpp>
+#include <opencv2/core/types.hpp>
+
 class LidarProcessor {
 private:
     ros::NodeHandle nh_; 
@@ -85,29 +88,50 @@ private:
 
         //获取板子坐标
         auto max_it = std::max_element(mask.begin(), mask.end());
-        std::vector<int> board_position_x(max_it,0);
-        std::vector<int> board_position_y(max_it,0);
-        std::vector<int> point_number(max_it,0);
-        for (size_t i = 0; i < num_points_; ++i) {
-            if(mask[i] != 0){//去掉和墙壁重合的点
-                board_position_x[mask[i]] += result[i][0];
-                board_position_y[mask[i]] += result[i][1];
-                point_number[mask[i]]++;
+        const int cluster_count = *max_it;//max的值等于几就说明有几个板
+        if (cluster_count!=0){
+            std::vector<int> board_position_x(cluster_count,0);
+            std::vector<int> board_position_y(cluster_count,0);
+            std::vector<int> point_number(cluster_count,0);
+            std::vector<std::vector<cv::Point2f>> points(cluster_count);
+
+            for (size_t i = 0; i < num_points_; ++i) {
+                if(mask[i] != 0){//计算中心坐标并且将每个板子的点分开准备拟合直线
+                    board_position_x[mask[i]-1] += result[i][0];
+                    board_position_y[mask[i]-1] += result[i][1];
+                    point_number[mask[i]-1]++;
+                    cv::Point2f pt(result[i][0], result[i][1]);
+                    points[mask[i]-1].push_back(pt);
+                }
             }
-        }
-        //求板子中心
-        for (size_t i = 0; i < max_it; i++)
-        {
-            if (point_number[i] != 0)//如果不是0个
-            {
-                board_position_x[i] = board_position_x[i] / point_number[i];
-                board_position_y[i] = board_position_y[i] / point_number[i];
+            //求板子中心
+            for (size_t i = 0; i < cluster_count; i++) {
+                if (point_number[i] != 0){//如果不是0个
+                    board_position_x[i] = board_position_x[i] / point_number[i];
+                    board_position_y[i] = board_position_y[i] / point_number[i];
+                }
+                if(point_number[i] > 4){
+                    cv::Vec4f lineParams;
+                    cv::fitLine(points[i], lineParams, cv::DIST_L2, 0, 0.01, 0.01);
+                    resp.lidar_results.push_back(board_position_x[i]);
+                    resp.lidar_results.push_back(board_position_y[i]);
+                    resp.lidar_results.push_back(lineParams[0]);
+                    resp.lidar_results.push_back(lineParams[1]);
+                    resp.lidar_results.push_back(lineParams[2]);
+                    resp.lidar_results.push_back(lineParams[3]);
+                    ROS_INFO("已返回板子坐标%zu",i);
+                }
+                else{
+                    ROS_INFO("%zu的点数小于4,只有%d个,舍去",i,point_number[i]);
+                }
             }
             
+            return true;
         }
-        
-
-        return true;
+        else{
+            ROS_INFO("这里没有板子");
+            return false;
+        }
     }
     
 public:

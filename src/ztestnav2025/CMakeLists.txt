@@ -134,15 +134,16 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+include
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/ztestnav2025.cpp
-# )
+add_library(turn_detect
+  include/${PROJECT_NAME}/turn_detect.h
+  src/turn_detect.cpp
+)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -153,11 +154,10 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(zhltest src/zhltest.cpp)
-add_executable(camera_test src/camera_test.cpp)
-add_executable(move_function_test src/move_function_test.cpp)
+add_executable(tf_pose_get src/tf_pose_get.cpp)
 add_executable(lidar_process src/lidar_process.cpp)
-add_executable(lidar_test src/lidar_test.cpp)
-add_executable(lidar_test_zhn src/lidar_test_zhn.cpp)
+# add_executable(lidar_test src/lidar_test.cpp)
+# add_executable(lidar_test_zhn src/lidar_test_zhn.cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -167,27 +167,28 @@ add_executable(lidar_test_zhn src/lidar_test_zhn.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(turn_detect ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(zhltest
   ${catkin_LIBRARIES}
 )
-target_link_libraries(camera_test
-  ${catkin_LIBRARIES}
-)
-target_link_libraries(move_function_test
+target_link_libraries(tf_pose_get
   ${catkin_LIBRARIES}
 )
 target_link_libraries(lidar_process
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
 )
-target_link_libraries(lidar_test
+target_link_libraries(turn_detect
   ${catkin_LIBRARIES}
 )
-target_link_libraries(lidar_test_zhn
-  ${catkin_LIBRARIES}
-)
+# target_link_libraries(lidar_test
+#   ${catkin_LIBRARIES}
+# )
+# target_link_libraries(lidar_test_zhn
+#   ${catkin_LIBRARIES}
+# )
 #############
 ## Install ##
 #############

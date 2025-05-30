@@ -12,7 +12,8 @@
                 "/home/ucar/ucar_car/devel/include/**",
                 "/usr/include/websocketpp/**",
                 "/usr/include/websocketpp/config/",
-                "${workspaceFolder}/src/my_planner/include"
+                "${workspaceFolder}/src/my_planner/include",
+                "/home/ucar/ucar_car/src/ztestnav2025/include/ztestnav2025"
             ],
             "name": "ROS",
             "intelliSenseMode": "gcc-x64",
