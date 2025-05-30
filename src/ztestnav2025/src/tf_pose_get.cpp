@@ -20,6 +20,8 @@
 #include "dynamic_reconfigure/server.h"
 #include "ztestnav2025/drConfig.h"
 
+//-------------------------调试的时候把43行和80行代码map改成odom就行-------------//
+
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
 
@@ -38,13 +40,13 @@ public:
         ros::Duration timeout(10.0);
         
         while (ros::ok() && (ros::Time::now() - start_time < timeout)) {
-            if (tf_buffer_.canTransform("odom", "base_link", ros::Time(0))) {
+            if (tf_buffer_.canTransform("map", "base_link", ros::Time(0))) {//这里map改odom即可调试
                 return true;
             }
             ROS_WARN_THROTTLE(1, "等待坐标系变换中...");
             ros::Duration(0.1).sleep();  // 降低CPU占用
         }
-        ROS_ERROR("等待超时:odom到base_link的坐标变换未就绪");
+        ROS_ERROR("等待超时:map到base_link的坐标变换未就绪");
         return false;
     }
 
@@ -75,11 +77,11 @@ private:
     boost::optional<geometry_msgs::TransformStamped> getCurrentPose() {
         try {
             waitForTransform();
-            return tf_buffer_.lookupTransform("odom", "base_link", ros::Time(0));
+            return tf_buffer_.lookupTransform("map", "base_link", ros::Time(0));//这也要改
         } catch (tf2::TransformException &ex) {
             ROS_WARN("TF查询失败: %s", ex.what());
             if (!tf_buffer_._frameExists("map")) {
-                ROS_ERROR("odom坐标系未发布");
+                ROS_ERROR("map坐标系未发布");
             } else if (!tf_buffer_._frameExists("base_link")) {
                 ROS_ERROR("base_link坐标系未发布");
             }

@@ -156,8 +156,8 @@ add_library(turn_detect
 add_executable(zhltest src/zhltest.cpp)
 add_executable(tf_pose_get src/tf_pose_get.cpp)
 add_executable(lidar_process src/lidar_process.cpp)
-# add_executable(lidar_test src/lidar_test.cpp)
-# add_executable(lidar_test_zhn src/lidar_test_zhn.cpp)
+add_executable(myplanernav src/myplanernav.cpp)
+# add_executable(turn_detect src/turn_detect.cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -168,6 +168,7 @@ add_executable(lidar_process src/lidar_process.cpp)
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(turn_detect ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(myplanernav ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(zhltest
@@ -181,6 +182,10 @@ target_link_libraries(lidar_process
   ${OpenCV_LIBS}
 )
 target_link_libraries(turn_detect
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(myplanernav
+  turn_detect
   ${catkin_LIBRARIES}
 )
 # target_link_libraries(lidar_test

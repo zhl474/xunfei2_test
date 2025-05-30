@@ -70,28 +70,12 @@ private:
                 if(mask[i]==last_number) mask[i] = 1;
             }
         }
-        // ROS_INFO("打印雷达数据");        //调试信息，打印雷达数据
-        // std::cout << "[";
-        // for (size_t i = 0; i < num_points_; ++i) {
-        //     std::cout << "[";
-        //     std::cout << result[i][0] << ",";
-        //     std::cout << result[i][1];
-        //     std::cout << "]";
-        //     std::cout << ",";
-        // } 
-        // std::cout << "]";
-        // std::cout << "\n";
-        // for (int j=0;j<mask.size();j++){
-        //     std::cout << mask[j] << ",";
-        // }
-        // std::cout << "\n";
 
-        //获取板子坐标
         auto max_it = std::max_element(mask.begin(), mask.end());
         const int cluster_count = *max_it;//max的值等于几就说明有几个板
         if (cluster_count!=0){
-            std::vector<int> board_position_x(cluster_count,0);
-            std::vector<int> board_position_y(cluster_count,0);
+            std::vector<float> board_position_x(cluster_count,0);
+            std::vector<float> board_position_y(cluster_count,0);
             std::vector<int> point_number(cluster_count,0);
             std::vector<std::vector<cv::Point2f>> points(cluster_count);
 
@@ -144,32 +128,23 @@ public:
 
     // 实时查看数据（新增方法）
     void printCurrentData() {
-        if (lasar_scan_.ranges.empty()) {
-            ROS_WARN("No scan data available");
-            return;
-        }
-        ranges_ = lasar_scan_.ranges;
-        num_points_ = ranges_.size();
-        std::vector<std::vector<float>> result;
-        float theta = 0;
-        for (size_t i = 0; i < num_points_; ++i) {
-            if (std::isinf(ranges_[i]) || ranges_[i] == 0.0f) {
-                result.push_back({0.0f, 0.0f});
-                continue;
-            }
+        // ROS_INFO("打印雷达数据");        //调试信息，打印雷达数据
+        // std::cout << "[";
+        // for (size_t i = 0; i < num_points_; ++i) {
+        //     std::cout << "[";
+        //     std::cout << result[i][0] << ",";
+        //     std::cout << result[i][1];
+        //     std::cout << "]";
+        //     std::cout << ",";
+        // } 
+        // std::cout << "]";
+        // std::cout << "\n";
+        // for (int j=0;j<mask.size();j++){
+        //     std::cout << mask[j] << ",";
+        // }
+        // std::cout << "\n";
 
-            theta = i * angle_step;
-
-            result.push_back({
-                ranges_[i] * cos(theta), // x坐标
-                ranges_[i] * sin(theta)  // y坐标11
-            });
-        }
-        for (size_t i = 0; i < num_points_; ++i) {
-            for (size_t j = 0; j < 2; ++j) 
-                std::cout << result[i][j] << " ";
-            std::cout << "\n";
-        }
+        //获取板子坐标
     }
 };
 
