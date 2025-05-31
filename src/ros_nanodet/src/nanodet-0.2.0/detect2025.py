@@ -23,6 +23,7 @@ def shutdown_cap(response):
     global camera_active, cap
     if cap and cap.isOpened():
         cap.release()
+        camera_active = False
         response.x0 = -1
         response.y0 = -1
         response.x1 = -1
@@ -44,6 +45,7 @@ def open_cap():
 #首次启动要发个2启动摄像头，发送0关闭摄像头防止冲突
 def detect_start(req):
     global camera_active, cap
+    rospy.loginfo(req.detect_start)
     response = detect_result_srvResponse()
     if req.detect_start==2:
         open_cap()

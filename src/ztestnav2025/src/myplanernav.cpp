@@ -176,6 +176,8 @@ int main(int argc, char *argv[])
 
     //--------------------------------------走廊环境导航，发布目标点--------------------------------//
     ROS_INFO("走廊环境导航开始");
+    mecanumController.rotateCircle(3.14,1);
+    mecanumController.rotateCircle(3.14,1);
     for(int i=0;i<2;i++){        //循环次数为目标点个数，发布目标点
         goal.target_pose.header.stamp = ros::Time::now();
 
@@ -196,6 +198,7 @@ int main(int argc, char *argv[])
         else
             ROS_INFO("无法到达%d目标",i);
         if(i==0){//请求二维码识别服务
+            ros::Duration(1).sleep();
             what_qr.request.qr_start = 1;
             if (client_qr.call(what_qr)){
                 board_class = what_qr.response.qr_result;

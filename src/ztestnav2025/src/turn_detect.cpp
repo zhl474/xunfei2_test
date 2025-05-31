@@ -51,7 +51,7 @@ void MecanumController::detect(std::vector<int>& result){//封装目标检测功
         ROS_INFO("结果：%d,%d,%d,%d,%d",start_detect_.response.class_name,start_detect_.response.x0,start_detect_.response.x1,start_detect_.response.y0,start_detect_.response.y1);
     }
     else{
-        ROS_WARN("请求处理失败....");
+        ROS_WARN("目标检测失败");
         return ;
     }
 }
@@ -78,7 +78,7 @@ void MecanumController::rotateCircle(double rotate,int direction) {//控制小�
     if(target>=3.14){
         target = target - 6.28;//最大就3.14，超过3.14变成-3.14
     }
-    ROS_INFO("起点和目标:%f,%f",start,target);
+    // ROS_INFO("起点和目标:%f,%f",start,target);
     while (ros::ok()) {
         // 获取当前姿态
         std::vector<float> now_yaw = getCurrentPose();
@@ -148,7 +148,7 @@ void MecanumController::PID_change(ztestnav2025::drConfig &config, uint32_t leve
 std::vector<float> MecanumController::getCurrentPose(){
     start_get_pose_.request.getpose_start= 1;
     if (getpose_client_.call(start_get_pose_)){
-        ROS_INFO("请求正常处理,响应结果长度%zu",start_get_pose_.response.pose_at.size());
+        // ROS_INFO("请求正常处理,响应结果长度%zu",start_get_pose_.response.pose_at.size());
         std::vector<float> pose_array = start_get_pose_.response.pose_at;
         return pose_array;
     }

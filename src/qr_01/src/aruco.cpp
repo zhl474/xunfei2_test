@@ -28,12 +28,11 @@ bool qr_detect(qr_01::qr_srv::Request& req,qr_01::qr_srv::Response& resp){
 
     cv::Mat frame, gray;
     cap >> frame;
-    cv::imshow("img",frame);
-    cv::waitKey(0);
     if (frame.empty()) {
         ROS_WARN_THROTTLE(5, "接收到空帧");
         return false;
     }
+    cv::flip(frame,frame, 1);
     
     // 转换为灰度图（ZBar需要Y800格式）
     cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
@@ -47,19 +46,18 @@ bool qr_detect(qr_01::qr_srv::Request& req,qr_01::qr_srv::Response& resp){
     
     // 处理检测结果
     if (detected > 0) {
-        ROS_INFO("检测到");
         for(zbar::Image::SymbolIterator symbol = zbar_image.symbol_begin();
             symbol != zbar_image.symbol_end(); ++symbol) {
             // 输出二维码内容
             std::string qr_content  = symbol->get_data();
             ROS_INFO_STREAM("检测到二维码: " << qr_content);
-            if (qr_content == "vegetable"){
+            if (qr_content == "Vegetable"){
                 resp.qr_result = 1;
             }
-            else if (qr_content == "fruit"){
+            else if (qr_content == "Fruit"){
                 resp.qr_result = 2;
             }
-            else if (qr_content == "dessert"){
+            else if (qr_content == "Dessert"){
                 resp.qr_result = 3;
             }
             else{

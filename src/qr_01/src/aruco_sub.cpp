@@ -18,8 +18,8 @@ int main(int argc, char** argv) {
     }
     ROS_INFO("话题发布者初始化成功");
     
-    // 初始化OpenCV摄像头
-    cv::VideoCapture cap(0);
+    // 初始化OpenCV摄像头 - 修改为使用v4l2后端
+    cv::VideoCapture cap(0, cv::CAP_V4L2);
     if (!cap.isOpened()) {
         ROS_ERROR("无法打开摄像头！");
         return -1;
@@ -29,12 +29,18 @@ int main(int argc, char** argv) {
     cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
     
+    // 检查摄像头参数设置是否成功
+    double width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
+    double height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+    ROS_INFO_STREAM("摄像头实际分辨率: " << width << "x" << height);
+    
     // 初始化ZBar扫描器
     zbar::ImageScanner scanner;
     scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 1);  // 启用所有符号
     scanner.set_config(zbar::ZBAR_QRCODE, zbar::ZBAR_CFG_ENABLE, 1); // 特别启用QR码
 
     cv::Mat frame, gray;
+    ros::Rate rate(30); // 添加帧率控制
     while (ros::ok()) {
         cap >> frame;
         if (frame.empty()) {
@@ -72,12 +78,13 @@ int main(int argc, char** argv) {
         }
         
         // 发布带标记的图像（用于调试）
-        // sensor_msgs::ImagePtr msg = cv_bridge::CvImage(
-        //     std_msgs::Header(), "bgr8", frame
-        // ).toImageMsg();
-        // pub.publish(msg);
+        sensor_msgs::ImagePtr msg = cv_bridge::CvImage(
+            std_msgs::Header(), "bgr8", frame
+        ).toImageMsg();
+        pub.publish(msg);
         
         ros::spinOnce();
+        rate.sleep(); // 控制循环频率
     }
     
     cap.release();
