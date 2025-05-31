@@ -21,7 +21,7 @@ public:
     Sim_talkto_car(ros::NodeHandle& nh):
         nh_(nh),
         pub_(nh.advertise<communication::msg_1>("send_class", 10)),
-        sub_(nh.subscribe<communication::msg_2>("send_room_class",10,&Sim_talkto_car::simreturn, this)),
+        sub_(nh.subscribe<communication::msg_2>("send_room_class",10,&Sim_talkto_car::simreturn, this))
     {}
 
     bool sim_done = 0;

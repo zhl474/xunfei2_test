@@ -193,6 +193,7 @@ include_directories(
 )
 
 add_executable(broadcast src/broadcast.cpp)
+add_executable(call_recognition src/call_recognition.cpp)
 # add_dependencies(
 #   broadcast
 #   ${xf_mic_package_EXPORTED_TARGETS}
@@ -201,9 +202,9 @@ add_executable(broadcast src/broadcast.cpp)
 target_link_libraries(broadcast
   ${catkin_LIBRARIES}
 )
-
-
-
+target_link_libraries(call_recognition
+  ${catkin_LIBRARIES}
+)
 
 
 #add_executable(test

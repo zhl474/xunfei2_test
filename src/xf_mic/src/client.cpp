@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
     nh.serviceClient<xf_mic_asr_offline::Set_Awake_Word_srv>("xf_asr_offline_node/set_awake_word_srv");
 
     xf_mic_asr_offline::Set_Awake_Word_srv SetAwakeWord_srv;
-    SetAwakeWord_srv.request.awake_word = "小飞小飞"; // 设置唤醒词
+    SetAwakeWord_srv.request.awake_word = "小飞小飞快速出发执行任务"; // 设置唤醒词
     if(Set_Awake_Word_client.call(SetAwakeWord_srv))
     {
         ROS_INFO("succeed to call service \"set_awake_word_srv\"!");

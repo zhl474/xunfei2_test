@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  message_generation
 )
 
 # 查找 OpenCV 并指定必要组件
@@ -62,11 +63,10 @@ find_package(OpenCV REQUIRED COMPONENTS
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+  FILES
+  line_follow.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -76,10 +76,11 @@ find_package(OpenCV REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   geometry_msgs#   sensor_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs#   sensor_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -113,7 +114,7 @@ find_package(OpenCV REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES line_follow
-#  CATKIN_DEPENDS cv_bridge geometry_msgs image_transport roscpp sensor_msgs
+ CATKIN_DEPENDS geometry_msgs roscpp sensor_msgs std_msgs message_runtime
 #  DEPENDS system_lib
 )
 
@@ -143,13 +144,13 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(follower_line_pid src/line.cpp)
-
+add_executable(follower_line_server src/line_func.cpp)
 # 在add_executable之后添加以下内容调试用
-target_compile_options(follower_line_pid
-    PRIVATE 
-    -g          # 生成调试符号
-    -O0         # 禁用优化
-)
+# target_compile_options(follower_line_pid
+#     PRIVATE 
+#     -g          # 生成调试符号
+#     -O0         # 禁用优化
+# )
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -166,7 +167,10 @@ target_link_libraries(follower_line_pid
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
 )
-
+target_link_libraries(follower_line_server
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
 #############
 ## Install ##
 #############
