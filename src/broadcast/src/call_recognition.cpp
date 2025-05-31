@@ -4,8 +4,8 @@
 **************************************************************************/
 #include <ros/ros.h>
 #include <std_msgs/Int8.h>
-#include <xf_mic_asr_offline/Set_Awake_Word_srv.h>
-#include <xf_mic_asr_offline/Get_Offline_Result_srv.h>
+#include <broadcast/Set_Awake_Word_srv.h>
+#include <broadcast/Get_Offline_Result_srv.h>
 
 using namespace std;
 
@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 
     // 创建唤醒词设置服务客户端
     ros::ServiceClient set_awake_word_client = 
-        nh.serviceClient<xf_mic_asr_offline::Set_Awake_Word_srv>("xf_asr_offline_node/set_awake_word_srv");
+        nh.serviceClient<xf_mic_asr_offline::Set_Awake_Word_srv>("broadcast/set_awake_word_srv");
 
     // 创建离线识别结果服务客户端
     ros::ServiceClient get_offline_result_client = 

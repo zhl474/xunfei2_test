@@ -8,6 +8,7 @@
 #include "ztestnav2025/getpose_server.h"
 #include "ztestnav2025/turn_detect.h"
 #include "ztestnav2025/lidar_process.h"
+#include "line_follow/line_follow.h"
 #include "qr_01/qr_srv.h"
 #include "communication/msg_1.h"
 #include "communication/msg_2.h"
@@ -161,6 +162,11 @@ int main(int argc, char *argv[])
     ztestnav2025::getpose_server pose_result;
     pose_result.request.getpose_start = 1;
     poseget_client.waitForExistence();
+    ROS_INFO("等待视觉巡线服务中---");
+    ros::ServiceClient line_client = nh.serviceClient<line_follow::line_follow>("line_server");
+    line_follow::line_follow linefollow_start;
+    linefollow_start.request.line_follow_start = 1;
+    linefollow_start.waitForExistence();
     //发布话题以供仿真通信
     Sim_talkto_car sim_talkto_car(nh);
 
@@ -283,10 +289,27 @@ int main(int argc, char *argv[])
             break;
         }
     }
-
+    //--------------------------------------前往红绿灯识别区域--------------------------------//
+    q.setRPY(0, 0, -1.57);
+    goal.target_pose.pose.position.x = 2.75;
+    goal.target_pose.pose.position.y = 3.45;
+    goal.target_pose.pose.position.z = 0.0;
+    goal.target_pose.pose.orientation.x = q.x();
+    goal.target_pose.pose.orientation.y = q.y();
+    goal.target_pose.pose.orientation.z = q.z();
+    goal.target_pose.pose.orientation.w = q.w();
+    goal.target_pose.header.stamp = ros::Time::now();
+    ac.sendGoal(goal);
+    ac.waitForResult();
+    if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+        ROS_INFO("到达视觉巡线区域");
+    else
+        ROS_INFO("无法到达视觉巡线区域");
 
     //--------------------------------------视觉巡线-------------------------------//
-
+    if(line_client.call(linefollow_start)){
+        ROS_INFO("视觉巡线开始");
+    }
 
     ros::spin();
 
