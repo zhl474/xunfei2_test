@@ -44,11 +44,23 @@ MecanumController::MecanumController(ros::NodeHandle& nh) :
 }
 
 void MecanumController::detect(std::vector<int>& result){//封装目标检测功能
-    start_detect_.request.detect_start = 1;
+    start_detect_.request.detect_start = 2;//先传个2把摄像头打开
     bool flag = detect_client_.call(start_detect_);
     if (flag){
         result[0] = start_detect_.response.x0;result[1] = start_detect_.response.y0;result[2] = start_detect_.response.x1;result[3] = start_detect_.response.y1;result[4] = start_detect_.response.class_name;
         ROS_INFO("结果：%d,%d,%d,%d,%d",start_detect_.response.class_name,start_detect_.response.x0,start_detect_.response.x1,start_detect_.response.y0,start_detect_.response.y1);
+    }
+    else{
+        ROS_WARN("请求处理失败....");
+        return ;
+    }
+}
+
+void MecanumController::cap_close(){
+    start_detect_.request.detect_start = 0;
+    bool flag = detect_client_.call(start_detect_);
+    if (flag){
+        ROS_INFO("目标检测摄像头已关闭");
     }
     else{
         ROS_WARN("请求处理失败....");

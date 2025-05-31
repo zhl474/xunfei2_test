@@ -28,6 +28,8 @@ bool qr_detect(qr_01::qr_srv::Request& req,qr_01::qr_srv::Response& resp){
 
     cv::Mat frame, gray;
     cap >> frame;
+    cv::imshow("img",frame);
+    cv::waitKey(0);
     if (frame.empty()) {
         ROS_WARN_THROTTLE(5, "接收到空帧");
         return false;
@@ -45,6 +47,7 @@ bool qr_detect(qr_01::qr_srv::Request& req,qr_01::qr_srv::Response& resp){
     
     // 处理检测结果
     if (detected > 0) {
+        ROS_INFO("检测到");
         for(zbar::Image::SymbolIterator symbol = zbar_image.symbol_begin();
             symbol != zbar_image.symbol_end(); ++symbol) {
             // 输出二维码内容

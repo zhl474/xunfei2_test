@@ -129,9 +129,9 @@ RobotPose calculate_destination(double cx, double cy, double slope, double squar
 
 int main(int argc, char *argv[])
 {
-    ROS_INFO("主干代码开始，初始化对象，等待服务中");
     setlocale(LC_ALL,"");
-    //-------------初始化movebase，实例对象------------------//
+    ROS_INFO("主干代码开始，初始化对象，等待服务中"); 
+    //-----------------------------------初始化movebase，实例对象---------------------------//
     ros::init(argc,argv,"zhltest");
     ros::NodeHandle nh;
     MoveBaseClient ac("move_base", true); 
@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
     MecanumController mecanumController(nh);
     //客户端初始化
     ROS_INFO("等待lidar_process服务中---");
-    ros::ServiceClient client_find_board = nh.serviceClient<ztestnav2025::lidar_process>("lidar_process");
+    ros::ServiceClient client_find_board = nh.serviceClient<ztestnav2025::lidar_process>("/lidar_process/lidar_process");
     ztestnav2025::lidar_process where_board;
     client_find_board.waitForExistence();
     ROS_INFO("等待二维码服务中---");
@@ -166,9 +166,13 @@ int main(int argc, char *argv[])
     ros::ServiceClient line_client = nh.serviceClient<line_follow::line_follow>("line_server");
     line_follow::line_follow linefollow_start;
     linefollow_start.request.line_follow_start = 1;
-    linefollow_start.waitForExistence();
+    line_client.waitForExistence();
     //发布话题以供仿真通信
     Sim_talkto_car sim_talkto_car(nh);
+
+    //--------------------------------------语音唤醒等待--------------------------------//
+
+
 
     //--------------------------------------走廊环境导航，发布目标点--------------------------------//
     ROS_INFO("走廊环境导航开始");
@@ -205,7 +209,7 @@ int main(int argc, char *argv[])
     ROS_INFO("走廊环境导航完成");
 
 
-    //--------------------------------------目标检测区域开始--------------------------------//
+    //----------------------------------------目标检测区域开始-------------------------------------------//
     ROS_INFO("拣货区域任务开始");
     size_t board_count;
     where_board.request.lidar_process_start = 1;//请求雷达识别板子服务
@@ -259,9 +263,10 @@ int main(int argc, char *argv[])
     else{
         ROS_INFO("视觉和雷达信息对不上");
     }
+    mecanumController.cap_close();
 
 
-    //--------------------------------------仿真开始--------------------------------//
+    //-----------------------------------------------仿真开始--------------------------------------------//
     ROS_INFO("前往仿真区域");
     goal.target_pose.header.stamp = ros::Time::now();
     q.setRPY(0, 0, 0);
@@ -289,7 +294,8 @@ int main(int argc, char *argv[])
             break;
         }
     }
-    //--------------------------------------前往红绿灯识别区域--------------------------------//
+
+    //--------------------------------------------前往红绿灯识别区域--------------------------------------------//
     q.setRPY(0, 0, -1.57);
     goal.target_pose.pose.position.x = 2.75;
     goal.target_pose.pose.position.y = 3.45;
@@ -306,9 +312,12 @@ int main(int argc, char *argv[])
     else
         ROS_INFO("无法到达视觉巡线区域");
 
-    //--------------------------------------视觉巡线-------------------------------//
+    //-----------------------------------------视觉巡线---------------------------------------------//
     if(line_client.call(linefollow_start)){
-        ROS_INFO("视觉巡线开始");
+        ROS_INFO("视觉巡线结束");
+    }
+    else{
+        ROS_ERROR("视觉巡线失败....");
     }
 
     ros::spin();

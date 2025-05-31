@@ -38,10 +38,10 @@ int main(int argc, char *argv[])
     nh.param("/seconds_per_order", seconds_per_order, 3);
 
     // ======================
-    // 2. 设置唤醒词（默认："小车小车"）
+    // 2. 设置唤醒词（修改为完整的唤醒词）
     // ======================
     xf_mic_asr_offline::Set_Awake_Word_srv set_awake_word_srv;
-    set_awake_word_srv.request.awake_word = "小车小车";  // 可自定义唤醒词
+    set_awake_word_srv.request.awake_word = "小飞小飞快速出发执行任务";  //  修改为完整唤醒词
 
     // 调用服务并检查结果
     if (!set_awake_word_client.call(set_awake_word_srv)) 
@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
         ROS_FATAL("唤醒词服务调用失败！请检查 xf_mic/xf_asr_offline_node 是否启动");
         return -1;
     }
-    else if (set_awake_word_srv.response.result != 0) 
+    else if (set_awake_word_srv.response.result != "0") 
     {
         ROS_FATAL("唤醒词设置失败：%s", set_awake_word_srv.response.fail_reason.c_str());
         return -1;
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
             {
                 // 解析结果：匹配唤醒词且置信度达标
                 if (get_offline_result_srv.response.result == "ok" && 
-                    get_offline_result_srv.response.text == "小车小车") 
+                    get_offline_result_srv.response.text == "小飞小飞快速出发执行任务")  // ✅ 修改为完整唤醒词
                 {
                     awake_flag = 1;
                     std_msgs::Int8 msg;

@@ -16,6 +16,8 @@ find_package(OpenCV REQUIRED COMPONENTS
   core
   highgui
   imgproc
+  image_transport  # 添加这一行
+  cv_bridge
 )
 
 add_service_files(
@@ -33,6 +35,7 @@ catkin_package(
   INCLUDE_DIRS include
   LIBRARIES qr_01
   CATKIN_DEPENDS roscpp std_msgs message_runtime
+  image_transport cv_bridge
 )
 
 # 包含目录
@@ -45,7 +48,7 @@ include_directories(
 
 # 生成可执行文件
 add_executable(aruco src/aruco.cpp)
-# add_executable(aruco_sub src/aruco_sub.cpp)
+add_executable(aruco_sub src/aruco_sub.cpp)
 
 # 链接库（规范写法）
 target_link_libraries(aruco
@@ -53,7 +56,11 @@ target_link_libraries(aruco
   ${ZBar_LIBRARIES}
   ${OpenCV_LIBS}  # 使用 OpenCV 的变量名 OpenCV_LIBS
 )
-
+target_link_libraries(aruco_sub
+  ${catkin_LIBRARIES}
+  ${ZBar_LIBRARIES}
+  ${OpenCV_LIBS}  # 使用 OpenCV 的变量名 OpenCV_LIBS
+)
 # target_link_libraries(aruco_sub
 #   ${catkin_LIBRARIES}
 #   ${OpenCV_LIBS}

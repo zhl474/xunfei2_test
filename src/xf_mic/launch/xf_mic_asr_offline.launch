@@ -1,10 +1,10 @@
 <!--离线命令词识别-->
 <launch>
   <!--设置为功能包的路径-->
-  <arg name="package_path" default = "$(find xf_mic_asr_offline)" />
+  <arg name="package_path" default = "$(find xf_mic)" />
 
-  <node pkg="xf_mic_asr_offline" type="xf_asr_offline_node" name="xf_asr_offline_node" output="screen">
+  <node pkg="xf_mic" type="xf_mic" name="xf_mic" output="screen">
     <param name="source_path" type="string" value="$(arg package_path)"/>
-    <rosparam command="load" file="$(find xf_mic_asr_offline)/config/mic_offline_params.yaml" />
+    <rosparam command="load" file="$(find xf_mic)/config/mic_offline_params.yaml" />
   </node>
 </launch>

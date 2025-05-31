@@ -1,15 +1,18 @@
 <launch>
     <!-- 设置地图的配置文件 -->
     <!-- 运行地图服务器，并且加载设置的地图-->
-    <include file="$(find ztestnav2025)/launch/base_start.launch" />
+    <!-- <include file="$(find ztestnav2025)/launch/base_start.launch" /> -->
 
-    <include file="$(find ztestnav2025)/launch/map_server.launch"/>
-    <!-- 启动AMCL节点 -->
+    <node pkg="ztestnav2025" type="lidar_process" name="lidar_process" output="screen"/>
+    <node pkg="ztestnav2025" type="tf_pose_get" name="tf_pose_get" output="screen"/>
+    <node pkg="qr_01" type="aruco" name="aruco" output="screen"/>
+    <node pkg="ros_nanodet" type="detect2025.py" name="detect2025" output="screen"/>
+    <node pkg="line_follow" type="follower_line_server" name="follower_line_server" output="screen"/>
+
+    <arg name="map" default="mapname.yaml" />
+    <!-- 运行地图服务器，并且加载设置的地图-->
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find ztestnav2025)/map/$(arg map)"/>
     <include file="$(find ztestnav2025)/launch/amcl.launch" />
 
-    <!-- 运行move_base节点 -->
-    <include file="$(find ztestnav2025)/launch/move_base.launch" />
-
-    <node pkg="ztestnav2025" type="zhltest" name="zhltest" output="screen" />
 
 </launch>

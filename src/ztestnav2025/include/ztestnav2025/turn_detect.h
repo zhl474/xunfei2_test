@@ -21,6 +21,7 @@ public:
     void turn_and_find(double x,int y,int z);//原地旋转小车x度，执行y次目标检测,寻找z号目标
     void PID_change(ztestnav2025::drConfig &config, uint32_t level);    //解析动态参数
     std::vector<float> getCurrentPose();
+    void cap_close();
 
 private:
     // ROS通信接口
