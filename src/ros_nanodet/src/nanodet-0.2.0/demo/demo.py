@@ -41,6 +41,22 @@ class Predictor(object):
         self.model = model.to(device).eval()
         self.pipeline = Pipeline(cfg.data.val.pipeline, cfg.data.val.keep_ratio)
 
+        self.latest_img = None
+        
+        # 创建订阅者（启用零拷贝优化）[1](@ref)
+        self.sub = rospy.Subscriber(
+            "/usb_cam/image_raw", 
+            Image, 
+            self.image_callback,
+            queue_size=1,
+        )
+        self.cv_bridge = CvBridge()
+        self.server = rospy.Service("detect_result",detect_result_srv,self.detect_start)
+
+    def image_callback(self, msg):
+        """仅存储消息指针，不进行格式转换"""
+        self.latest_img = msg  # 直接存储ROS消息对象（智能指针等效）[3](@ref)
+
     def inference(self, img):
         img_info = {}
         if isinstance(img, str):

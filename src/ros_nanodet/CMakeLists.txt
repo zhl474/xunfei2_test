@@ -12,6 +12,9 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   message_generation
+  cv_bridge
+  sensor_msgs
+  image_transport
 )
 
 ## System dependencies are found with CMake's conventions
@@ -105,7 +108,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES ros_nanodet
- CATKIN_DEPENDS roscpp rospy std_msgs message_runtime
+ CATKIN_DEPENDS roscpp rospy std_msgs message_runtime cv_bridge sensor_msgs image_transport
 #  DEPENDS system_lib
 )
 

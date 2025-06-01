@@ -7,74 +7,66 @@ from demo.demo import detect
 from demo.demo import init
 import cv2
 
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
+
+
 predictor = init()
-rospy.init_node("hdu_detect", anonymous=True)
+rospy.init_node("nanodet_detect")
 
 frame = cv2.imread('/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/2/1.png')
 res = detect(frame,predictor)# 识别
 res = detect(frame,predictor)# 识别2次
 print("warm up done")
 
-# 全局变量管理摄像头状态
-camera_active = False
-cap = None
+class NanodetProcessor:
+    def __init__(self):
+        self.latest_img = None
+        
+        # 创建订阅者（启用零拷贝优化）[1](@ref)
+        self.sub = rospy.Subscriber(
+            "/usb_cam/image_raw", 
+            Image, 
+            self.image_callback,
+            queue_size=1,
+        )
+        self.cv_bridge = CvBridge()
+        self.server = rospy.Service("detect_result",detect_result_srv,self.detect_start)
 
-def shutdown_cap(response):
-    global camera_active, cap
-    if cap and cap.isOpened():
-        cap.release()
-        camera_active = False
-        response.x0 = -1
-        response.y0 = -1
-        response.x1 = -1
-        response.y1 = -1
-        response.class_name = -1
-        rospy.loginfo("关闭摄像头")
-def open_cap():
-    global camera_active, cap
-    if camera_active:
-        rospy.logwarn("摄像头被重复打开")
-    else:
-        cap = cv2.VideoCapture('/dev/video0', cv2.CAP_V4L2)
-        if not cap.isOpened():
-            rospy.logerr("打开摄像头失败")
-            return 0
-        camera_active = True
-        rospy.loginfo("摄像头成功打开")
+    def image_callback(self, msg):
+        """仅存储消息指针，不进行格式转换"""
+        self.latest_img = msg  # 直接存储ROS消息对象（智能指针等效）[3](@ref)
 
-#首次启动要发个2启动摄像头，发送0关闭摄像头防止冲突
-def detect_start(req):
-    global camera_active, cap
-    rospy.loginfo(req.detect_start)
-    response = detect_result_srvResponse()
-    if req.detect_start==2:
-        open_cap()
-    if req.detect_start==0:
-        shutdown_cap(response)
+    def detect_start(self, req):
+        response = detect_result_srvResponse()
+        if not self.latest_img:
+            rospy.logwarn("nanodet没有可用图像")
+            return None
+        frame = self.cv_bridge.imgmsg_to_cv2(self.latest_img, "bgr8")
+        frame = cv_bridge.imgmsg_to_cv2(img_ptr, "bgr8")
+        
+        res = self.detect(frame, predictor)
+        if not res:
+            rospy.loginfo("未检测到目标")
+            return response
+        max_score = -1.0
+        best_bbox = [-1] * 5 
+        for label in res:
+            for bbox in res[label]:
+                score = bbox[-1]
+                if score > max_score and score > 0.6:
+                    max_score = score
+                    print("find object")
+                    best_bbox = bbox[:5]
+        x0, y0, x1, y1, name= [int(coord) for coord in best_bbox]
+        response.x0 = x0
+        response.y0 = y0
+        response.x1 = x1
+        response.y1 = y1
+        response.class_name = name
         return response
-    rec, frame = cap.read()
-    print(rec)
-    if not rec:
-        rospy.logerr("获取图片失败")
-    res = detect(frame, predictor)
-    max_score = -1.0
-    best_bbox = [-1] * 5 
-    for label in res:
-        for bbox in res[label]:
-            score = bbox[-1]
-            if score > max_score and score > 0.6:
-                max_score = score
-                print("find object")
-                best_bbox = bbox[:5]
-    x0, y0, x1, y1, name= [int(coord) for coord in best_bbox]
-    response.x0 = x0
-    response.y0 = y0
-    response.x1 = x1
-    response.y1 = y1
-    response.class_name = name
-    return response
 
-server = rospy.Service("detect_result",detect_result_srv,detect_start)
+nanodetprocessor = NanodetProcessor()
 print("目标检测就绪")
 rospy.spin()
 

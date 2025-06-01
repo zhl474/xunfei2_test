@@ -18,6 +18,9 @@
   <exec_depend>image_transport</exec_depend>
   <build_depend>opencv</build_depend>
   <exec_depend>opencv</exec_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_export_depend>sensor_msgs</build_export_depend>
+  <exec_depend>sensor_msgs</exec_depend>
   <!-- ============== 新增内容结束 ============== -->
 
   <!-- 原始依赖结构完全保留 -->

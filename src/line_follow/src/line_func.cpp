@@ -3,6 +3,9 @@
 #include <geometry_msgs/Twist.h>
 #include "line_follow/line_follow.h"
 
+#include <cv_bridge/cv_bridge.h>
+#include <sensor_msgs/Image.h>
+
 using namespace cv;
 using namespace std;
 
@@ -32,10 +35,15 @@ private:
     ros::Publisher cmd_pub;
     ros::Rate loop_rate;
 
-    VideoCapture cap;
-
     Mat frame, gray, processed;
+    ros::Subscriber lineimage_sub_;
+    sensor_msgs::ImageConstPtr latest_img_;  // 智能指针成员变量
+
     geometry_msgs::Twist twist;
+
+    void imageCallback(const sensor_msgs::ImageConstPtr& msg) {
+        latest_img_ = msg;
+    }
     
     
 public:
@@ -43,13 +51,7 @@ public:
         kp(p), ki(i), kd(d), integral(0), error(0),
         nh_(),loop_rate(20)
         {
-            cap.open("/dev/video0", cv::CAP_V4L2);
-            if (!cap.isOpened()) {
-                ROS_ERROR("无法打开摄像头");
-                throw std::runtime_error("Camera initialization failed");
-            }
-            cap.set(CAP_PROP_FRAME_WIDTH, 640);
-            cap.set(CAP_PROP_FRAME_HEIGHT, 480);
+            lineimage_sub_ = nh_.subscribe("/usb_cam/image_raw", 1, &PIDController::imageCallback, this);
             cmd_pub = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 5);
             line_server_ = nh_.advertiseService("line_server", &PIDController::line_follow_start, this);
             ROS_INFO("视觉巡线初始化");
@@ -148,8 +150,13 @@ public:
 
     bool line_follow_start(line_follow::line_follow::Request& req,line_follow::line_follow::Response& resp){
         while(ros::ok()) {
-            cap.read(frame);
-            if (frame.empty()) continue;
+            if (!latest_img_) {
+                ROS_ERROR("尚未收到图像数据！");
+                resp.line_follow_done = 0;
+                return true;  // 仍需返回true表示服务调用完成
+            }
+            cv_bridge::CvImageConstPtr cv_ptr = cv_bridge::toCvCopy(latest_img_, sensor_msgs::image_encodings::BGR8);
+            const cv::Mat& frame = cv_ptr->image;
             
             // 保持原有预处理
             Rect roi(0, 200, frame.cols, frame.rows - 200);
@@ -194,7 +201,6 @@ public:
             waitKey(1);
             loop_rate.sleep();
         }
-        cap.release();
         return true;
     }
 };

@@ -5,6 +5,10 @@ project(qr_01)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   message_generation
+  cv_bridge
+  sensor_msgs
+  std_msgs
+  image_transport
 )
 
 # 使用 pkg-config 查找 ZBar
@@ -32,7 +36,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES qr_01
-  CATKIN_DEPENDS roscpp std_msgs message_runtime
+  CATKIN_DEPENDS roscpp std_msgs message_runtime cv_bridge sensor_msgs image_transport
 )
 
 # 包含目录
