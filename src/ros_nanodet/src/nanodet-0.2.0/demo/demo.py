@@ -45,11 +45,6 @@ class Predictor(object):
             model = repvgg_det_model_convert(model, deploy_model)
         self.model = model.to(device).eval()
         self.pipeline = Pipeline(cfg.data.val.pipeline, cfg.data.val.keep_ratio)
-        
-
-    def image_callback(self, msg):
-        """仅存储消息指针，不进行格式转换"""
-        self.latest_img = msg  # 直接存储ROS消息对象（智能指针等效）[3](@ref)
 
     def inference(self, img):
         img_info = {}

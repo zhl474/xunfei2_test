@@ -90,7 +90,6 @@ def detect_start(req):
             if score > max_score and score > 0.6:
                 if label >= (req.detect_start-1)*3 and label <req.detect_start*3:
                     max_score = score
-                    print("find object")
                     best_bbox = bbox
                     target = label
     x0, y0, x1, y1, conf = [int(coord) for coord in best_bbox]

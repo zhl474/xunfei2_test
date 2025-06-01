@@ -57,7 +57,7 @@ void MecanumController::detect(std::vector<int>& result, int object_num){//封�
 }
 
 void MecanumController::cap_close(){
-    start_detect_.request.detect_start = -1;
+    start_detect_.request.detect_start = -2;
     bool flag = detect_client_.call(start_detect_);
     if (flag){
         ROS_INFO("目标检测摄像头已关闭");
@@ -101,7 +101,7 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
     std::vector<int> result = {-1,-1,-1,-1,-1,-1};
         
         double integral = 0, prev_error = 0;
-        ros::Rate rate(20);     // 控制频率20Hz
+        // ros::Rate rate(20);     // 控制频率20Hz
         geometry_msgs::Twist twist;
         while(ros::ok()){
             detect(result, z);     // 持续检测目标
@@ -118,7 +118,7 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
             if(std::abs(center_x - img_width/2) < 7){
                 ROS_INFO("已经对准");
                 integral = 0;
-                return -1;
+                result[5];
             } 
             double error = (img_width/2.0 - center_x)/100; 
             
@@ -127,7 +127,7 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
             double derivative = (error - prev_error)/0.05;
             double output = Kp_*error + Ki_*integral + Kd_*derivative;
             output = clamp(output, -1.0, 1.0);
-            ROS_INFO("速度发布:%f",output);
+            // ROS_INFO("速度发布:%f",output);
             
             // 执行旋转（限制输出范围）
             twist.angular.z = angular_speed * output;

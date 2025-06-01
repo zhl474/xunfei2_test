@@ -246,8 +246,8 @@ int main(int argc, char *argv[])
 
     //--------------------------------------走廊环境导航，发布目标点--------------------------------//
     ROS_INFO("走廊环境导航开始");
-    mecanumController.rotateCircle(3.14,1,1.0);
-    mecanumController.rotateCircle(3.14,1,1.0);
+    mecanumController.rotateCircle(3.14,1,0.6);
+    mecanumController.rotateCircle(3.14,1,0.6);
     for(int i=0;i<2;i++){        //循环次数为目标点个数，发布目标点
         goal.target_pose.header.stamp = ros::Time::now();
 
@@ -285,11 +285,11 @@ int main(int argc, char *argv[])
                     ROS_ERROR("请求二维码失败");
                 }
             }
+            // board_class 为 1（蔬菜）、2（水果）、3（甜品）
+            // if (board_class >= 1 && board_class <= 3  ) {
+            //     play_audio(voice[0][board_class-1]);
+            // }
 
-        }
-        // board_class 为 1（蔬菜）、2（水果）、3（甜品）
-        if (board_class >= 1 && board_class <= 3) {
-            play_audio(voice[0][board_class-1]);
     }
     }
     ROS_INFO("走廊环境导航完成");
@@ -305,7 +305,7 @@ int main(int argc, char *argv[])
         board_count = len_of_where_board / 4;
         ROS_INFO("找到%zu个板子",board_count);
         for(size_t i=0;i<board_count;i++){
-            ROS_INFO("第%zu个板子位于%.2f,%.2f",i,where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1]);
+            ROS_INFO("第%zu个板子位于%.2f,%.2f,%.2f",i,where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1],where_board.response.lidar_results[i*4+3] / where_board.response.lidar_results[i*4+2]);
         }
     }
     else{
@@ -323,7 +323,7 @@ int main(int argc, char *argv[])
         ROS_ERROR("获取位姿失败");
     }
 
-    bool flag=0;//判断雷达识别的点是否和视觉对得上
+    int flag=0;//判断雷达识别的点是否和视觉对得上
     double lidar_yaw;
     for(int i=0;i<board_count;i++){
         lidar_yaw = std::atan2(where_board.response.lidar_results[i*4+1], where_board.response.lidar_results[i*4]);//计算雷达找到的板子在什么方向，是否和视觉识别结果匹配double atan2(double y, double x); 
@@ -344,6 +344,7 @@ int main(int argc, char *argv[])
             ROS_INFO("第%d个板是目标板,即将前往，%.2f,%.2f,%.2f",i,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading);
         }
     }
+    ROS_INFO("第一个找板点是否找到板子%d",flag);
     if(flag){
         ac.sendGoal(goal);
         ac.waitForResult();

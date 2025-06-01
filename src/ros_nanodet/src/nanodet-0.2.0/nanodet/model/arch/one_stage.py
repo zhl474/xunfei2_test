@@ -36,10 +36,10 @@ class OneStage(nn.Module):
             preds = self(meta['img'])
             torch.cuda.synchronize()
             time2 = time.time()
-            print('forward time: {:.3f}s'.format((time2 - time1)), end=' | ')
+            # print('forward time: {:.3f}s'.format((time2 - time1)), end=' | ')
             results = self.head.post_process(preds, meta)
             torch.cuda.synchronize()
-            print('decode time: {:.3f}s'.format((time.time() - time2)), end=' | ')
+            # print('decode time: {:.3f}s'.format((time.time() - time2)), end=' | ')
         return results
 
     def forward_train(self, gt_meta):
