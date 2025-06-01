@@ -6,7 +6,7 @@
     <node pkg="ztestnav2025" type="lidar_process" name="lidar_process" output="screen"/>
     <node pkg="ztestnav2025" type="tf_pose_get" name="tf_pose_get" output="screen"/>
     <node pkg="qr_01" type="aruco" name="aruco" output="screen"/>
-    <node pkg="ros_nanodet" type="detect2025.py" name="detect2025" output="screen"/>
+    
     <node pkg="line_follow" type="follower_line_server" name="follower_line_server" output="screen"/>
 
     <arg name="map" default="mapname.yaml" />

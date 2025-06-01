@@ -43,8 +43,8 @@ MecanumController::MecanumController(ros::NodeHandle& nh) :
     server_.setCallback(boost::bind(&MecanumController::PID_change, this, _1, _2));
 }
 
-void MecanumController::detect(std::vector<int>& result){//封装目标检测功能
-    start_detect_.request.detect_start = 2;//先传个2把摄像头打开
+void MecanumController::detect(std::vector<int>& result, int object_num){//封装目标检测功能
+    start_detect_.request.detect_start = object_num;//要先传个2把摄像头打开
     bool flag = detect_client_.call(start_detect_);
     if (flag){
         result[0] = start_detect_.response.x0;result[1] = start_detect_.response.y0;result[2] = start_detect_.response.x1;result[3] = start_detect_.response.y1;result[4] = start_detect_.response.class_name;
@@ -68,7 +68,7 @@ void MecanumController::cap_close(){
     }
 }
 
-void MecanumController::rotateCircle(double rotate,int direction) {//控制小车运动，rotate是弧度,direction逆时针是正向
+void MecanumController::rotateCircle(double rotate,int direction, double angular_speed) {//控制小车运动，rotate是弧度,direction逆时针是正向
     geometry_msgs::Twist twist;
     ros::Rate rate(20);     // 控制频率20Hz
 
@@ -91,22 +91,22 @@ void MecanumController::rotateCircle(double rotate,int direction) {//控制小�
         }
 
         // 发送运动指令（参考网页1的速度发布逻辑）
-        twist.angular.z = angular_speed_ * direction;
+        twist.angular.z = angular_speed * direction;
         cmd_pub_.publish(twist);
         rate.sleep();
     }
 }
 
-void MecanumController::turn_and_find(double x,int y,int z){//原地旋转小车x度，执行y次目标检测,寻找z号目标
-    std::vector<int> result = {-1,-1,-1,-1,-1};
+void MecanumController::turn_and_find(double x,int y,int z,double angular_speed){//原地旋转小车x度，执行y次目标检测,寻找z号目标
+    std::vector<int> result = {-1,-1,-1,-1,-1,-1};
         
         double integral = 0, prev_error = 0;
         ros::Rate rate(20);     // 控制频率20Hz
         geometry_msgs::Twist twist;
         while(ros::ok()){
-            detect(result);     // 持续检测目标
+            detect(result, z);     // 持续检测目标
             if(result[4] != z){
-                twist.angular.z = angular_speed_;
+                twist.angular.z = angular_speed;
                 cmd_pub_.publish(twist);
                 integral = 0;
                 continue;
@@ -130,7 +130,7 @@ void MecanumController::turn_and_find(double x,int y,int z){//原地旋转小车
             ROS_INFO("速度发布:%f",output);
             
             // 执行旋转（限制输出范围）
-            twist.angular.z = angular_speed_ * output;
+            twist.angular.z = angular_speed * output;
             cmd_pub_.publish(twist);
             
             prev_error = error;

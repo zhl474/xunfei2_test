@@ -16,9 +16,9 @@ class MecanumController {
 public:
     MecanumController(ros::NodeHandle& nh);
 
-    void detect(std::vector<int>& result);
-    void rotateCircle(double rotate,int direction); //控制小车运动，rotate是弧度,direction逆时针是正向
-    void turn_and_find(double x,int y,int z);//原地旋转小车x度，执行y次目标检测,寻找z号目标
+    void detect(std::vector<int>& result, int object_num);
+    void rotateCircle(double rotate,int direction,double angular_speed=0.2); //控制小车运动，rotate是弧度,direction逆时针是正向
+    void turn_and_find(double x,int y,int z, double angular_speed=0.2);//原地旋转小车x度，执行y次目标检测,寻找z号目标
     void PID_change(ztestnav2025::drConfig &config, uint32_t level);    //解析动态参数
     std::vector<float> getCurrentPose();
     void cap_close();
@@ -29,7 +29,6 @@ private:
     ros::Publisher cmd_pub_;
     
     // 运动学参数
-    double angular_speed_ = 0.2;   // 默认角速度(rad/s)
     double angle_error_ = 0.034;   //容忍2度偏差
     double Kp_ = 0.5;  // 先调这个参数
     double Ki_ = 0.1;  // 最后调积分项

@@ -100,7 +100,7 @@ RobotPose calculate_destination(double cx, double cy, double slope, double squar
     const double norm_length = std::sqrt(slope * slope + 1.0);
     
     // 根据点积选择正确的法线方向
-    if (dot_product > 0) {
+    if (dot_product < 0) {
         // 选择法向量 (-m, 1)
         nx = -slope / norm_length;
         ny = 1.0 / norm_length;
@@ -112,8 +112,8 @@ RobotPose calculate_destination(double cx, double cy, double slope, double squar
 
     // 计算目标位置
     RobotPose pose;
-    pose.x = cx + distance * nx;
-    pose.y = cy + distance * ny;
+    pose.x = cx - distance * nx;
+    pose.y = cy - distance * ny;
     
     // 计算朝向角度（atan2返回弧度，转换为度）
     double angle_rad = std::atan2(ny, nx);
@@ -176,8 +176,8 @@ int main(int argc, char *argv[])
 
     //--------------------------------------走廊环境导航，发布目标点--------------------------------//
     ROS_INFO("走廊环境导航开始");
-    mecanumController.rotateCircle(3.14,1);
-    mecanumController.rotateCircle(3.14,1);
+    mecanumController.rotateCircle(3.14,1,0.4);
+    mecanumController.rotateCircle(3.14,1,0.4);
     for(int i=0;i<2;i++){        //循环次数为目标点个数，发布目标点
         goal.target_pose.header.stamp = ros::Time::now();
 
@@ -228,7 +228,9 @@ int main(int argc, char *argv[])
         ROS_ERROR("找板服务请求失败");
         return 1;
     }
-
+    //视觉识别开始，先传个-1把摄像头打开
+    std::vector<int> a = {-1,-1,-1,-1,-1,-1};
+    mecanumController.detect(a,-1);
     mecanumController.turn_and_find(1,1,board_class);//请求视觉识别板子服务
     if (poseget_client.call(pose_result)){
         ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
@@ -236,6 +238,7 @@ int main(int argc, char *argv[])
     else{
         ROS_ERROR("获取位姿失败");
     }
+    mecanumController.detect(a,0);//把摄像头关了
     bool flag=0;//判断雷达识别的点是否和视觉对得上
     double lidar_yaw;
     for(int i=0;i<board_count;i++){
