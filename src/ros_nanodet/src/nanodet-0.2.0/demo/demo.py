@@ -45,16 +45,6 @@ class Predictor(object):
             model = repvgg_det_model_convert(model, deploy_model)
         self.model = model.to(device).eval()
         self.pipeline = Pipeline(cfg.data.val.pipeline, cfg.data.val.keep_ratio)
-
-        self.latest_img = None 
-        # 创建订阅者（启用零拷贝优化）[1](@ref)
-        self.sub = rospy.Subscriber(
-            "/usb_cam/image_raw", 
-            Image, 
-            self.image_callback,
-            queue_size=1,
-        )
-        self.cv_bridge = CvBridge()
         
 
     def image_callback(self, msg):

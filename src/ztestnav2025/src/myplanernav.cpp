@@ -117,14 +117,21 @@ RobotPose calculate_destination(double cx, double cy, double slope, double squar
     
     // 计算朝向角度（atan2返回弧度，转换为度）
     double angle_rad = std::atan2(ny, nx);
-    pose.heading = angle_rad * 180.0 / M_PI;
-    
-    // 将角度转换为0-360°范围
-    if (pose.heading < 0) {
-        pose.heading += 360.0;
-    }
+    pose.heading = angle_rad;
 
     return pose;
+}
+
+void goal_set(move_base_msgs::MoveBaseGoal &goal,double x,double y,double yaw,tf2::Quaternion q){
+    q.setRPY(0, 0, yaw);
+    goal.target_pose.header.stamp = ros::Time::now();
+    goal.target_pose.pose.position.x = x;
+    goal.target_pose.pose.position.y = y;
+    goal.target_pose.pose.position.z = 0.0;
+    goal.target_pose.pose.orientation.x = q.x();
+    goal.target_pose.pose.orientation.y = q.y();
+    goal.target_pose.pose.orientation.z = q.z();
+    goal.target_pose.pose.orientation.w = q.w();
 }
 
 int main(int argc, char *argv[])
@@ -176,8 +183,8 @@ int main(int argc, char *argv[])
 
     //--------------------------------------走廊环境导航，发布目标点--------------------------------//
     ROS_INFO("走廊环境导航开始");
-    mecanumController.rotateCircle(3.14,1,0.4);
-    mecanumController.rotateCircle(3.14,1,0.4);
+    mecanumController.rotateCircle(3.14,1,0.6);
+    mecanumController.rotateCircle(3.14,1,0.6);
     for(int i=0;i<2;i++){        //循环次数为目标点个数，发布目标点
         goal.target_pose.header.stamp = ros::Time::now();
 
@@ -218,10 +225,10 @@ int main(int argc, char *argv[])
     where_board.request.lidar_process_start = 1;//请求雷达识别板子服务
     if (client_find_board.call(where_board)){
         size_t len_of_where_board = where_board.response.lidar_results.size();
-        board_count = len_of_where_board / 6;
+        board_count = len_of_where_board / 4;
         ROS_INFO("找到%zu个板子",board_count);
         for(size_t i=0;i<board_count;i++){
-            ROS_INFO("第%zu个板子位于%.2f,%.2f",i,where_board.response.lidar_results[i*6],where_board.response.lidar_results[i*6+1]);
+            ROS_INFO("第%zu个板子位于%.2f,%.2f",i,where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1]);
         }
     }
     else{
@@ -238,16 +245,18 @@ int main(int argc, char *argv[])
     else{
         ROS_ERROR("获取位姿失败");
     }
-    mecanumController.detect(a,0);//把摄像头关了
+
     bool flag=0;//判断雷达识别的点是否和视觉对得上
     double lidar_yaw;
     for(int i=0;i<board_count;i++){
-        lidar_yaw = std::atan2(where_board.response.lidar_results[i*6+1], where_board.response.lidar_results[i*6]);//计算雷达找到的板子在什么方向，是否和视觉识别结果匹配double atan2(double y, double x); 
-        if (std::fabs(lidar_yaw-pose_result.response.pose_at[2]<0.08)){
+        lidar_yaw = std::atan2(where_board.response.lidar_results[i*4+1], where_board.response.lidar_results[i*4]);//计算雷达找到的板子在什么方向，是否和视觉识别结果匹配double atan2(double y, double x); 
+        ROS_INFO("板子相对小车夹角%f",lidar_yaw);
+        if (std::fabs(lidar_yaw-pose_result.response.pose_at[2])<0.2){
             flag = 1;
-            float slope = where_board.response.lidar_results[i*6+3] / where_board.response.lidar_results[i*6+2];
-            RobotPose robot = calculate_destination(where_board.response.lidar_results[i*6],where_board.response.lidar_results[i*6+1],slope);//计算小车位姿
+            float slope = where_board.response.lidar_results[i*4+3] / where_board.response.lidar_results[i*4+2];
+            RobotPose robot = calculate_destination(where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1],slope);//计算小车位姿
             q.setRPY(0, 0, robot.heading);
+            goal.target_pose.header.stamp = ros::Time::now();
             goal.target_pose.pose.position.x = robot.x+pose_result.response.pose_at[0];
             goal.target_pose.pose.position.y = robot.y+pose_result.response.pose_at[1];
             goal.target_pose.pose.position.z = 0.0;
@@ -267,7 +276,14 @@ int main(int argc, char *argv[])
             ROS_INFO("无法到达板前");
     }
     else{
-        ROS_INFO("视觉和雷达信息对不上");
+        //前往区域中心找板子
+        goal_set(goal,1.25,3.75,0,q);
+        ac.sendGoal(goal);
+        ac.waitForResult();
+        if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+            ROS_INFO("到达中心开始找板");
+        else
+            ROS_INFO("无法到达中心");
     }
     mecanumController.cap_close();
 
@@ -289,17 +305,16 @@ int main(int argc, char *argv[])
         ROS_INFO("到达仿真区域");
     else
         ROS_INFO("无法到达仿真区域");
-    //发送仿真消息
-    ros::Rate rate(1);
-    while (ros::ok()) {
-        sim_talkto_car.car_msg_publish(board_class);
-        ROS_INFO("发布目标类别: %d", board_class);
-        rate.sleep();
-        ros::spinOnce();
-        if(sim_talkto_car.sim_done==1){
-            break;
-        }
-    }
+    // //发送仿真消息
+    // ros::Rate rate(1);
+    // while (ros::ok()) {
+    //     sim_talkto_car.car_msg_publish(board_class);
+    //     rate.sleep();
+    //     ros::spinOnce();
+    //     if(sim_talkto_car.sim_done==1){
+    //         break;
+    //     }
+    // }
 
     //--------------------------------------------前往红绿灯识别区域--------------------------------------------//
     q.setRPY(0, 0, -1.57);

@@ -19,13 +19,6 @@ find_package(catkin REQUIRED COMPONENTS
 link_directories(
   lib/arm64
 )
-
-# 找到可执行文件的目标（假设为 broadcast_node）
-add_executable(broadcast_node src/broadcast.cpp)
-
-# 链接 pthread 库
-target_link_libraries(broadcast_node ${catkin_LIBRARIES} -lpthread)
-
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -124,20 +117,13 @@ generate_messages(
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
-# catkin_package(
-#   CATKIN_DEPENDS message_runtime
+catkin_package(
+  CATKIN_DEPENDS message_runtime
 #  INCLUDE_DIRS include
 #  LIBRARIES xf_mic_api
 #  CATKIN_DEPENDS roscpp rospy senor_msgs std_msgs
 #  DEPENDS system_lib
-# )
-catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES broadcast
-  CATKIN_DEPENDS roscpp std_msgs message_runtime  # 必须包含 message_runtime
-  DEPENDS system_lib
 )
-
 
 ###########
 ## Build ##
@@ -192,19 +178,20 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(broadcast src/broadcast.cpp)
-add_executable(call_recognition src/call_recognition.cpp)
-# add_dependencies(
-#   broadcast
-#   ${xf_mic_package_EXPORTED_TARGETS}
-#   xf_mic_asr_offline_gencpp
-# )
-target_link_libraries(broadcast
-  ${catkin_LIBRARIES}
+add_executable(voice_control src/voice_control.cpp)
+target_link_libraries(voice_control ${catkin_LIBRARIES} offline_record_lib hid_lib rt dl pthread stdc++ )
+
+
+add_executable(client_node src/call_recognition.cpp)
+
+target_link_libraries(
+    client_node
+    ${catkin_LIBRARIES} 
+#    offline_record_lib hid_lib rt dl pthread stdc++ 
 )
-target_link_libraries(call_recognition
-  ${catkin_LIBRARIES}
-)
+
+add_dependencies(client_node  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(voice_control  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 
 #add_executable(test

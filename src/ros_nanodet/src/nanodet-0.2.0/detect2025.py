@@ -73,17 +73,17 @@ def detect_start(req):
     response = detect_result_srvResponse()
     if req.detect_start==-1:
         open_cap()
-    if req.detect_start==0:
+    if req.detect_start==-2:
         shutdown_cap(response)
         return response
     rec, frame = cap.read()
     if not rec:
         rospy.logerr("获取图片失败")
+    frame = cv2.flip(frame, 1)
     res = detect(frame, predictor)
     max_score = -1.0
     best_bbox = [-1] * 5 
     target = -1
-    print(res)
     for label in res:
         for bbox in res[label]:
             score = bbox[-1]
@@ -99,8 +99,8 @@ def detect_start(req):
     response.x1 = x1
     response.y1 = y1
     response.class_name = target
-    if best_bbox[0] != -1:
-        visualize(frame,x0, y0, x1, y1,target,conf)
+    # if best_bbox[0] != -1:
+    #     visualize(frame,x0, y0, x1, y1,target,conf)
     return response
 
 server = rospy.Service("nanodet_detect",detect_result_srv,detect_start)

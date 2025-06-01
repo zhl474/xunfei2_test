@@ -23,6 +23,8 @@ public:
     std::vector<float> getCurrentPose();
     void cap_close();
 
+    bool pid_change_flag=0;
+
 private:
     // ROS通信接口
     ros::NodeHandle nh_;
@@ -41,6 +43,7 @@ private:
     ztestnav2025::getpose_server start_get_pose_;
 
     dynamic_reconfigure::Server<ztestnav2025::drConfig> server_;//动态参数
+
 
     int img_width = 640;
     int img_height = 480;

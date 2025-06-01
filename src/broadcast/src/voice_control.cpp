@@ -170,7 +170,7 @@ void command_interaction() {
 
 int main(int argc, char **argv) {
     // setlocale(LC_ALL,"");
-    ros::init(argc, argv, "broadcast");
+    ros::init(argc, argv, "voice_control");
     ros::NodeHandle nh;
 
     std::cout << "=== 语音播报系统启动 ===" << std::endl;

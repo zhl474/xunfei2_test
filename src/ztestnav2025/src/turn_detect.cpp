@@ -48,7 +48,7 @@ void MecanumController::detect(std::vector<int>& result, int object_num){//封�
     bool flag = detect_client_.call(start_detect_);
     if (flag){
         result[0] = start_detect_.response.x0;result[1] = start_detect_.response.y0;result[2] = start_detect_.response.x1;result[3] = start_detect_.response.y1;result[4] = start_detect_.response.class_name;
-        ROS_INFO("结果：%d,%d,%d,%d,%d",start_detect_.response.class_name,start_detect_.response.x0,start_detect_.response.x1,start_detect_.response.y0,start_detect_.response.y1);
+        // ROS_INFO("结果：%d,%d,%d,%d,%d",start_detect_.response.class_name,start_detect_.response.x0,start_detect_.response.y0,start_detect_.response.x1,start_detect_.response.y1);
     }
     else{
         ROS_WARN("目标检测失败");
@@ -57,7 +57,7 @@ void MecanumController::detect(std::vector<int>& result, int object_num){//封�
 }
 
 void MecanumController::cap_close(){
-    start_detect_.request.detect_start = 0;
+    start_detect_.request.detect_start = -1;
     bool flag = detect_client_.call(start_detect_);
     if (flag){
         ROS_INFO("目标检测摄像头已关闭");
@@ -116,11 +116,11 @@ void MecanumController::turn_and_find(double x,int y,int z,double angular_speed)
             int center_x = (result[0]+result[2])/2;
             // 退出条件：误差<7像素
             if(std::abs(center_x - img_width/2) < 7){
-                ROS_INFO("center,wid:%d,%d",center_x,img_width);
+                ROS_INFO("已经对准");
                 integral = 0;
-                break;
+                return;
             } 
-            double error = (img_width/2.0 - center_x)/10; 
+            double error = (img_width/2.0 - center_x)/100; 
             
             // 离散PID计算
             integral += error * 0.05;       // dt=1/20≈0.05
@@ -142,6 +142,7 @@ void MecanumController::PID_change(ztestnav2025::drConfig &config, uint32_t leve
     Kp_ = config.Kp; 
     Ki_ = config.Ki;
     Kd_ = config.Kd;
+    pid_change_flag = 1;
     ROS_INFO("PID参数修改,P:%f,I:%f,D:%f",config.Kp,config.Ki,config.Kd);
 }
 

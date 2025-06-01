@@ -1,11 +1,18 @@
 <!--离线命令词识别-->
 <launch>
-  <rosparam command="load" file="$(find xf_mic_asr_offline)/config/appid_params.yaml" />
+  <rosparam command="load" file="$(find broadcast)/config/appid_params.yaml" />
   
-  <node pkg="xf_mic_asr_offline" type="voice_control" name="xf_asr_offline_node" output="screen">
-    <param name="source_path" type="string" value="$(find xf_mic_asr_offline)"/>
+  <node pkg="broadcast" type="voice_control" name="voice_control_node" output="screen">
+    <param name="source_path" type="string" value="$(find broadcast)"/>
   </node>
-<!-- <node pkg="simple_navigation_goals" type="shujuchuli" name="shujuchuli" output="screen" >
+  
+  <!-- 添加call_recognition节点 -->
+  <node pkg="broadcast" type="call_recognition" name="client_node" output="screen">
+    <param name="source_path" type="string" value="$(find broadcast)"/>
+  </node>
+  
+  <!-- 其他被注释的节点保持不变 -->
+  <!-- <node pkg="simple_navigation_goals" type="shujuchuli" name="shujuchuli" output="screen" >
   </node>
   <node pkg="simple_navigation_goals" type="send_goal_circle_final_copy_pt_copy" name="send_goal_circle_final_copy_pt_copy" output="screen" >
   </node> -->

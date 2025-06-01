@@ -3,9 +3,9 @@
     <node name="xf_mic_asr" pkg="xf_mic" type="xf_mic_asr_node" output="screen"/>
     
     <!-- 唤醒状态发布者节点 -->
-    <node name="wakeup_publisher" pkg="your_package_name" type="wakeup_publisher" output="screen"/>
+    <node name="wakeup_publisher" pkg="awake" type="wakeup_publisher" output="screen"/>
     
     <!-- 唤醒状态订阅者节点 -->
-    <node name="wakeup_subscriber" pkg="your_package_name" type="wakeup_subscriber" output="screen"/>
+    <node name="wakeup_subscriber" pkg="awake" type="wakeup_subscriber" output="screen"/>
   </launch>
   

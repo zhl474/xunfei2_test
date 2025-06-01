@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(xf_mic_asr_offline)
+project(project)
 add_compile_options(-std=c++11)
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -58,10 +58,10 @@ add_message_files(
   Pcm_Msg.msg
 )
 
-add_message_files(
-  FILES
-  position.msg
-)
+# add_message_files(
+#   FILES
+#   position.msg
+# )
 
 ## Generate services in the 'srv' folder
 add_service_files(

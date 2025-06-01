@@ -92,7 +92,7 @@ private:
             for (size_t i = 0; i < cluster_count; i++) {
                 if (point_number[i] != 0){//如果不是0个
                     board_position_x[i] = board_position_x[i] / point_number[i];
-                    board_position_y[i] = board_position_y[i] / point_number[i];
+                    board_position_y[i] = board_position_y[i] / point_number[i] * -1;//小车坐标系x轴在前方，y轴在左边，现在x轴在右边，y轴在前方
                 }
                 if(point_number[i] > 4){
                     cv::Vec4f lineParams;
@@ -101,8 +101,6 @@ private:
                     resp.lidar_results.push_back(board_position_y[i]);
                     resp.lidar_results.push_back(lineParams[0]);
                     resp.lidar_results.push_back(lineParams[1]);
-                    resp.lidar_results.push_back(lineParams[2]);
-                    resp.lidar_results.push_back(lineParams[3]);
                     ROS_INFO("已返回板子坐标%zu",i);
                 }
                 else{
