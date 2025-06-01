@@ -8,6 +8,11 @@ from nanodet.util import cfg, load_config, Logger
 from nanodet.model.arch import build_model
 from nanodet.util import load_model_weight
 from nanodet.data.transform import Pipeline
+
+from cv_bridge import CvBridge
+from sensor_msgs.msg import Image
+import rospy
+
 m = 0
 image_ext = ['.jpg', '.jpeg', '.webp', '.bmp', '.png']
 video_ext = ['mp4', 'mov', 'avi', 'mkv']
@@ -41,8 +46,7 @@ class Predictor(object):
         self.model = model.to(device).eval()
         self.pipeline = Pipeline(cfg.data.val.pipeline, cfg.data.val.keep_ratio)
 
-        self.latest_img = None
-        
+        self.latest_img = None 
         # 创建订阅者（启用零拷贝优化）[1](@ref)
         self.sub = rospy.Subscriber(
             "/usb_cam/image_raw", 
@@ -51,7 +55,7 @@ class Predictor(object):
             queue_size=1,
         )
         self.cv_bridge = CvBridge()
-        self.server = rospy.Service("detect_result",detect_result_srv,self.detect_start)
+        
 
     def image_callback(self, msg):
         """仅存储消息指针，不进行格式转换"""

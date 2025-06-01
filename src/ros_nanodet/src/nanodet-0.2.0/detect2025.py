@@ -19,54 +19,37 @@ res = detect(frame,predictor)# 识别
 res = detect(frame,predictor)# 识别2次
 print("warm up done")
 
-class NanodetProcessor:
-    def __init__(self):
-        self.latest_img = None
-        
-        # 创建订阅者（启用零拷贝优化）[1](@ref)
-        self.sub = rospy.Subscriber(
-            "/usb_cam/image_raw", 
-            Image, 
-            self.image_callback,
-            queue_size=1,
-        )
-        self.cv_bridge = CvBridge()
-        self.server = rospy.Service("detect_result",detect_result_srv,self.detect_start)
 
-    def image_callback(self, msg):
-        """仅存储消息指针，不进行格式转换"""
-        self.latest_img = msg  # 直接存储ROS消息对象（智能指针等效）[3](@ref)
-
-    def detect_start(self, req):
-        response = detect_result_srvResponse()
-        if not self.latest_img:
-            rospy.logwarn("nanodet没有可用图像")
-            return None
-        frame = self.cv_bridge.imgmsg_to_cv2(self.latest_img, "bgr8")
-        frame = cv_bridge.imgmsg_to_cv2(img_ptr, "bgr8")
-        
-        res = self.detect(frame, predictor)
-        if not res:
-            rospy.loginfo("未检测到目标")
-            return response
-        max_score = -1.0
-        best_bbox = [-1] * 5 
-        for label in res:
-            for bbox in res[label]:
-                score = bbox[-1]
-                if score > max_score and score > 0.6:
-                    max_score = score
-                    print("find object")
-                    best_bbox = bbox[:5]
-        x0, y0, x1, y1, name= [int(coord) for coord in best_bbox]
-        response.x0 = x0
-        response.y0 = y0
-        response.x1 = x1
-        response.y1 = y1
-        response.class_name = name
+def detect_start(req):
+    response = detect_result_srvResponse()
+    if not predictor.latest_img:
+        rospy.logwarn("nanodet没有可用图像")
+        return None
+    frame = predictor.cv_bridge.imgmsg_to_cv2(predictor.latest_img, "bgr8")
+    frame = cv_bridge.imgmsg_to_cv2(img_ptr, "bgr8")
+    
+    res = self.detect(frame, predictor)
+    if not res:
+        rospy.loginfo("未检测到目标")
         return response
+    max_score = -1.0
+    best_bbox = [-1] * 5 
+    for label in res:
+        for bbox in res[label]:
+            score = bbox[-1]
+            if score > max_score and score > 0.6:
+                max_score = score
+                print("find object")
+                best_bbox = bbox[:5]
+    x0, y0, x1, y1, name= [int(coord) for coord in best_bbox]
+    response.x0 = x0
+    response.y0 = y0
+    response.x1 = x1
+    response.y1 = y1
+    response.class_name = name
+    return response
 
-nanodetprocessor = NanodetProcessor()
+server = rospy.Service("nanodet_detect",detect_result_srv,detect_start)
 print("目标检测就绪")
 rospy.spin()
 

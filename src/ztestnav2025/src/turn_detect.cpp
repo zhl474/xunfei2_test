@@ -29,11 +29,11 @@ T clamp(T value, T low, T high) {
 MecanumController::MecanumController(ros::NodeHandle& nh) : 
     nh_(nh),
     cmd_pub_(nh.advertise<geometry_msgs::Twist>("cmd_vel", 10)),
-    detect_client_(nh.serviceClient<ros_nanodet::detect_result_srv>("detect_result")),
+    detect_client_(nh.serviceClient<ros_nanodet::detect_result_srv>("nanodet_detect")),
     getpose_client_(nh.serviceClient<ztestnav2025::getpose_server>("getpose_server"))
 {
     if (!detect_client_.waitForExistence()) {
-        ROS_FATAL("检测服务 detect_result 不可用！");
+        ROS_FATAL("检测服务 nanodet_detect 不可用！");
         throw std::runtime_error("Service detect_result not found");
     }
     if (!getpose_client_.waitForExistence()) {
