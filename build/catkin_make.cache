@@ -1,0 +1,2 @@
+gazebo_map:gazebo_nav:gazebo_pkg:my_planner:run:tensor_rt
+-DCATKIN_DEVEL_PREFIX=/home/zythyra/gazebo_test_ws/devel -DCMAKE_INSTALL_PREFIX=/home/zythyra/gazebo_test_ws/install -G Unix Makefiles

@@ -1,0 +1,8 @@
+prefix=/home/zythyra/gazebo_test_ws/devel
+
+Name: my_planner
+Description: Description of my_planner
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

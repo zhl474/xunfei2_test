@@ -1,0 +1,30 @@
+{
+    "configurations": [
+        {
+            "browse": {
+                "databaseFilename": "${default}",
+                "limitSymbolsToIncludedHeaders": false
+            },
+            "includePath": [
+                "/opt/ros/noetic/include/**",
+                "/home/zythyra/gazebo_test_ws/src/gazebo_map/include/**",
+                "/home/zythyra/gazebo_test_ws/src/gazebo_nav/include/**",
+                "/home/zythyra/gazebo_test_ws/src/run/include/**",
+                "/usr/include/**",
+                "/usr/local/cuda-11.8/include/**",
+                "/home/zythyra/gazebo_test_ws/devel/include/tensor_rt/**",
+                "${workspaceFolder}/devel/include",
+                "/home/zythyra/Package/TensorRT-8.6.1.6/include/**",
+                "/home/zythyra/websocketpp/websocketpp/**",
+                "/home/zythyra/websocketpp",                
+                "${workspaceFolder}/src/my_planner/include"
+            ],
+            "name": "ROS",
+            "intelliSenseMode": "gcc-x64",
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "gnu11",
+            "cppStandard": "c++14"
+        }
+    ],
+    "version": 4
+}
