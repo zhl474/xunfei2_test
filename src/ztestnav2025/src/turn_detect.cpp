@@ -30,7 +30,8 @@ MecanumController::MecanumController(ros::NodeHandle& nh) :
     nh_(nh),
     cmd_pub_(nh.advertise<geometry_msgs::Twist>("cmd_vel", 10)),
     detect_client_(nh.serviceClient<ros_nanodet::detect_result_srv>("nanodet_detect")),
-    getpose_client_(nh.serviceClient<ztestnav2025::getpose_server>("getpose_server"))
+    getpose_client_(nh.serviceClient<ztestnav2025::getpose_server>("getpose_server")),
+    set_speed_client_(nh.serviceClient<ztestnav2025::getpose_server>("set_speed"))
 {
     if (!detect_client_.waitForExistence()) {
         ROS_FATAL("检测服务 nanodet_detect 不可用！");
@@ -39,6 +40,10 @@ MecanumController::MecanumController(ros::NodeHandle& nh) :
     if (!getpose_client_.waitForExistence()) {
         ROS_FATAL("获取坐标服务 getpose_result 不可用！");
         throw std::runtime_error("Service getpose_result not found");
+    }
+    if (!set_speed_client_.waitForExistence()) {
+        ROS_FATAL("运动控制服务 setspeed 不可用！");
+        throw std::runtime_error("Service setspeed not found");
     }
     server_.setCallback(boost::bind(&MecanumController::PID_change, this, _1, _2));
 }
@@ -99,15 +104,16 @@ void MecanumController::rotateCircle(double rotate,int direction, double angular
 
 int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){//原地旋转小车x度，执行y次目标检测,寻找z号目标
     std::vector<int> result = {-1,-1,-1,-1,-1,-1};
-        
+
         double integral = 0, prev_error = 0;
         // ros::Rate rate(20);     // 控制频率20Hz
         geometry_msgs::Twist twist;
         while(ros::ok()){
             detect(result, z);     // 持续检测目标
             if(result[4] != z){
-                twist.angular.z = angular_speed;
-                cmd_pub_.publish(twist);
+                set_speed_.request.getpose_start= static_cast<int>(angular_speed*100);
+                ROS_INFO("%d",set_speed_.request.getpose_start);
+                set_speed_client_.call(set_speed_);
                 integral = 0;
                 continue;
             }  // 目标丢失则旋转寻找目标
@@ -130,8 +136,8 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
             // ROS_INFO("速度发布:%f",output);
             
             // 执行旋转（限制输出范围）
-            twist.angular.z = angular_speed * output;
-            cmd_pub_.publish(twist);
+            set_speed_.request.getpose_start= static_cast<int>(angular_speed*100*output);
+            getpose_client_.call(set_speed_);
             
             prev_error = error;
         }

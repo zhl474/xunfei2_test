@@ -12,7 +12,7 @@ while judge:
     keyword = cv2.waitKey(1)
     if keyword == ord('s'):      # 按s保存当前图片
         i += 1
-        imgname = "/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/2/picture_"+str(i)+".jpg"
+        imgname = "/home/ucar/ucar_car/picture_"+str(i)+".jpg"
         cv2.imwrite(imgname, resize_img)
         print(str(i))
     elif keyword == ord('q'):     # 按q退出

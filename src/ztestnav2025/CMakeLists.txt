@@ -157,6 +157,7 @@ add_executable(zhltest src/zhltest.cpp)
 add_executable(tf_pose_get src/tf_pose_get.cpp)
 add_executable(lidar_process src/lidar_process.cpp)
 add_executable(myplanernav src/myplanernav.cpp)
+add_executable(simple_move_control src/simple_move_control.cpp)
 # add_executable(turn_detect src/turn_detect.cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -188,6 +189,9 @@ target_link_libraries(turn_detect
 )
 target_link_libraries(myplanernav
   turn_detect
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(simple_move_control
   ${catkin_LIBRARIES}
 )
 # target_link_libraries(lidar_test

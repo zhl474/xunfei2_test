@@ -42,6 +42,9 @@ private:
     ros::ServiceClient getpose_client_;
     ztestnav2025::getpose_server start_get_pose_;
 
+    ros::ServiceClient set_speed_client_;
+    ztestnav2025::getpose_server set_speed_;
+
     dynamic_reconfigure::Server<ztestnav2025::drConfig> server_;//动态参数
 
 
