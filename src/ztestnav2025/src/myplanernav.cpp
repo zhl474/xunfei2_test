@@ -111,28 +111,6 @@ void play_audio(const std::string& command) {
     system(command.c_str()); // 直接调用系统命令播放音频
 }
 
-void init_goals( std::vector<move_base_msgs::MoveBaseGoal> &goals, tf2::Quaternion q)
-{
-
-    q.setRPY(0, 0, 3.14);
-    goals[0].target_pose.pose.position.x = 1.25;
-    goals[0].target_pose.pose.position.y = 0.75;
-    goals[0].target_pose.pose.position.z = 0.0;
-    goals[0].target_pose.pose.orientation.x = q.x();
-    goals[0].target_pose.pose.orientation.y = q.y();
-    goals[0].target_pose.pose.orientation.z = q.z();    
-    goals[0].target_pose.pose.orientation.w = q.w();
-
-    q.setRPY(0, 0, 1.57);
-    goals[1].target_pose.pose.position.x = 0.50;
-    goals[1].target_pose.pose.position.y = 2.25;
-    goals[1].target_pose.pose.position.z = 0.0;
-    goals[1].target_pose.pose.orientation.x = q.x();
-    goals[1].target_pose.pose.orientation.y = q.y();
-    goals[1].target_pose.pose.orientation.z = q.z();    
-    goals[1].target_pose.pose.orientation.w = q.w();
-
-}
 
 // 定义结构体存储机器人的位置和朝向
 struct RobotPose {
@@ -198,7 +176,7 @@ void goal_set(move_base_msgs::MoveBaseGoal &goal,double x,double y,double yaw,tf
     goal.target_pose.pose.orientation.w = q.w();
 }
 
-void go_destination(move_base_msgs::MoveBaseGoal &goal,double x,double y,double yaw,tf2::Quaternion q,MoveBaseClient ac){
+void go_destination(move_base_msgs::MoveBaseGoal &goal,double x,double y,double yaw,tf2::Quaternion &q,MoveBaseClient &ac){
     goal.target_pose.header.stamp = ros::Time::now();
     goal_set(goal,4.25,4.50,1.57,q);
     ac.sendGoal(goal);
@@ -217,9 +195,7 @@ int main(int argc, char *argv[])
     ros::init(argc,argv,"zhltest");
     ros::NodeHandle nh;
     MoveBaseClient ac("move_base", true); 
-    tf2::Quaternion q;
-    std::vector<move_base_msgs::MoveBaseGoal> goals(2);
-    init_goals(goals,q);    
+    tf2::Quaternion q;  
     //等待action回应
     while(!ac.waitForServer(ros::Duration(5.0)))
     {
@@ -260,50 +236,30 @@ int main(int argc, char *argv[])
     ROS_INFO("走廊环境导航开始");
     mecanumController.rotateCircle(3.14,1,0.6);
     mecanumController.rotateCircle(3.14,1,0.6);
-    for(int i=0;i<2;i++){        //循环次数为目标点个数，发布目标点
-        goal.target_pose.header.stamp = ros::Time::now();
-
-        goal.target_pose.pose.position.x = goals[i].target_pose.pose.position.x;
-        goal.target_pose.pose.position.y = goals[i].target_pose.pose.position.y;
-        goal.target_pose.pose.position.z = goals[i].target_pose.pose.position.z;
-        goal.target_pose.pose.orientation.x = goals[i].target_pose.pose.orientation.x;
-        goal.target_pose.pose.orientation.y = goals[i].target_pose.pose.orientation.y;
-        goal.target_pose.pose.orientation.z = goals[i].target_pose.pose.orientation.z;
-        goal.target_pose.pose.orientation.w = goals[i].target_pose.pose.orientation.w;
-
-	    ROS_INFO("走廊环境导航，前往第%d个目标",i);
-        ac.sendGoal(goal);
-
-        ac.waitForResult();
-        if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-            ROS_INFO("到达第%d个目标",i);
-        else
-            ROS_INFO("无法到达%d目标",i);
-        if(i==0){//请求二维码识别服务
-            ros::Duration(1).sleep();
-            what_qr.request.qr_start = 1;
-            while(ros::ok()){
-                if (!client_qr.call(what_qr)){
-                    ROS_INFO("没有请求到服务");
-                }
-                board_class = what_qr.response.qr_result;
-                ROS_INFO("二维码结果:%d",board_class);
-                if (board_class>0){
-                    
-                    ROS_INFO("二维码结果:%d",what_qr.response.qr_result);
-                    break;
-                }
-                else{
-                    ROS_ERROR("请求二维码失败");
-                }
-            }
-            // board_class 为 1（蔬菜）、2（水果）、3（甜品）
-            // if (board_class >= 1 && board_class <= 3  ) {
-            //     play_audio(voice[0][board_class-1]);
-            // }
-
+    go_destination(goal,1.25,0.75,3.14,q,ac);
+    ros::Duration(0.5).sleep();
+    what_qr.request.qr_start = 1;
+    while(ros::ok()){
+        if (!client_qr.call(what_qr)){
+            ROS_INFO("没有请求到服务");
+        }
+        board_class = what_qr.response.qr_result;
+        ROS_INFO("二维码结果:%d",board_class);
+        if (board_class>0){
+            
+            ROS_INFO("二维码结果:%d",what_qr.response.qr_result);
+            break;
+        }
+        else{
+            ROS_ERROR("请求二维码失败");
+        }
     }
-    }
+    // board_class 为 1（蔬菜）、2（水果）、3（甜品）
+    // if (board_class >= 1 && board_class <= 3  ) {
+    //     play_audio(voice[0][board_class-1]);
+    // }
+
+    go_destination(goal,0.50,2.25,1.57,q,ac);
     ROS_INFO("走廊环境导航完成");
 
 
@@ -344,37 +300,16 @@ int main(int argc, char *argv[])
             flag = 1;
             float slope = where_board.response.lidar_results[i*4+3] / where_board.response.lidar_results[i*4+2];
             RobotPose robot = calculate_destination(where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1],slope);//计算小车位姿
-            q.setRPY(0, 0, robot.heading);
-            goal.target_pose.header.stamp = ros::Time::now();
-            goal.target_pose.pose.position.x = robot.x+pose_result.response.pose_at[0];
-            goal.target_pose.pose.position.y = robot.y+pose_result.response.pose_at[1];
-            goal.target_pose.pose.position.z = 0.0;
-            goal.target_pose.pose.orientation.x = q.x();
-            goal.target_pose.pose.orientation.y = q.y();
-            goal.target_pose.pose.orientation.z = q.z();
-            goal.target_pose.pose.orientation.w = q.w();
             ROS_INFO("第%d个板是目标板,即将前往，%.2f,%.2f,%.2f",i,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading);
+            go_destination(goal,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading,q,ac);
+            break;
         }
     }
     ROS_INFO("第一个找板点是否找到板子%d",flag);
-    if(flag){
-        ac.sendGoal(goal);
-        ac.waitForResult();
-        if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-            ROS_INFO("到达板前");
-        else
-            ROS_INFO("无法到达板前");
-    }
-    else{
+    if(!flag){
         //前往区域中心找板子
         ROS_INFO("前往中心找板");
-        goal_set(goal,1.25,3.75,0,q);
-        ac.sendGoal(goal);
-        ac.waitForResult();
-        if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-            ROS_INFO("到达中心开始找板");
-        else
-            ROS_INFO("无法到达中心");
+        go_destination(goal,1.25,3.75,0,q,ac);
         where_board.request.lidar_process_start = 2;//请求雷达识别板子服务
         if (client_find_board.call(where_board)){
             size_t len_of_where_board = where_board.response.lidar_results.size();
@@ -402,34 +337,20 @@ int main(int argc, char *argv[])
                 flag = 1;
                 float slope = where_board.response.lidar_results[i*4+3] / where_board.response.lidar_results[i*4+2];
                 RobotPose robot = calculate_destination(where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1],slope);//计算小车位姿
-                goal_set(goal,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading,q);
                 ROS_INFO("第%d个板是目标板,即将前往，%.2f,%.2f,%.2f",i,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading);
+                go_destination(goal,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading,q,ac);
+                break;
             }
-        }
-        if(flag){
-            ac.sendGoal(goal);
-            ac.waitForResult();
-            if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-                ROS_INFO("到达板前");
-            else
-                ROS_INFO("无法到达板前");
         }
     }
     mecanumController.cap_close();
-   if (board_name >= 0 && board_name <= 9 && flag==1) {
-        play_audio(voice[1][board_name]);
-    }
+    // if (board_name >= 0 && board_name <= 9 && flag==1) {
+    //     play_audio(voice[1][board_name]);
+    // }
 
     //-----------------------------------------------仿真开始--------------------------------------------//
     ROS_INFO("前往仿真区域");
-    goal.target_pose.header.stamp = ros::Time::now();
-    goal_set(goal,1.25,3.75,0.0,q);
-    ac.sendGoal(goal);
-    ac.waitForResult();
-    if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-        ROS_INFO("到达仿真区域");
-    else
-        ROS_INFO("无法到达仿真区域");
+    go_destination(goal,1.25,3.75,0.0,q,ac);
     // //发送仿真消息
     // ros::Rate rate(1);
     // while (ros::ok()) {
@@ -442,15 +363,7 @@ int main(int argc, char *argv[])
     // }
 
     //--------------------------------------------前往红绿灯识别区域--------------------------------------------//
-
-    goal.target_pose.header.stamp = ros::Time::now();
-    goal_set(goal,3.25,4.50,1.57,q);
-    ac.sendGoal(goal);
-    ac.waitForResult();
-    if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-        ROS_INFO("到达视觉巡线区域");
-    else
-        ROS_INFO("无法到达视觉巡线区域");
+    go_destination(goal,3.25,4.50,1.57,q,ac);
     if (detectTrafficLightStatus()==2){
         goal.target_pose.header.stamp = ros::Time::now();
         goal_set(goal,2.75,3.50,-0.78,q);
@@ -462,14 +375,7 @@ int main(int argc, char *argv[])
             ROS_INFO("无法到达视觉巡线区域");
     } 
     else {
-        goal.target_pose.header.stamp = ros::Time::now();
-        goal_set(goal,4.25,4.50,1.57,q);
-        ac.sendGoal(goal);
-        ac.waitForResult();
-        if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-            ROS_INFO("到达视觉巡线区域");
-        else
-            ROS_INFO("无法到达视觉巡线区域");
+        go_destination(goal,4.25,4.50,1.57,q,ac);
         if (detectTrafficLightStatus()==2){
             goal.target_pose.header.stamp = ros::Time::now();
             goal_set(goal,4.75,3.50,-2.31,q);
