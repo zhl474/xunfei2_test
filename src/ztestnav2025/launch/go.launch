@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="ztestnav2025" type="simple_move_control" name="simple_move_control" output="screen"/>
+    <node pkg="ztestnav2025" type="myplanernav" name="myplanernav" output="screen"/>
+</launch>

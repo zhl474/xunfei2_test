@@ -67,7 +67,7 @@ def visualize(image, x0, y0, x1, y1, name, conf):
     cv2.imshow('Detection', image)
     cv2.waitKey(1)
 
-#首次启动要发个2启动摄像头，发送0关闭摄像头防止冲突
+#首次启动要发个-1启动摄像头，发送-2关闭摄像头防止冲突
 def detect_start(req):
     global camera_active, cap
     response = detect_result_srvResponse()

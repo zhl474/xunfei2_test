@@ -175,6 +175,7 @@ add_executable(simple_move_control src/simple_move_control.cpp)
 add_dependencies(turn_detect ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(myplanernav ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(zhltest ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(traffic_light ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(zhltest
@@ -193,6 +194,7 @@ target_link_libraries(turn_detect
 )
 target_link_libraries(myplanernav
   turn_detect
+  traffic_light
   ${catkin_LIBRARIES}
 )
 target_link_libraries(simple_move_control
@@ -200,6 +202,7 @@ target_link_libraries(simple_move_control
 )
 target_link_libraries(traffic_light
   ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
 )
 # target_link_libraries(lidar_test
 #   ${catkin_LIBRARIES}
