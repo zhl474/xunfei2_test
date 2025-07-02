@@ -38,6 +38,7 @@ private:
 
     ros::ServiceClient detect_client_;
     ros_nanodet::detect_result_srv start_detect_;//目标检测客户端
+    std::vector<int> result;
     
     ros::ServiceClient getpose_client_;
     ztestnav2025::getpose_server start_get_pose_;

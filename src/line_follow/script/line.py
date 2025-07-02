@@ -5,6 +5,7 @@ import rospy
 from geometry_msgs.msg import Twist
 import cv2
 import numpy as np
+import time
 
 class PIDController:
     def __init__(self, Kp, Ki, Kd):
@@ -52,58 +53,39 @@ def fixed_threshold_binarization(image, threshold=180, max_value=255, threshold_
         
 def detect_center_line(binary_image):
     """
-    基于逐行扫描的赛道中线检测算法
+    使用OpenCV高效函数实现的赛道中线检测算法
     """
     height, width = binary_image.shape
     
-    L_black = np.zeros(height, dtype=np.int32)
-    R_black = np.zeros(height, dtype=np.int32)
-    LCenter = np.zeros(height, dtype=np.int32)
-
-    baseline = width // 2
+    #  使用投影法快速找到左右边界
+    # 计算每行的最小和最大非零列索引
+    nonzero_y, nonzero_x = np.nonzero(binary_image == 0)  # 找到所有黑色像素的位置
     
-    for y in range(height-1, -1, -1):
-        # 向左扫描找左边界
-        L_black[y] = 0
-        left_found = False
-        for x in range(baseline, 0, -1):
-            if x >= 1 and binary_image[y, x-1] == 255 and binary_image[y, x] == 0:
-                L_black[y] = x
-                left_found = True
-                break
-
-        # 向右扫描找右边界
-        R_black[y] = width
-        right_found = False
-        for x in range(baseline, width-1):
-            if x <= width-2 and binary_image[y, x+1] == 255 and binary_image[y, x] == 0:
-                R_black[y] = x
-                right_found = True
-                break
-
-        # 计算中线
-        if left_found and right_found and L_black[y] < R_black[y]:
-            LCenter[y] = (L_black[y] + R_black[y]) // 2
-
+    # 如果没有找到任何黑色像素，使用默认中线
+    if len(nonzero_y) == 0:
+        center_line_x = width // 2
+        visual_img = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
+        cv2.line(visual_img, (center_line_x, 0), (center_line_x, height-1), (0, 255, 255), 2)
+        return center_line_x, visual_img
     
-   # 计算中线（使用加权平均，下方行权重更高）
-    weighted_sum = 0
-    total_weight = 0
-    valid_count = 0
+    # 按行分组，找到每行的左右边界
+    min_x = np.zeros(height, dtype=np.int32)  # 初始化为0
+    max_x = np.zeros(height, dtype=np.int32) + width  # 初始化为最大宽度
     
-    for y in range(height):
-        if LCenter[y] >= 0:  # 只处理有效行
-            # 行位置作为权重（y越大权重越高）
-            weight = (y + 1) * 2  # 增加权重差异
-            weighted_sum += LCenter[y] * weight
-            total_weight += weight
-            valid_count += 1
+    # 使用向量化操作更新每行的最小和最大x值
+    np.minimum.at(min_x, nonzero_y, nonzero_x)
+    np.maximum.at(max_x, nonzero_y, nonzero_x)
     
-    if valid_count > 0:
-        center_line_x = int(weighted_sum / total_weight)
-    else:
-        center_line_x = width // 2  # 默认中线
+    # 计算每行的中线
+    centers = (min_x + max_x) // 2
+    valid_mask = (min_x < max_x) & (max_x < width) & (min_x > 0)
+    
 
+    # 计算加权中线（下方行权重更高）
+    weights = np.arange(height, 0, -1) * 2  # 行号越大（图像下方）权重越高
+    weighted_sum = np.sum(centers[valid_mask] * weights[valid_mask])
+    total_weight = np.sum(weights[valid_mask])
+    center_line_x = int(weighted_sum / total_weight)
     
     # 创建可视化图像
     visual_img = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
@@ -113,12 +95,18 @@ def detect_center_line(binary_image):
     
     # 标记所有有效行的中线点
     for y in range(height):
-        if LCenter[y] >= 0:
-            cv2.circle(visual_img, (LCenter[y], y), 1, (0, 0, 255), -1)
+        if valid_mask[y]:
+            cv2.circle(visual_img, (centers[y], y), 1, (0, 0, 255), -1)
     
-    
-    return center_line_x, visual_img
+    # 添加调试信息
+    cv2.putText(visual_img, f"Center: {center_line_x}", (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
+    print(f"Min_x: {min_x[:5]}...")  # 查看前几行左边界
+    print(f"Max_x: {max_x[:5]}...")  # 查看前几行右边界
+    print(f"Weights: {weights[:5]}...")  # 查看前几行权重
+
+    return center_line_x, visual_img
 
 
 # 初始化节点
@@ -148,8 +136,12 @@ while not rospy.is_shutdown():
     cv2.imshow('Binary', binary_image)
     cv2.waitKey(1)
     
+    start=time.time()
     # 检测中线并获取中心点位置
     center_line_x,visual_img = detect_center_line(binary_image)
+    end=time.time()
+    print(end-start)
+
     cv2.imshow('Center Line Detection', visual_img)
     cv2.waitKey(1)
     

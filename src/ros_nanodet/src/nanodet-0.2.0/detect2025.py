@@ -93,6 +93,7 @@ def detect_start(req):
                     best_bbox = bbox
                     target = label
                     print("检测到目标")
+                    print(target)
     x0, y0, x1, y1, conf = [int(coord) for coord in best_bbox]
     response.x0 = x0
     response.y0 = y0

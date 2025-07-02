@@ -178,13 +178,13 @@ void goal_set(move_base_msgs::MoveBaseGoal &goal,double x,double y,double yaw,tf
 
 void go_destination(move_base_msgs::MoveBaseGoal &goal,double x,double y,double yaw,tf2::Quaternion &q,MoveBaseClient &ac){
     goal.target_pose.header.stamp = ros::Time::now();
-    goal_set(goal,4.25,4.50,1.57,q);
+    goal_set(goal,x,y,yaw,q);
     ac.sendGoal(goal);
     ac.waitForResult();
     if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-        ROS_INFO("到达视觉巡线区域");
+        ROS_INFO("到达目标");
     else
-        ROS_INFO("无法到达视觉巡线区域");
+        ROS_INFO("无法到达目标");
 }
 
 int main(int argc, char *argv[])
@@ -197,8 +197,7 @@ int main(int argc, char *argv[])
     MoveBaseClient ac("move_base", true); 
     tf2::Quaternion q;  
     //等待action回应
-    while(!ac.waitForServer(ros::Duration(5.0)))
-    {
+    while(!ac.waitForServer(ros::Duration(5.0))){
         ROS_INFO("等待movebase服务中---");
     } 
     move_base_msgs::MoveBaseGoal goal;
@@ -267,6 +266,8 @@ int main(int argc, char *argv[])
     ROS_INFO("拣货区域任务开始");
     size_t board_count;
     int board_name;
+    int flag=0;//判断雷达识别的点是否和视觉对得上
+    double lidar_yaw;
     where_board.request.lidar_process_start = 1;//请求雷达识别板子服务
     if (client_find_board.call(where_board)){
         size_t len_of_where_board = where_board.response.lidar_results.size();
@@ -284,27 +285,28 @@ int main(int argc, char *argv[])
     std::vector<int> a = {-1,-1,-1,-1,-1,-1};
     mecanumController.detect(a,-1);
     board_name = mecanumController.turn_and_find(1,1,board_class,0.4);//请求视觉识别板子服务
-    if (poseget_client.call(pose_result)){
-        ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
-    }
-    else{
-        ROS_ERROR("获取位姿失败");
-    }
+    if(board_name != -1){
+        if (poseget_client.call(pose_result)){
+            ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
+        }
+        else{
+            ROS_ERROR("获取位姿失败");
+        }
 
-    int flag=0;//判断雷达识别的点是否和视觉对得上
-    double lidar_yaw;
-    for(int i=0;i<board_count;i++){
-        lidar_yaw = std::atan2(where_board.response.lidar_results[i*4+1], where_board.response.lidar_results[i*4]);//计算雷达找到的板子在什么方向，是否和视觉识别结果匹配double atan2(double y, double x); 
-        ROS_INFO("板子相对小车夹角%f",lidar_yaw);
-        if (std::fabs(lidar_yaw-pose_result.response.pose_at[2])<0.2){
-            flag = 1;
-            float slope = where_board.response.lidar_results[i*4+3] / where_board.response.lidar_results[i*4+2];
-            RobotPose robot = calculate_destination(where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1],slope);//计算小车位姿
-            ROS_INFO("第%d个板是目标板,即将前往，%.2f,%.2f,%.2f",i,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading);
-            go_destination(goal,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading,q,ac);
-            break;
+        for(int i=0;i<board_count;i++){
+            lidar_yaw = std::atan2(where_board.response.lidar_results[i*4+1], where_board.response.lidar_results[i*4]);//计算雷达找到的板子在什么方向，是否和视觉识别结果匹配double atan2(double y, double x); 
+            ROS_INFO("板子相对小车夹角%f",lidar_yaw);
+            if (std::fabs(lidar_yaw-pose_result.response.pose_at[2])<0.2){
+                flag = 1;
+                float slope = where_board.response.lidar_results[i*4+3] / where_board.response.lidar_results[i*4+2];
+                RobotPose robot = calculate_destination(where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1],slope);//计算小车位姿
+                ROS_INFO("第%d个板是目标板,即将前往，%.2f,%.2f,%.2f",i,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading);
+                go_destination(goal,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading,q,ac);
+                break;
+            }
         }
     }
+
     ROS_INFO("第一个找板点是否找到板子%d",flag);
     if(!flag){
         //前往区域中心找板子
@@ -324,24 +326,29 @@ int main(int argc, char *argv[])
             return 1;
         }
         board_name = mecanumController.turn_and_find(1,1,board_class);//请求视觉识别板子服务
-        if (poseget_client.call(pose_result)){
-            ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
-        }
-        else{
-            ROS_ERROR("获取位姿失败");
-        }
-        for(int i=0;i<board_count;i++){
-            lidar_yaw = std::atan2(where_board.response.lidar_results[i*4+1], where_board.response.lidar_results[i*4]);//计算雷达找到的板子在什么方向，是否和视觉识别结果匹配double atan2(double y, double x); 
-            ROS_INFO("板子相对小车夹角%f",lidar_yaw);
-            if (std::fabs(lidar_yaw-pose_result.response.pose_at[2])<0.2){
-                flag = 1;
-                float slope = where_board.response.lidar_results[i*4+3] / where_board.response.lidar_results[i*4+2];
-                RobotPose robot = calculate_destination(where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1],slope);//计算小车位姿
-                ROS_INFO("第%d个板是目标板,即将前往，%.2f,%.2f,%.2f",i,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading);
-                go_destination(goal,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading,q,ac);
-                break;
+        if (board_name != -1){
+            if (poseget_client.call(pose_result)){
+                ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
+            }
+            else{
+                ROS_ERROR("获取位姿失败");
+            }
+            for(int i=0;i<board_count;i++){
+                lidar_yaw = std::atan2(where_board.response.lidar_results[i*4+1], where_board.response.lidar_results[i*4]);//计算雷达找到的板子在什么方向，是否和视觉识别结果匹配double atan2(double y, double x); 
+                ROS_INFO("板子相对小车夹角%f",lidar_yaw);
+                if (std::fabs(lidar_yaw-pose_result.response.pose_at[2])<0.2){
+                    flag = 1;
+                    float slope = where_board.response.lidar_results[i*4+3] / where_board.response.lidar_results[i*4+2];
+                    RobotPose robot = calculate_destination(where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1],slope);//计算小车位姿
+                    ROS_INFO("第%d个板是目标板,即将前往，%.2f,%.2f,%.2f",i,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading);
+                    go_destination(goal,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading,q,ac);
+                    break;
+                }
             }
         }
+    }
+    if (!flag){
+        ROS_INFO("找不到板子，直接走了");
     }
     mecanumController.cap_close();
     // if (board_name >= 0 && board_name <= 9 && flag==1) {
@@ -363,6 +370,7 @@ int main(int argc, char *argv[])
     // }
 
     //--------------------------------------------前往红绿灯识别区域--------------------------------------------//
+    ROS_INFO("前往红绿灯区域路口1");
     go_destination(goal,3.25,4.50,1.57,q,ac);
     if (detectTrafficLightStatus()==2){
         goal.target_pose.header.stamp = ros::Time::now();
@@ -370,11 +378,12 @@ int main(int argc, char *argv[])
         ac.sendGoal(goal);
         ac.waitForResult();
         if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-            ROS_INFO("到达视觉巡线区域");
+            ROS_INFO("路口1可通过");
         else
-            ROS_INFO("无法到达视觉巡线区域");
+            ROS_INFO("路口1红灯");
     } 
     else {
+        ROS_INFO("前往红绿灯区域路口2");
         go_destination(goal,4.25,4.50,1.57,q,ac);
         if (detectTrafficLightStatus()==2){
             goal.target_pose.header.stamp = ros::Time::now();
@@ -382,9 +391,9 @@ int main(int argc, char *argv[])
             ac.sendGoal(goal);
             ac.waitForResult();
             if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-                ROS_INFO("到达视觉巡线区域");
+                ROS_INFO("路口2可通过");
             else
-                ROS_INFO("无法到达视觉巡线区域");
+                ROS_INFO("路口2红灯");
         } 
     }
     while(1);

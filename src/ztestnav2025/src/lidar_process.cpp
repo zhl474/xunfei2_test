@@ -47,9 +47,16 @@ private:
                 }
             }
         }
-        else if(req.lidar_process_start==2){
+        else if(req.lidar_process_start==2){//小车在中心
             for (size_t i = 0; i < num_points_; ++i) {//筛选掉不要的，以及给障碍板分类
                 if(result[i][0]>1.2 || result[i][0]<-1.7 || result[i][1]>1.25 || result[i][1]<-1.25 || result[i][0] == 0){//去掉和墙壁重合的点
+                    mask[i] = 0;
+                }
+            }
+        }
+        else if(req.lidar_process_start==2){//巡线区避障
+            for (size_t i = 0; i < num_points_; ++i) {//筛选掉不要的，以及给障碍板分类
+                if(result[i][0]>0.6 || result[i][0]<0 || result[i][1]>0.5 || result[i][1]<-0.5 || result[i][0] == 0){//只看前方
                     mask[i] = 0;
                 }
             }

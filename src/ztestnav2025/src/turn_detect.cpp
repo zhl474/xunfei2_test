@@ -32,7 +32,7 @@ MecanumController::MecanumController(ros::NodeHandle& nh) :
     detect_client_(nh.serviceClient<ros_nanodet::detect_result_srv>("nanodet_detect")),
     getpose_client_(nh.serviceClient<ztestnav2025::getpose_server>("getpose_server")),
     set_speed_client_(nh.serviceClient<ztestnav2025::getpose_server>("set_speed")),
-    timer(nh.createTimer(ros::Duration(10.0), &MecanumController::timerCallback, this, false, false))
+    timer(nh.createTimer(ros::Duration(12.0), &MecanumController::timerCallback, this, false, false))
 {
     if (!detect_client_.waitForExistence()) {
         ROS_FATAL("检测服务 nanodet_detect 不可用！");
@@ -104,45 +104,46 @@ void MecanumController::rotateCircle(double rotate,int direction, double angular
 }
 
 int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){//原地旋转小车x度，执行y次目标检测,寻找z号目标
-    std::vector<int> result = {-1,-1,-1,-1,-1,-1};
-
-        double integral = 0, prev_error = 0;
-        // ros::Rate rate(20);     // 控制频率20Hz
-        geometry_msgs::Twist twist;
-        timer.start();
-        while(ros::ok()&&!exit_flag){
-            ros::spinOnce();
-            detect(result, z);     // 持续检测目标
-            if(result[4] != z){
-                set_speed_.request.getpose_start= static_cast<int>(angular_speed*100);
-                set_speed_client_.call(set_speed_);
-                integral = 0;
-                continue;
-            }  // 目标丢失则旋转寻找目标
-            
-            // 计算中心点偏差（误差输入）
-            int center_x = (result[0]+result[2])/2;
-            // 退出条件：误差<7像素
-            if(std::abs(center_x - img_width/2) < 7){
-                ROS_INFO("已经对准");
-                integral = 0;
-                result[5];
-            } 
-            double error = (img_width/2.0 - center_x)/100; 
-            
-            // 离散PID计算
-            integral += error * 0.05;       // dt=1/20≈0.05
-            double derivative = (error - prev_error)/0.05;
-            double output = Kp_*error + Ki_*integral + Kd_*derivative;
-            output = clamp(output, -1.0, 1.0);
-            // ROS_INFO("速度发布:%f",output);
-            
-            // 执行旋转（限制输出范围）
-            set_speed_.request.getpose_start = static_cast<int>(angular_speed*100*output);
+    result = {-1,-1,-1,-1,-1,-1};
+    double integral = 0, prev_error = 0;
+    // ros::Rate rate(20);     // 控制频率20Hz
+    geometry_msgs::Twist twist;
+    timer.start();
+    while(ros::ok()&&!exit_flag){
+        detect(result, z);     // 持续检测目标
+        if(result[4] != z){
+            set_speed_.request.getpose_start= static_cast<int>(angular_speed*100);
+            set_speed_client_.call(set_speed_);
+            integral = 0;
+            continue;
+        }  // 目标丢失则旋转寻找目标
+        
+        // 计算中心点偏差（误差输入）
+        int center_x = (result[0]+result[2])/2;
+        // 退出条件：误差<7像素
+        if(std::abs(center_x - img_width/2) < 7){
+            ROS_INFO("已经对准");
+            integral = 0;
+            set_speed_.request.getpose_start = 0;
             getpose_client_.call(set_speed_);
-            
-            prev_error = error;
-        }
+            return result[5];
+        } 
+        double error = (img_width/2.0 - center_x)/100; 
+        
+        // 离散PID计算
+        integral += error * 0.05;       // dt=1/20≈0.05
+        double derivative = (error - prev_error)/0.05;
+        double output = Kp_*error + Ki_*integral + Kd_*derivative;
+        output = clamp(output, -1.0, 1.0);
+        // ROS_INFO("速度发布:%f",output);
+        
+        // 执行旋转（限制输出范围）
+        set_speed_.request.getpose_start = static_cast<int>(angular_speed*100*output);
+        getpose_client_.call(set_speed_);
+        
+        prev_error = error;
+        ros::spinOnce();
+    }
     set_speed_.request.getpose_start = 0;
     getpose_client_.call(set_speed_);
     return result[5];
@@ -172,6 +173,7 @@ std::vector<float> MecanumController::getCurrentPose(){
 
 void MecanumController::timerCallback(const ros::TimerEvent&) {
     exit_flag = true;
+    result[5] = -1;
     timer.stop(); // 停止定时器
 }
 
