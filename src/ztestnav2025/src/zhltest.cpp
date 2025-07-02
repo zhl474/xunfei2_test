@@ -9,27 +9,26 @@
 #include "ztestnav2025/turn_detect.h"
 #include "ztestnav2025/lidar_process.h"
 #include "line_follow/line_follow.h"
+#include "ztestnav2025/traffic_light.h"
 #include "qr_01/qr_srv.h"
 #include "communication/msg_1.h"
 #include "communication/msg_2.h"
 
 #include <cmath>
 
-void test(){
-    return;
-}
+
 int main(int argc, char *argv[])
 {
     setlocale(LC_ALL,"");
     ros::init(argc,argv,"zhltest");
     ros::NodeHandle nh;
-
+    ros::Rate control_rate(20);
     ROS_INFO("测试");
-    MecanumController mecanumController(nh);
-    //视觉识别开始，先传个-1把摄像头打开
-    std::vector<int> a = {-1,-1,-1,-1,-1,-1};
-    mecanumController.detect(a,-1);
-    mecanumController.turn_and_find(1,1,0,0.2);
+    while(ros::ok()){
+        int result = detectTrafficLightStatus();
+        ROS_INFO("%d",result);
+        control_rate.sleep();
+    }
 
     return 0;
 }

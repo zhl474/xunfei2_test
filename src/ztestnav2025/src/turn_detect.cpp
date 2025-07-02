@@ -31,7 +31,8 @@ MecanumController::MecanumController(ros::NodeHandle& nh) :
     cmd_pub_(nh.advertise<geometry_msgs::Twist>("cmd_vel", 10)),
     detect_client_(nh.serviceClient<ros_nanodet::detect_result_srv>("nanodet_detect")),
     getpose_client_(nh.serviceClient<ztestnav2025::getpose_server>("getpose_server")),
-    set_speed_client_(nh.serviceClient<ztestnav2025::getpose_server>("set_speed"))
+    set_speed_client_(nh.serviceClient<ztestnav2025::getpose_server>("set_speed")),
+    timer(nh.createTimer(ros::Duration(10.0), &MecanumController::timerCallback, this, false, false))
 {
     if (!detect_client_.waitForExistence()) {
         ROS_FATAL("检测服务 nanodet_detect 不可用！");
@@ -108,11 +109,12 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
         double integral = 0, prev_error = 0;
         // ros::Rate rate(20);     // 控制频率20Hz
         geometry_msgs::Twist twist;
-        while(ros::ok()){
+        timer.start();
+        while(ros::ok()&&!exit_flag){
+            ros::spinOnce();
             detect(result, z);     // 持续检测目标
             if(result[4] != z){
                 set_speed_.request.getpose_start= static_cast<int>(angular_speed*100);
-                ROS_INFO("%d",set_speed_.request.getpose_start);
                 set_speed_client_.call(set_speed_);
                 integral = 0;
                 continue;
@@ -136,11 +138,13 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
             // ROS_INFO("速度发布:%f",output);
             
             // 执行旋转（限制输出范围）
-            set_speed_.request.getpose_start= static_cast<int>(angular_speed*100*output);
+            set_speed_.request.getpose_start = static_cast<int>(angular_speed*100*output);
             getpose_client_.call(set_speed_);
             
             prev_error = error;
         }
+    set_speed_.request.getpose_start = 0;
+    getpose_client_.call(set_speed_);
     return result[5];
 }
 
@@ -164,6 +168,11 @@ std::vector<float> MecanumController::getCurrentPose(){
         ROS_ERROR("请求处理失败....");
         return {};
     }
+}
+
+void MecanumController::timerCallback(const ros::TimerEvent&) {
+    exit_flag = true;
+    timer.stop(); // 停止定时器
 }
 
 // int main(int argc, char *argv[])

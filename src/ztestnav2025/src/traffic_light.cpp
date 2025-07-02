@@ -100,7 +100,7 @@ int detectTrafficLightStatus() {
     }
 
     imshow("Detection Result", frame);
-    waitKey(0);
+    waitKey(1);
     cap.release();
 
     return status;

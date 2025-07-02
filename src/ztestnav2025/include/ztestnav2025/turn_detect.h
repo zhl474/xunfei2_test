@@ -18,7 +18,7 @@ public:
 
     void detect(std::vector<int>& result, int object_num);
     void rotateCircle(double rotate,int direction,double angular_speed=0.2); //控制小车运动，rotate是弧度,direction逆时针是正向
-    int turn_and_find(double x,int y,int z, double angular_speed=0.2);//原地旋转小车x度，执行y次目标检测,寻找z号目标
+    int turn_and_find(double x,int y,int z, double angular_speed=0.4);//原地旋转小车x度，执行y次目标检测,寻找z号目标
     void PID_change(ztestnav2025::drConfig &config, uint32_t level);    //解析动态参数
     std::vector<float> getCurrentPose();
     void cap_close();
@@ -47,6 +47,9 @@ private:
 
     dynamic_reconfigure::Server<ztestnav2025::drConfig> server_;//动态参数
 
+    ros::Timer timer;
+    bool exit_flag = false;
+    void timerCallback(const ros::TimerEvent&);
 
     int img_width = 640;
     int img_height = 480;

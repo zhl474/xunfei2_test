@@ -28,24 +28,33 @@ class PIDController:
         self.integral = 0
         self.last_error = 0
 
-def fixed_threshold_binarization(image, threshold=200, max_value=255, threshold_type=cv2.THRESH_BINARY_INV):
+def fixed_threshold_binarization(image, threshold=180, max_value=255, threshold_type=cv2.THRESH_BINARY_INV):
     try:
+        # 转换为灰度图像
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        blur = cv2.GaussianBlur(gray, (5,5), 0)
+        
+        # 只保留图像下半部分
+        height = gray.shape[0]
+        cropped_gray = gray[height//2:, :]  # 裁剪下半部分
+        
+        # 高斯滤波降噪
+        blur = cv2.GaussianBlur(cropped_gray, (5,5), 0)
+        
+        # 固定阈值二值化
         _, binary = cv2.threshold(blur, threshold, max_value, threshold_type)
-        debug_img = cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR)
-        return binary, debug_img
+        
+        return binary  
+        
     except Exception as e:
         rospy.logwarn(f"二值化异常: {str(e)}")
-        height, width = image.shape[:2]
-        return np.zeros((height, width), dtype=np.uint8), np.zeros((height, width, 3), dtype=np.uint8)
+        return np.zeros((1, 1), dtype=np.uint8)  # 返回空图像
 
+        
 def detect_center_line(binary_image):
     """
     基于逐行扫描的赛道中线检测算法
     """
     height, width = binary_image.shape
-    # debug_img = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
     
     L_black = np.zeros(height, dtype=np.int32)
     R_black = np.zeros(height, dtype=np.int32)
@@ -53,43 +62,64 @@ def detect_center_line(binary_image):
 
     baseline = width // 2
     
-    for y in range(height):
+    for y in range(height-1, -1, -1):
         # 向左扫描找左边界
         L_black[y] = 0
+        left_found = False
         for x in range(baseline, 0, -1):
             if x >= 1 and binary_image[y, x-1] == 255 and binary_image[y, x] == 0:
                 L_black[y] = x
+                left_found = True
                 break
 
         # 向右扫描找右边界
         R_black[y] = width
+        right_found = False
         for x in range(baseline, width-1):
             if x <= width-2 and binary_image[y, x+1] == 255 and binary_image[y, x] == 0:
                 R_black[y] = x
+                right_found = True
                 break
 
         # 计算中线
-        LCenter[y] = (L_black[y] + R_black[y]) // 2
+        if left_found and right_found and L_black[y] < R_black[y]:
+            LCenter[y] = (L_black[y] + R_black[y]) // 2
 
-    # 绘制检测结果
-    # for y in range(height):
-    #     if L_black[y] > 0:
-    #         cv2.circle(debug_img, (L_black[y], y), 1, (0, 0, 255), -1)
-    #     if R_black[y] < width:
-    #         cv2.circle(debug_img, (R_black[y], y), 1, (255, 0, 0), -1)
-    #     if LCenter[y] > 0 and LCenter[y] < width:
-    #         cv2.circle(debug_img, (LCenter[y], y), 1, (0, 255, 0), -1)
     
-    # 计算中线
-    valid_lines = []
+   # 计算中线（使用加权平均，下方行权重更高）
+    weighted_sum = 0
+    total_weight = 0
+    valid_count = 0
+    
     for y in range(height):
-        if L_black[y] > 0 and R_black[y] < 255:
-            valid_lines.append(LCenter[y])
+        if LCenter[y] >= 0:  # 只处理有效行
+            # 行位置作为权重（y越大权重越高）
+            weight = (y + 1) * 2  # 增加权重差异
+            weighted_sum += LCenter[y] * weight
+            total_weight += weight
+            valid_count += 1
     
-    center_line_x = int(np.mean(valid_lines)) if valid_lines else width // 2
-    # cv2.line(debug_img, (center_line_x, 0), (center_line_x, height), (255, 255, 0), 2)
+    if valid_count > 0:
+        center_line_x = int(weighted_sum / total_weight)
+    else:
+        center_line_x = width // 2  # 默认中线
 
-    return center_line_x, debug_img
+    
+    # 创建可视化图像
+    visual_img = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
+    
+    # 在可视化图像上绘制中线
+    cv2.line(visual_img, (center_line_x, 0), (center_line_x, height-1), (0, 255, 255), 2)
+    
+    # 标记所有有效行的中线点
+    for y in range(height):
+        if LCenter[y] >= 0:
+            cv2.circle(visual_img, (LCenter[y], y), 1, (0, 0, 255), -1)
+    
+    
+    return center_line_x, visual_img
+
+
 
 # 初始化节点
 rospy.init_node('line', anonymous=True)
@@ -108,15 +138,19 @@ while not rospy.is_shutdown():
     if not ret:
         rospy.logerr("获取图片失败")
         continue
-    cv2.imshow('frame',frame)
 
     frame = cv2.flip(frame, 1)
     
-    binary_image, threshold_debug = fixed_threshold_binarization(frame)
-    # center_line_x, line_debug = detect_center_line(binary_image)
+    binary_image = fixed_threshold_binarization(frame)
     
+    height, width = binary_image.shape
+    cv2.imshow('frame',frame)
     cv2.imshow('Binary', binary_image)
-    # cv2.imshow('Debug', line_debug)
+    cv2.waitKey(1)
+    
+    # 检测中线并获取中心点位置
+    center_line_x,visual_img = detect_center_line(binary_image)
+    cv2.imshow('Center Line Detection', visual_img)
     cv2.waitKey(1)
     
     # height, width = frame.shape[:2]

@@ -327,7 +327,7 @@ int main(int argc, char *argv[])
     //视觉识别开始，先传个-1把摄像头打开
     std::vector<int> a = {-1,-1,-1,-1,-1,-1};
     mecanumController.detect(a,-1);
-    board_name = mecanumController.turn_and_find(1,1,board_class);//请求视觉识别板子服务
+    board_name = mecanumController.turn_and_find(1,1,board_class,0.4);//请求视觉识别板子服务
     if (poseget_client.call(pose_result)){
         ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
     }
@@ -481,7 +481,7 @@ int main(int argc, char *argv[])
                 ROS_INFO("无法到达视觉巡线区域");
         } 
     }
-    
+    while(1);
 
     //-----------------------------------------视觉巡线---------------------------------------------//
     goal.target_pose.header.stamp = ros::Time::now();

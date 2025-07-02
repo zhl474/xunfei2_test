@@ -180,6 +180,7 @@ add_dependencies(traffic_light ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPO
 ## Specify libraries to link a library or executable target against
 target_link_libraries(zhltest
   turn_detect
+  traffic_light
   ${catkin_LIBRARIES}
 )
 target_link_libraries(tf_pose_get
