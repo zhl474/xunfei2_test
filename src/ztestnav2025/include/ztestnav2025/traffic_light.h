@@ -4,6 +4,6 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 
-int detectTrafficLightStatus(cv::Mat frame);
+int detectTrafficLightStatus();
 
 #endif

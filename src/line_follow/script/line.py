@@ -33,7 +33,7 @@ class PIDController:
         self.integral = 0
         self.last_error = 0
 
-def fixed_threshold_binarization(image, threshold=127, max_value=255, threshold_type=cv2.THRESH_BINARY):
+def fixed_threshold_binarization(image, threshold=127, max_value=255, threshold_type=cv2.THRESH_BINARY_INV):
     """
     固定阈值二值化处理函数
     Args:
@@ -68,34 +68,60 @@ def fixed_threshold_binarization(image, threshold=127, max_value=255, threshold_
 
 
 def detect_center_line(binary_image):
-    """
-    直方图分析法检测赛道中线
+   """
+    基于逐行扫描的赛道中线检测算法
     """
     height, width = binary_image.shape
-    mid_x = width // 2
     debug_img = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
     
-    try:
-        # 直方图分析法 [[2]]
-        left_hist = np.sum(binary_image[:, :mid_x], axis=0)
-        right_hist = np.sum(binary_image[:, mid_x:], axis=0)
-        
-        left_pos = np.argmax(left_hist) if np.max(left_hist) > 0 else 0
-        right_pos = np.argmax(right_hist) + mid_x if np.max(right_hist) > 0 else width
-        
-        # 计算中线位置
-        center_line_x = (left_pos + right_pos) // 2
-        
-        # 绘制调试线条 [[4]]
-        cv2.line(debug_img, (left_pos, 0), (left_pos, height), (0, 0, 255), 2)
-        cv2.line(debug_img, (right_pos, 0), (right_pos, height), (255, 0, 0), 2)
-        cv2.line(debug_img, (center_line_x, 0), (center_line_x, height), (0, 255, 0), 2)
-        
-        return center_line_x, debug_img
-        
-    except Exception as e:
-        rospy.logwarn(f"中线检测异常: {str(e)}")
-        return mid_x, debug_img  # 异常情况返回中间线
+    # 初始化左右边界数组
+    L_black = np.zeros(height, dtype=np.int32)
+    R_black = np.zeros(height, dtype=np.int32)
+    LCenter = np.zeros(height, dtype=np.int32)
+
+    baseline = width // 2
+    
+    for y in range(height):
+    # 向左扫描找左边界
+        L_black[y] = 0
+        for x in range(baseline, 0, -1):
+            if (x >= 1 and binary_image[y, x-1] == 255 and 
+                binary_image[y, x] == 0):
+                L_black[y] = x
+                break
+
+        # 向右扫描找右边界
+        R_black[y] = width
+        for x in range(baseline, width-1):
+            if (x <= width-2 and binary_image[y, x+1] == 255 and 
+                binary_image[y, x] == 0):
+                R_black[y] = x
+                break
+
+        # 计算中线
+        LCenter[y] = (L_black[y] + R_black[y]) // 2
+
+    # 绘制检测结果
+    for y in range(height):
+        if L_black[y] > 0:
+            cv2.circle(debug_img, (L_black[y], y), 1, (0, 0, 255), -1)
+        if R_black[y] < width:
+            cv2.circle(debug_img, (R_black[y], y), 1, (255, 0, 0), -1)
+        if LCenter[y] > 0 and LCenter[y] < width:
+            cv2.circle(debug_img, (LCenter[y], y), 1, (0, 255, 0), -1)
+    
+     # 返回中线的加权平均值（考虑所有行）
+    valid_lines = []
+    for y in range(height):
+        if L_black[y] > 0 and R_black[y] < 255:
+            valid_lines.append(LCenter[y])
+
+    center_line_x = int(np.mean(valid_lines)) if valid_lines else width // 2
+        # 绘制最终决策线
+    cv2.line(debug_img, (center_line_x, 0), (center_line_x, height), (255, 255, 0), 2)
+
+    return center_line_x, debug_img
+
 
 
 # 初始化节点，名称为 "line"
@@ -124,6 +150,7 @@ while not rospy.is_shutdown():
         threshold_type=cv2.THRESH_BINARY_INV  # 反转二值化 [[9]]
     )
 
+    
       # 边线检测与中线计算
     center_line_x, line_debug = detect_center_line(binary_image)
     
@@ -133,13 +160,16 @@ while not rospy.is_shutdown():
     cv2.waitKey(1)
     
      # 执行PID计算
-    error = center_line_x - width//2
-    angular_z = pid.compute(error)
+    #pid = PIDController(Kp=0.03, Ki=0.001, Kd=0.015)
+    #height, width = frame.shape[:2]
+    #error = center_line_x - width//2
+    #angular_z = pid.compute(error)
+
 
     # 创建Twist速度消息
     vel_msg = Twist()
     vel_msg.linear.x = 0.1  # 设置线速度 (可修改)
-    vel_msg.angular.z = 0.0  # 设置角速度 (可修改)
+    vel_msg.angular.z = 0  # 设置角速度 (可修改)
     
     # 发布速度消息
     vel_publisher.publish(vel_msg)

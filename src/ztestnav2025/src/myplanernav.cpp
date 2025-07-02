@@ -198,6 +198,10 @@ void goal_set(move_base_msgs::MoveBaseGoal &goal,double x,double y,double yaw,tf
     goal.target_pose.pose.orientation.w = q.w();
 }
 
+void go_destination(){
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     setlocale(LC_ALL,"");
@@ -440,6 +444,36 @@ int main(int argc, char *argv[])
         ROS_INFO("到达视觉巡线区域");
     else
         ROS_INFO("无法到达视觉巡线区域");
+    if (detectTrafficLightStatus()==2){
+        goal.target_pose.header.stamp = ros::Time::now();
+        goal_set(goal,2.75,3.50,-0.78,q);
+        ac.sendGoal(goal);
+        ac.waitForResult();
+        if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+            ROS_INFO("到达视觉巡线区域");
+        else
+            ROS_INFO("无法到达视觉巡线区域");
+    } 
+    else {
+        goal.target_pose.header.stamp = ros::Time::now();
+        goal_set(goal,4.25,4.50,1.57,q);
+        ac.sendGoal(goal);
+        ac.waitForResult();
+        if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+            ROS_INFO("到达视觉巡线区域");
+        else
+            ROS_INFO("无法到达视觉巡线区域");
+        if (detectTrafficLightStatus()==2){
+            goal.target_pose.header.stamp = ros::Time::now();
+            goal_set(goal,4.75,3.50,-2.31,q);
+            ac.sendGoal(goal);
+            ac.waitForResult();
+            if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+                ROS_INFO("到达视觉巡线区域");
+            else
+                ROS_INFO("无法到达视觉巡线区域");
+        } 
+    }
     
 
     //-----------------------------------------视觉巡线---------------------------------------------//
