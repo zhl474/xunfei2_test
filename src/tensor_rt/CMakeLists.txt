@@ -25,6 +25,7 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib
   move_base_msgs
   rospy
+  tf2_geometry_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -160,6 +161,8 @@ add_executable(nav_client_1 src/nav_client_1.cpp)
 add_executable(sim_class_pub src/sim_class_pub.cpp)
 add_executable(car_class_sub src/car_class_sub.cpp)
 add_executable(nav_client_2 src/nav_client_2.cpp)
+add_executable(nav_client_test src/nav_client_test.cpp)
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -186,6 +189,8 @@ target_link_libraries(nav_client_1 ${catkin_LIBRARIES})
 target_link_libraries(sim_class_pub ${catkin_LIBRARIES})
 target_link_libraries(car_class_sub ${catkin_LIBRARIES})
 target_link_libraries(nav_client_2 ${catkin_LIBRARIES})
+target_link_libraries(nav_client_test ${catkin_LIBRARIES})
+
 
 #############
 ## Install ##
@@ -243,4 +248,5 @@ target_link_libraries(nav_client_2 ${catkin_LIBRARIES})
 # catkin_add_nosetests(test)
 add_dependencies(nav_client_1 ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(nav_client_2 ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(nav_client_test ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 # add_dependencies(test ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
