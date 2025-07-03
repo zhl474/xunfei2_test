@@ -118,7 +118,7 @@ int navigateAndApproach(
     }
     ROS_INFO("Target board located at map coordinates: [x: %.2f, y: %.2f]", target_point_map_frame.point.x, target_point_map_frame.point.y);
 
-    // 计算最终的逼近导航点 (在目标前方0.3米)
+    // 计算最终的逼近导航点 (在目标前方0.5米)
     move_base_msgs::MoveBaseGoal approach_goal;
     approach_goal.target_pose.header.frame_id = "map";
     approach_goal.target_pose.header.stamp = ros::Time::now();
@@ -138,7 +138,7 @@ int navigateAndApproach(
     double target_y = target_point_map_frame.point.y;
     
     double angle_to_target = std::atan2(target_y - robot_y, target_x - robot_x);
-    const double APPROACH_DISTANCE = 0.3; // 逼近距离 (米)
+    const double APPROACH_DISTANCE = 0.5; // 逼近距离 (米)
     // 计算逼近点的坐标：从目标板位置沿着“机器人->目标板”方向的反方向后退APPROACH_DISTANCE米
     approach_goal.target_pose.pose.position.x = target_x - APPROACH_DISTANCE * std::cos(angle_to_target);
     approach_goal.target_pose.pose.position.y = target_y - APPROACH_DISTANCE * std::sin(angle_to_target);
@@ -191,8 +191,8 @@ int main(int argc, char** argv)
 
     // 前往房间 A
     goal.target_pose.header.stamp = ros::Time::now();
-    goal.target_pose.pose.position.x = 4.035;
-    goal.target_pose.pose.position.y = 1.255;
+    goal.target_pose.pose.position.x = 3.629;
+    goal.target_pose.pose.position.y = 1.000;
     goal.target_pose.pose.orientation.z = 0.7071;
     goal.target_pose.pose.orientation.w = 0.7071;
     room_a_class = navigateAndApproach(goal, 1, ac, client, tf_buffer);
@@ -200,7 +200,7 @@ int main(int argc, char** argv)
     // 前往房间 B
     goal.target_pose.header.stamp = ros::Time::now();
     goal.target_pose.pose.position.x = 2.727;
-    goal.target_pose.pose.position.y = 1.514;
+    goal.target_pose.pose.position.y = 1.214;
     goal.target_pose.pose.orientation.z = 0.866;
     goal.target_pose.pose.orientation.w = 0.5;
     room_b_class = navigateAndApproach(goal, 2, ac, client, tf_buffer);
@@ -208,19 +208,34 @@ int main(int argc, char** argv)
     // 前往房间 C
     goal.target_pose.header.stamp = ros::Time::now();
     goal.target_pose.pose.position.x = 0.736;
-    goal.target_pose.pose.position.y = 1.639;
+    goal.target_pose.pose.position.y = 1.039;
     goal.target_pose.pose.orientation.z = 0.7071;
     goal.target_pose.pose.orientation.w = 0.7071;
     room_c_class = navigateAndApproach(goal, 3, ac, client, tf_buffer);
 
     // 返回原点
     ROS_INFO("返回起点");
+    goal.target_pose.header.stamp = ros::Time::now();//在返回起点的中途设一个点，防止因为角速度过快导致膨胀层漂移把路封死
+    goal.target_pose.pose.position.x = 3;
+    goal.target_pose.pose.position.y = 0;
+    goal.target_pose.pose.orientation.z = 1;
+    goal.target_pose.pose.orientation.x = 0;
+    goal.target_pose.pose.orientation.y = 0;
+    goal.target_pose.pose.orientation.w = 0;
+    ac.sendGoal(goal);
+    ac.waitForResult();
     goal.target_pose.header.stamp = ros::Time::now();
-    goal.target_pose.pose.position.x = 0;
+    goal.target_pose.pose.position.x = 0.1;//x设为零的时候距离墙过近，在原地旋转时会卡墙
     goal.target_pose.pose.position.y = 0;
     goal.target_pose.pose.orientation.z = 0;
     goal.target_pose.pose.orientation.w = 1;
+    goal.target_pose.pose.orientation.x = 0;
+    goal.target_pose.pose.orientation.y = 0;
     ac.sendGoal(goal);
+    
+
+
+
     ac.waitForResult();
 
     ROS_INFO("Room A -> Class %d, Room B -> Class %d, Room C -> Class %d",
