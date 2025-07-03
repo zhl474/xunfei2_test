@@ -7,11 +7,15 @@ bool start = false;
 // 速度设置服务回调
 bool setSpeedCallback(ztestnav2025::getpose_server::Request &req,ztestnav2025::getpose_server::Response &resp)
 {
-    if (req.getpose_start == 0) start=false;
+    if (req.getpose_start == 0) {
+        ROS_INFO("运动控制节点停止");
+        start=false;
+    }
     else {
         // 业务逻辑：检测成功时设置为正向速度，失败时为0
         speed = req.getpose_start / 100.0;
         start = true;
+        ROS_INFO("运动控制节点运行中");
     }
     resp.pose_at.resize(1);
     resp.pose_at[0] = 1.0;

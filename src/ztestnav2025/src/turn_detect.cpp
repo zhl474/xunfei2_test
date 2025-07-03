@@ -109,12 +109,14 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
     // ros::Rate rate(20);     // 控制频率20Hz
     geometry_msgs::Twist twist;
     timer.start();
+    ROS_INFO("Timer active: %s", timer.hasStarted() ? "YES" : "NO");
     while(ros::ok()&&!exit_flag){
         detect(result, z);     // 持续检测目标
         if(result[4] != z){
             set_speed_.request.getpose_start= static_cast<int>(angular_speed*100);
             set_speed_client_.call(set_speed_);
             integral = 0;
+            ros::spinOnce();
             continue;
         }  // 目标丢失则旋转寻找目标
         
@@ -125,7 +127,7 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
             ROS_INFO("已经对准");
             integral = 0;
             set_speed_.request.getpose_start = 0;
-            getpose_client_.call(set_speed_);
+            set_speed_client_.call(set_speed_);
             return result[5];
         } 
         double error = (img_width/2.0 - center_x)/100; 
@@ -139,13 +141,13 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
         
         // 执行旋转（限制输出范围）
         set_speed_.request.getpose_start = static_cast<int>(angular_speed*100*output);
-        getpose_client_.call(set_speed_);
+        set_speed_client_.call(set_speed_);
         
         prev_error = error;
-        ros::spinOnce();
+        
     }
     set_speed_.request.getpose_start = 0;
-    getpose_client_.call(set_speed_);
+    set_speed_client_.call(set_speed_);
     return result[5];
 }
 
@@ -174,6 +176,7 @@ std::vector<float> MecanumController::getCurrentPose(){
 void MecanumController::timerCallback(const ros::TimerEvent&) {
     exit_flag = true;
     result[5] = -1;
+    ROS_INFO("定时器回调触发");
     timer.stop(); // 停止定时器
 }
 

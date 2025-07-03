@@ -57,7 +57,7 @@ def detect_center_line(binary_image):
     """
     height, width = binary_image.shape
     
-    #  使用投影法快速找到左右边界
+    #使用投影法快速找到左右边界
     # 计算每行的最小和最大非零列索引
     nonzero_y, nonzero_x = np.nonzero(binary_image == 0)  # 找到所有黑色像素的位置
     
@@ -69,8 +69,8 @@ def detect_center_line(binary_image):
         return center_line_x, visual_img
     
     # 按行分组，找到每行的左右边界
-    min_x = np.zeros(height, dtype=np.int32)  # 初始化为0
-    max_x = np.zeros(height, dtype=np.int32) + width  # 初始化为最大宽度
+    min_x = np.zeros(height, dtype=np.int32) + width  # 初始化为最大宽度
+    max_x = np.zeros(height, dtype=np.int32)  # 初始化为0
     
     # 使用向量化操作更新每行的最小和最大x值
     np.minimum.at(min_x, nonzero_y, nonzero_x)
@@ -78,15 +78,17 @@ def detect_center_line(binary_image):
     
     # 计算每行的中线
     centers = (min_x + max_x) // 2
-    valid_mask = (min_x < max_x) & (max_x < width) & (min_x > 0)
+    valid_mask = (min_x < max_x) & (min_x < width) & (max_x > 0)
     
+    print(valid_mask)
 
     # 计算加权中线（下方行权重更高）
     weights = np.arange(height, 0, -1) * 2  # 行号越大（图像下方）权重越高
     weighted_sum = np.sum(centers[valid_mask] * weights[valid_mask])
     total_weight = np.sum(weights[valid_mask])
     center_line_x = int(weighted_sum / total_weight)
-    
+    print(center_line_x)
+
     # 创建可视化图像
     visual_img = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
     
@@ -97,16 +99,47 @@ def detect_center_line(binary_image):
     for y in range(height):
         if valid_mask[y]:
             cv2.circle(visual_img, (centers[y], y), 1, (0, 0, 255), -1)
-    
-    # 添加调试信息
-    cv2.putText(visual_img, f"Center: {center_line_x}", (10, 30),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-
-    print(f"Min_x: {min_x[:5]}...")  # 查看前几行左边界
-    print(f"Max_x: {max_x[:5]}...")  # 查看前几行右边界
-    print(f"Weights: {weights[:5]}...")  # 查看前几行权重
-
+   
+    # 环岛处理：检测左侧车道线上的角点
+    handle_roundabout(binary_image, visual_img)    
     return center_line_x, visual_img
+
+def handle_roundabout(binary_image, visual_img):
+    """
+    处理环岛场景：检测左侧车道线上的角点并拟合
+    """
+    height, width = binary_image.shape
+    
+    # 提取左侧车道线（假设左侧车道线在图像左半部分）
+    left_lane_mask = np.zeros_like(binary_image)
+    left_lane_mask[:, :width//2] = binary_image[:, :width//2]  # 只考虑左半部分
+    left_lane_points = np.column_stack(np.where(left_lane_mask == 0))  # 左侧车道线的黑色像素点
+    
+    if len(left_lane_points) > 100:  # 如果左侧车道线足够多，进行角点检测
+        gray = (left_lane_mask).astype(np.uint8)  # 转为灰度图
+        gray = np.float32(gray)
+        
+        # 角点检测
+        corners = cv2.cornerHarris(gray, blockSize=2, ksize=3, k=0.04)
+        corners = cv2.dilate(corners, None)
+        
+        # 提取角点
+        corner_threshold = 0.01 * corners.max()
+        corner_points = np.column_stack(np.where(corners > corner_threshold))
+        
+        if len(corner_points) > 0:
+            # 使用角点进行线性拟合
+            coefficients = np.polyfit(corner_points[:, 1], corner_points[:, 0], 1)  # 拟合直线方程 y = ax + b
+            a, b = coefficients
+            
+            # 绘制拟合的直线
+            x1, y1 = 0, int(b)
+            x2, y2 = width//2, int(a * (width//2) + b)
+            cv2.line(visual_img, (x1, y1), (x2, y2), (255, 0, 0), 2)  # 绘制拟合的左侧车道线
+            
+            # 标记角点
+            for corner in corner_points:
+                cv2.circle(visual_img, (int(corner[1]), int(corner[0])), 3, (0, 255, 0), -1)
 
 
 # 初始化节点

@@ -17,45 +17,45 @@
 #include <cmath>
 
 
-int main(int argc, char *argv[])
-{
-    setlocale(LC_ALL,"");
-    ros::init(argc,argv,"zhltest");
-    ros::NodeHandle nh;
-    ros::Rate control_rate(20);
-    ROS_INFO("测试");
-    while(ros::ok()){
-        int result = detectTrafficLightStatus();
-        ROS_INFO("%d",result);
-        control_rate.sleep();
-    }
-
-    return 0;
-}
-
 // int main(int argc, char *argv[])
 // {
 //     setlocale(LC_ALL,"");
 //     ros::init(argc,argv,"zhltest");
 //     ros::NodeHandle nh;
-
-//     MecanumController mecanumController(nh);
-
-//     std::vector<int> a = {-1,-1,-1,-1,-1,-1};
-//     mecanumController.detect(a,-1);
-// restart:
-//     mecanumController.turn_and_find(1,1,1,0.4);
-    
+//     ros::Rate control_rate(20);
+//     ROS_INFO("测试");
 //     while(ros::ok()){
-//         ros::spinOnce();
-//         if(mecanumController.pid_change_flag == 1){
-//             mecanumController.pid_change_flag = 0;
-//             goto restart;
-//         }
+//         int result = detectTrafficLightStatus();
+//         ROS_INFO("%d",result);
+//         control_rate.sleep();
 //     }
-//     ros::spin();
 
 //     return 0;
 // }
+
+int main(int argc, char *argv[])
+{
+    setlocale(LC_ALL,"");
+    ros::init(argc,argv,"zhltest");
+    ros::NodeHandle nh;
+
+    MecanumController mecanumController(nh);
+
+    std::vector<int> a = {-1,-1,-1,-1,-1,-1};
+    mecanumController.detect(a,-1);
+// restart:
+    mecanumController.turn_and_find(1,1,1,0.4);
+    ROS_INFO("结束了");
+    // while(ros::ok()){
+    //     ros::spinOnce();
+    //     if(mecanumController.pid_change_flag == 1){
+    //         mecanumController.pid_change_flag = 0;
+    //         goto restart;
+    //     }
+    // }
+    ros::spin();
+
+    return 0;
+}
 
 
