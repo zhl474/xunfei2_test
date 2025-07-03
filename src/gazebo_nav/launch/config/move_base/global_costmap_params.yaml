@@ -6,8 +6,6 @@
 global_costmap:
   global_frame: map
   robot_base_frame: base_link
-  cost_scaling_factor: 20 #3.0
-  inflation_radius: 0.35 #0.15
   update_frequency: 1
   publish_frequency: 1
   static_map: true
