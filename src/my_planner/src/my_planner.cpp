@@ -48,7 +48,7 @@ namespace my_planner
             double dx = pose_final.pose.position.x;
             double dy = pose_final.pose.position.y;
             double dist = std::sqrt(dx*dx + dy*dy);
-            if(dist < 0.1)//判定是否到达目标点附近的距离阈值
+            if(dist < 0.15)//判定是否到达目标点附近的距离阈值
                 pose_adjusting_ = true;
         }
         if(pose_adjusting_ == true)
@@ -56,7 +56,7 @@ namespace my_planner
             double final_yaw = tf::getYaw(pose_final.pose.orientation);
             ROS_WARN("调整最终姿态,final_yaw = %.2f",final_yaw);
             cmd_vel.linear.x = pose_final.pose.position.x * 3.5;//到达目标点附近后调整位姿的速度比例系数
-            cmd_vel.angular.z = final_yaw * 1.5;
+            cmd_vel.angular.z = final_yaw * 3.5;
             if(abs(final_yaw) < 0.1)
             {
                 goal_reached_ = true;
@@ -88,8 +88,8 @@ namespace my_planner
             if(i == global_plan_.size()-1)
                 target_pose = pose_base; 
         }
-        cmd_vel.linear.x = target_pose.pose.position.x * 5;//小车运动速度比例系数
-        cmd_vel.angular.z = target_pose.pose.position.y * 15.0;
+        cmd_vel.linear.x = target_pose.pose.position.x * 7;//小车运动速度比例系数
+        cmd_vel.angular.z = target_pose.pose.position.y * 17.0;
 
         // cv::Mat plan_image(600, 600, CV_8UC3, cv::Scalar(0, 0, 0));        
         // for(int i=0;i<global_plan_.size();i++)
