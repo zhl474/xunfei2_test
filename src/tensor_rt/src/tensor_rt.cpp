@@ -33,7 +33,8 @@ private:
   int output_w_ = num_classes_+4;
   float conf_thres = 0.75;
   float iou_thres = 0.45;
-  std::vector<std::string> classnum2name_ = {"chilli","tomato","banana'","apple'","watermelon'","cola","cake","milk","potato"};
+  // std::vector<std::string> classnum2name_ = {"chilli","tomato","banana'","apple'","watermelon'","cola","cake","milk","potato"};
+  std::vector<std::string> classnum2name_ = {"chilli","tomato","potato","banana'","apple'","watermelon'","cola","cake","milk"};
   std::vector<const char*> input_names_ = {"images"};
   std::vector<const char*> output_names_ = {"output0"};
   cv::Mat cv_image;
