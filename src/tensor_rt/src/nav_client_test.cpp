@@ -1,10 +1,7 @@
-// nav_client.cpp
-
 #include <ros/ros.h>
 #include <move_base_msgs/MoveBaseAction.h>
 #include <actionlib/client/simple_action_client.h>
 #include "tensor_rt/Messages.h"
-
 // 新增头文件
 #include <sensor_msgs/LaserScan.h>
 #include <tf2_ros/transform_listener.h>
@@ -17,15 +14,7 @@ typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseCl
 // 全局变量存储识别结果
 int room_a_class = -1, room_b_class = -1, room_c_class = -1;
 
-/**
- * @brief 导航到目标点，并进行目标板定位和逼近
- * @param goal 初始观察点
- * @param goal_num 目标点编号 (用于日志)
- * @param ac move_base的action client
- * @param detection_client tensorRT检测服务的client
- * @param tf_buffer tf2的buffer
- * @return 返回检测到的物体类别ID，失败则返回-1
- */
+
 int navigateAndApproach(
     move_base_msgs::MoveBaseGoal& initial_goal,
     int goal_num,
