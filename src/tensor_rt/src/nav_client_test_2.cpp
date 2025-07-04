@@ -161,7 +161,7 @@ int driveAndDetect(
         {
             ROS_INFO("在前往房间 %d 的途中检测到目标! 停止当前导航并开始逼近...", goal_num);
             ac.cancelAllGoals(); // 立刻停止机器人
-            // ros::Duration(0.5).sleep(); // 短暂等待，让机器人稳定下来
+            ros::Duration(0.1).sleep(); // 短暂等待，让机器人稳定下来。不等一小会雷达数据可能出错
             // 调用精确逼近函数
             return Approach(goal_num, ac, detection_client, tf_buffer);
         }
@@ -209,12 +209,20 @@ int main(int argc, char** argv)
 
     // 前往房间 A 区域
     goal.target_pose.header.stamp = ros::Time::now();
-    goal.target_pose.pose.position.x = 3.629;
-    goal.target_pose.pose.position.y = 1.000;
+    goal.target_pose.pose.position.x = 3.735;
+    goal.target_pose.pose.position.y = 1.555;
     goal.target_pose.pose.orientation.z = 0.7071;
     goal.target_pose.pose.orientation.w = 0.7071;
     room_a_class = driveAndDetect(goal, 1, ac, client, tf_buffer, -1);//第一次没有需要避免的对象
-
+    if(room_a_class = -1)//房间最内侧的板有可能因为速度过快导致错过，错过时重新来一次
+    {
+        goal.target_pose.header.stamp = ros::Time::now();
+        goal.target_pose.pose.position.x = 3.735;
+        goal.target_pose.pose.position.y = 1.555;
+        goal.target_pose.pose.orientation.z = 0.7071;
+        goal.target_pose.pose.orientation.w = 0.7071;
+        room_a_class = driveAndDetect(goal, 1, ac, client, tf_buffer, -1);
+    }
     // 前往房间 B 区域
     goal.target_pose.header.stamp = ros::Time::now();
     goal.target_pose.pose.position.x = 2.727;
@@ -223,16 +231,26 @@ int main(int argc, char** argv)
     goal.target_pose.pose.orientation.w = 0.5;
     ac.sendGoal(goal);//先到目标点，再持续检测，防止被上一块板截停
     ac.waitForResult();
+    goal.target_pose.pose.position.x = 2.727;//房间B特殊处理：转向过程中持续检测，不容易错过卡在最右边的板
+    goal.target_pose.pose.position.y = 1.214;
+    goal.target_pose.pose.orientation.z = 0.7071;
+    goal.target_pose.pose.orientation.w = 0.7071;
     room_b_class = driveAndDetect(goal, 2, ac, client, tf_buffer, room_a_class);
 
     // 前往房间 C 区域
     goal.target_pose.header.stamp = ros::Time::now();
-    goal.target_pose.pose.position.x = 0.536;
+    goal.target_pose.pose.position.x = 0.486;
     goal.target_pose.pose.position.y = 0.839;
-    goal.target_pose.pose.orientation.z = 0.7071;
-    goal.target_pose.pose.orientation.w = 0.7071;
+    goal.target_pose.pose.orientation.z = 1;
+    goal.target_pose.pose.orientation.x = 0;
+    goal.target_pose.pose.orientation.y = 0;
+    goal.target_pose.pose.orientation.w = 0;
     ac.sendGoal(goal);
     ac.waitForResult();
+    goal.target_pose.pose.position.x = 0.486;//房间C特殊处理：转向过程中持续检测，不容易错过卡在最左边的板
+    goal.target_pose.pose.position.y = 0.839;
+    goal.target_pose.pose.orientation.z = 0.5;
+    goal.target_pose.pose.orientation.w = 0.866;
     room_c_class = driveAndDetect(goal, 3, ac, client, tf_buffer, room_b_class);
 
     // 返回原点
