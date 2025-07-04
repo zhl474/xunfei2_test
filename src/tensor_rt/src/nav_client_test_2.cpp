@@ -13,6 +13,7 @@ typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseCl
 // 全局变量存储识别结果
 int room_a_class = -1, room_b_class = -1, room_c_class = -1;
 
+
 //在机器人停止后，执行目标的精确定位和逼近导航
 int Approach(
     int goal_num,
@@ -38,7 +39,7 @@ int Approach(
             max_confidence = srv.response.result[i + 5];
             best_box_x = srv.response.result[i];
             best_box_w = srv.response.result[i + 2];
-            detected_class = srv.response.result[i + 4];
+            detected_class = srv.response.result[i + 4];    
         }
     }
     if (detected_class == -1) {
@@ -143,7 +144,8 @@ int driveAndDetect(
     int goal_num,
     MoveBaseClient& ac,
     ros::ServiceClient& detection_client,
-    tf2_ros::Buffer& tf_buffer)
+    tf2_ros::Buffer& tf_buffer,
+    int avoid_class)
 {
     ROS_INFO("开始前往房间 %d 的观测点...", goal_num);
     ac.sendGoal(room_goal);
@@ -155,11 +157,11 @@ int driveAndDetect(
     while (ros::ok() && (ac.getState() == actionlib::SimpleClientGoalState::ACTIVE || ac.getState() == actionlib::SimpleClientGoalState::PENDING))
     {
         // 调用检测服务
-        if (detection_client.call(srv) &&!srv.response.result.empty())
+        if (detection_client.call(srv) &&!srv.response.result.empty() && avoid_class != srv.response.result[4])//检测到的目标不能是上一个目标
         {
             ROS_INFO("在前往房间 %d 的途中检测到目标! 停止当前导航并开始逼近...", goal_num);
             ac.cancelAllGoals(); // 立刻停止机器人
-            ros::Duration(0.5).sleep(); // 短暂等待，让机器人稳定下来
+            // ros::Duration(0.5).sleep(); // 短暂等待，让机器人稳定下来
             // 调用精确逼近函数
             return Approach(goal_num, ac, detection_client, tf_buffer);
         }
@@ -211,7 +213,7 @@ int main(int argc, char** argv)
     goal.target_pose.pose.position.y = 1.000;
     goal.target_pose.pose.orientation.z = 0.7071;
     goal.target_pose.pose.orientation.w = 0.7071;
-    room_a_class = driveAndDetect(goal, 1, ac, client, tf_buffer);
+    room_a_class = driveAndDetect(goal, 1, ac, client, tf_buffer, -1);//第一次没有需要避免的对象
 
     // 前往房间 B 区域
     goal.target_pose.header.stamp = ros::Time::now();
@@ -219,15 +221,19 @@ int main(int argc, char** argv)
     goal.target_pose.pose.position.y = 1.214;
     goal.target_pose.pose.orientation.z = 0.866;
     goal.target_pose.pose.orientation.w = 0.5;
-    room_b_class = driveAndDetect(goal, 2, ac, client, tf_buffer);
+    ac.sendGoal(goal);//先到目标点，再持续检测，防止被上一块板截停
+    ac.waitForResult();
+    room_b_class = driveAndDetect(goal, 2, ac, client, tf_buffer, room_a_class);
 
     // 前往房间 C 区域
     goal.target_pose.header.stamp = ros::Time::now();
-    goal.target_pose.pose.position.x = 0.736;
-    goal.target_pose.pose.position.y = 1.039;
+    goal.target_pose.pose.position.x = 0.536;
+    goal.target_pose.pose.position.y = 0.839;
     goal.target_pose.pose.orientation.z = 0.7071;
     goal.target_pose.pose.orientation.w = 0.7071;
-    room_c_class = driveAndDetect(goal, 3, ac, client, tf_buffer);
+    ac.sendGoal(goal);
+    ac.waitForResult();
+    room_c_class = driveAndDetect(goal, 3, ac, client, tf_buffer, room_b_class);
 
     // 返回原点
     ROS_INFO("返回起点");
