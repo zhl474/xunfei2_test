@@ -81,8 +81,8 @@ int main(int argc, char *argv[])
     poseget_client.waitForExistence();
 
     ROS_INFO("走廊环境导航开始");
-    mecanumController.rotateCircle(3.14,1,0.6);
-    mecanumController.rotateCircle(3.14,1,0.6);
+    // mecanumController.rotateCircle(3.14,1,0.6);
+    // mecanumController.rotateCircle(3.14,1,0.6);
 
     ROS_INFO("拣货区域任务开始");
     size_t board_count;
@@ -123,6 +123,7 @@ int main(int argc, char *argv[])
                 float slope = where_board.response.lidar_results[i*4+3] / where_board.response.lidar_results[i*4+2];
                 RobotPose robot = calculate_destination(where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1],slope);//计算小车位姿
                 ROS_INFO("第%d个板是目标板,即将前往，%.2f,%.2f,%.2f",i,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading);
+                waitForContinue();
                 go_destination(goal,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading,q,ac);
                 break;
             }
@@ -133,6 +134,7 @@ int main(int argc, char *argv[])
     if(!flag){
         //前往区域中心找板子
         ROS_INFO("前往中心找板");
+        waitForContinue();
         go_destination(goal,1.25,3.75,0,q,ac);
         where_board.request.lidar_process_start = 2;//请求雷达识别板子服务
         if (client_find_board.call(where_board)){
@@ -164,6 +166,7 @@ int main(int argc, char *argv[])
                     float slope = where_board.response.lidar_results[i*4+3] / where_board.response.lidar_results[i*4+2];
                     RobotPose robot = calculate_destination(where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1],slope);//计算小车位姿
                     ROS_INFO("第%d个板是目标板,即将前往，%.2f,%.2f,%.2f",i,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading);
+                    waitForContinue();
                     go_destination(goal,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading,q,ac);
                     break;
                 }

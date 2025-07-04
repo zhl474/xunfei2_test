@@ -115,7 +115,7 @@ int detectTrafficLightStatus() {
 RobotPose calculate_destination(double cx, double cy, double slope, double square_size){//利用雷达数据计算机器人拣货区的目的地，板前定位
     const double center_x = square_size / 2.0;
     const double center_y = square_size / 2.0;
-    const double distance = 0.3;  // 30cm
+    const double distance = 0.5;  // 30cm
 
     // 计算指向正方形中心的向量
     const double cp_x = center_x - cx;
@@ -138,7 +138,8 @@ RobotPose calculate_destination(double cx, double cy, double slope, double squar
         nx = slope / norm_length;
         ny = -1.0 / norm_length;
     }
-
+    ROS_INFO("法向量x分量%f",nx);
+    ROS_INFO("法向量y分量%f",ny);
     // 计算目标位置
     RobotPose pose;
     pose.x = cx - distance * nx;
@@ -154,6 +155,12 @@ RobotPose calculate_destination(double cx, double cy, double slope, double squar
 // 播放语音函数
 void play_audio(const std::string& command) {
     system(command.c_str()); // 直接调用系统命令播放音频
+}
+
+void waitForContinue() {
+    std::cout << "Press [Enter] to continue...";
+    std::cin.ignore(); // 清除缓冲区
+    std::cin.get();    // 等待回车
 }
 
 int main() {

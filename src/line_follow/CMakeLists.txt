@@ -148,6 +148,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(follower_line_pid src/line.cpp)
 add_executable(follower_line_server src/line_func.cpp)
+add_executable(line_test src/line_test.cpp)
 # 在add_executable之后添加以下内容调试用
 # target_compile_options(follower_line_pid
 #     PRIVATE 
@@ -171,6 +172,10 @@ target_link_libraries(follower_line_pid
   ${OpenCV_LIBS}
 )
 target_link_libraries(follower_line_server
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
+target_link_libraries(line_test
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
 )

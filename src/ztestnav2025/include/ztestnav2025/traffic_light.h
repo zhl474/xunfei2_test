@@ -71,4 +71,6 @@ std::vector<std::string> cost = {
 
 void play_audio(const std::string& command);
 
+void waitForContinue();
+
 #endif
