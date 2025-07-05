@@ -317,7 +317,7 @@ int main(int argc, char** argv)
     // 前往房间 A 区域
     goal.target_pose.header.stamp = ros::Time::now();
     goal.target_pose.pose.position.x = 3.735;
-    goal.target_pose.pose.position.y = 1.555;
+    goal.target_pose.pose.position.y = 1.055;
     goal.target_pose.pose.orientation.z = 0.7071;
     goal.target_pose.pose.orientation.w = 0.7071;
     room_a_class = driveAndDetect(goal, 1, ac, client, tf_buffer, -1);//第一次没有需要避免的对象
