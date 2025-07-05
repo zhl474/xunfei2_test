@@ -161,7 +161,7 @@ int driveAndDetect(
         {
             ROS_INFO("在前往房间 %d 的途中检测到目标! 停止当前导航并开始逼近...", goal_num);
             ac.cancelAllGoals(); // 立刻停止机器人
-            ros::Duration(0.1).sleep(); // 短暂等待，让机器人稳定下来。不等一小会雷达数据可能出错
+            ros::Duration(0.3).sleep(); // 短暂等待，让机器人稳定下来。不等一小会雷达数据可能出错
             // 调用精确逼近函数
             return Approach(goal_num, ac, detection_client, tf_buffer);
         }
@@ -213,17 +213,20 @@ int main(int argc, char** argv)
     goal.target_pose.pose.position.y = 1.055;
     goal.target_pose.pose.orientation.z = 0.7071;
     goal.target_pose.pose.orientation.w = 0.7071;
-    room_a_class = driveAndDetect(goal, 1, ac, client, tf_buffer, -1);//第一次没有需要避免的对象
-    if(room_a_class = -1)//房间最内侧的板有可能因为速度过快导致错过，错过时重新来一次
+    room_a_class = driveAndDetect(goal, 1, ac, client, tf_buffer, 9);//第一次没有需要避免的对象
+    ROS_INFO("_room_a_class = %d",room_a_class);
+    //房间最内侧的板有可能因为速度过快导致错过，错过时重新来一次
+    if(room_a_class == 65535)//返回值-1不在范围内，最终会变成65535
     {
         goal.target_pose.header.stamp = ros::Time::now();
         goal.target_pose.pose.position.x = 3.735;
         goal.target_pose.pose.position.y = 1.555;
         goal.target_pose.pose.orientation.z = 0.7071;
         goal.target_pose.pose.orientation.w = 0.7071;
-        room_a_class = driveAndDetect(goal, 1, ac, client, tf_buffer, -1);
+        room_a_class = driveAndDetect(goal, 1, ac, client, tf_buffer, 9);
+        ROS_INFO("_room_a_class = %d",room_a_class);
     }
-    // 前往房间 B 区域
+    //前往房间 B 区域
     goal.target_pose.header.stamp = ros::Time::now();
     goal.target_pose.pose.position.x = 2.727;
     goal.target_pose.pose.position.y = 1.214;
