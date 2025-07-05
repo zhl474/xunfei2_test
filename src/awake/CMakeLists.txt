@@ -13,17 +13,17 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 
-# 声明可执行文件
-add_executable(wakeup_publisher src/wakeup_publisher.cpp)
-add_executable(wakeup_subscriber src/wakeup_subscriber.cpp)
+# # 声明可执行文件
+# add_executable(wakeup_publisher src/wakeup_publisher.cpp)
+# add_executable(wakeup_subscriber src/wakeup_subscriber.cpp)
 
-# 链接库
-target_link_libraries(wakeup_publisher
-  ${catkin_LIBRARIES}
-)
-target_link_libraries(wakeup_subscriber
-  ${catkin_LIBRARIES}
-)
+# # 链接库
+# target_link_libraries(wakeup_publisher
+#   ${catkin_LIBRARIES}
+# )
+# target_link_libraries(wakeup_subscriber
+#   ${catkin_LIBRARIES}
+# )
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -116,7 +116,7 @@ target_link_libraries(wakeup_subscriber
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES awake
-#  CATKIN_DEPENDS roscpp std_msg
+ CATKIN_DEPENDS roscpp std_msgs
 #  DEPENDS system_lib
 )
 
@@ -157,9 +157,17 @@ include_directories(
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(${PROJECT_NAME}_node
-#   ${catkin_LIBRARIES}
-# )
+# 声明可执行文件
+add_executable(wakeup_publisher src/wakeup_publisher.cpp)
+add_executable(wakeup_subscriber src/wakeup_subscriber.cpp)
+
+# 链接库
+target_link_libraries(wakeup_publisher
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(wakeup_subscriber
+  ${catkin_LIBRARIES}
+)
 
 #############
 ## Install ##

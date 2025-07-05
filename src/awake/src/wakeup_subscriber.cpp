@@ -1,34 +1,49 @@
-#include <ros/ros.h>
-#include <std_msgs/String.h>
+#include "ros/ros.h"
+#include <std_msgs/Int8.h>
+#include <chrono>
+#include <thread>
 
-// 回调函数，处理接收到的唤醒状态消息
-void wakeupCallback(const std_msgs::String::ConstPtr& msg)
-{
-    ROS_INFO("收到唤醒状态: %s", msg->data.c_str());
-    
-    // 根据唤醒状态执行相应操作
-    if (msg->data == "WAKEUP_SUCCESS")
-    {
-        ROS_INFO("开始执行唤醒后的操作...");
-        // 这里可以添加唤醒后要执行的代码
-        // 例如启动语音识别、控制小车移动等
-    }
-}
-
-int main(int argc, char **argv)
-{
-    // 初始化ROS节点
+// 模拟语音唤醒信号发布节点
+int main(int argc, char** argv) {
+    setlocale(LC_ALL,"");
     ros::init(argc, argv, "wakeup_subscriber");
-    
-    // 创建节点句柄
     ros::NodeHandle nh;
     
-    // 创建订阅者，订阅/wakeup_status话题
-    ros::Subscriber sub = nh.subscribe("wakeup_status", 10, wakeupCallback);
+    // 创建话题发布者
+    ros::Publisher awake_pub = nh.advertise<std_msgs::Int8>("/awake_flag", 10);
     
-    // 进入循环等待消息
-    ROS_INFO("唤醒状态订阅者已启动，等待消息...");
-    ros::spin();
+    ROS_INFO("语音唤醒测试节点启动，准备发布唤醒信号...");
+    
+    // 测试流程：
+    // 1. 先发布awake_flag=0（未唤醒状态）
+    // 2. 等待一段时间后发布awake_flag=1（唤醒状态）
+    std_msgs::Int8 awake_msg;
+    
+    // 阶段1：未唤醒状态（awake_flag=0）
+    awake_msg.data = 0;
+    ROS_INFO("发布未唤醒信号 (awake_flag=0)");
+    for (int i = 0; i < 5; i++) {
+        awake_pub.publish(awake_msg);
+        ros::spinOnce();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    
+    // 阶段2：模拟语音唤醒，发布awake_flag=1
+    awake_msg.data = 1;
+    ROS_INFO("发布唤醒信号 (awake_flag=1)");
+    for (int i = 0; i < 3; i++) {
+        awake_pub.publish(awake_msg);
+        ros::spinOnce();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    
+    // 阶段3：唤醒后保持awake_flag=1
+    ROS_INFO("保持唤醒状态 (awake_flag=1)");
+    while (ros::ok()) {
+        awake_pub.publish(awake_msg);
+        ros::spinOnce();
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+    }
     
     return 0;
 }

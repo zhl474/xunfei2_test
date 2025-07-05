@@ -13,6 +13,7 @@
 #include "qr_01/qr_srv.h"
 #include "communication/msg_1.h"
 #include "communication/msg_2.h"
+#include <std_msgs/Int8.h>
 
 #include <cmath>
 // 全局变量定义
@@ -20,6 +21,43 @@ int room_index = 0;       // 当前房间号
 int awake_flag = 0;      // 语音唤醒标志位
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
+
+class AwakeDetector {
+public:
+    AwakeDetector(ros::NodeHandle& nh) : nh_(nh), awake_received_(false) {
+        // 订阅awake_flag话题
+        sub_ = nh_.subscribe("/awake_flag", 10, &AwakeDetector::awakeCallback, this);
+    }
+
+    // 等待唤醒信号
+    bool waitForAwake() {
+        ROS_INFO("等待语音唤醒信号...");
+        ros::Rate rate(10);  // 10Hz检查频率
+        
+        while (ros::ok() && !awake_received_) {
+            ros::spinOnce();
+            rate.sleep();
+        }
+        
+        if (awake_received_) {
+            ROS_INFO("已接收到唤醒信号!");
+            return true;
+        }
+        return false;
+    }
+
+private:
+    void awakeCallback(const std_msgs::Int8ConstPtr& msg) {
+        if (msg->data == 1) {
+            awake_received_ = true;
+            ROS_INFO("检测到唤醒信号 (awake_flag=1)");
+        }
+    }
+
+    ros::NodeHandle nh_;
+    ros::Subscriber sub_;
+    bool awake_received_;
+};
 
 class Sim_talkto_car{
 public:
@@ -126,8 +164,14 @@ int main(int argc, char *argv[])
     Sim_talkto_car sim_talkto_car(nh);
 
     //--------------------------------------语音唤醒等待--------------------------------//
-    waitForContinue();
-
+    AwakeDetector awakeDetector(nh);
+    if (!awakeDetector.waitForAwake()) {
+        ROS_ERROR("未接收到唤醒信号，程序退出");
+        return 1;
+    }
+    
+    ROS_INFO("已唤醒，开始执行任务...");
+    
 
     //--------------------------------------走廊环境导航，发布目标点--------------------------------//
     ROS_INFO("走廊环境导航开始");
@@ -151,10 +195,10 @@ int main(int argc, char *argv[])
             ROS_ERROR("请求二维码失败");
         }
     }
-    // board_class 为 1（蔬菜）、2（水果）、3（甜品）
-    // if (board_class >= 1 && board_class <= 3  ) {
-    //     play_audio(voice[0][board_class-1]);
-    // }
+    // //board_class 为 1（蔬菜）、2（水果）、3（甜品）
+    if (board_class >= 1 && board_class <= 3  ) {
+        play_audio(voice[0][board_class-1]);
+    }
 
     go_destination(goal,0.50,2.25,1.57,q,ac);
     ROS_INFO("走廊环境导航完成");
@@ -253,7 +297,7 @@ int main(int argc, char *argv[])
         //         }
         //     }
         // }
-        if(mecanumController.forward(board_class,0.3)){
+        if(mecanumController.forward(board_class,0.3)){//直接前进，直到目标检测框高超过120
             flag = 1;
         }
 
@@ -262,9 +306,9 @@ int main(int argc, char *argv[])
         ROS_INFO("找不到板子，直接走了");
     }
     mecanumController.cap_close();
-    // if (board_name >= 0 && board_name <= 9 && flag==1) {
-    //     play_audio(voice[1][board_name]);
-    // }
+    if (board_name >= 0 && board_name <= 9 && flag==1) {
+        play_audio(voice[1][board_name]);
+    }
 
     //-----------------------------------------------仿真开始--------------------------------------------//
     ROS_INFO("前往仿真区域");
@@ -285,6 +329,7 @@ int main(int argc, char *argv[])
     go_destination(goal,3.25,4.50,1.57,q,ac);
     if (detectTrafficLightStatus()==2){
         ROS_INFO("路口1可通过");
+        play_audio(voice[3][0]);
         go_destination(goal,2.75,3.50,-0.78,q,ac);
     } 
     else {
@@ -292,6 +337,7 @@ int main(int argc, char *argv[])
         go_destination(goal,4.25,4.50,1.57,q,ac);
         if (detectTrafficLightStatus()==2){
             ROS_INFO("路口2可通过");
+            play_audio(voice[3][1]);
             go_destination(goal,4.75,3.50,-2.31,q,ac);
         } 
     }

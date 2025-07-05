@@ -50,7 +50,7 @@ MecanumController::MecanumController(ros::NodeHandle& nh) :
 }
 
 void MecanumController::detect(std::vector<int>& result, int object_num){//封装目标检测功能
-    start_detect_.request.detect_start = object_num;//要先传个2把摄像头打开
+    start_detect_.request.detect_start = object_num;//要先传个-1把摄像头打开
     bool flag = detect_client_.call(start_detect_);
     if (flag){
         result[0] = start_detect_.response.x0;result[1] = start_detect_.response.y0;result[2] = start_detect_.response.x1;result[3] = start_detect_.response.y1;result[4] = start_detect_.response.class_name;
