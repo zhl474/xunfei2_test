@@ -21,7 +21,7 @@ obstacle_layer:
   laser_scan_sensor: {
     sensor_frame: laser_frame,
     data_type: LaserScan,
-    topic: scan,
+    topic: scan_merged,   #scan
     marking: true,
     clearing: true,
     inf_is_valid: true
