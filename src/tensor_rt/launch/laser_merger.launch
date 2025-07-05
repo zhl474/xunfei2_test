@@ -1,0 +1,16 @@
+<launch>
+  
+  <node pkg="ira_laser_tools" type="laserscan_multi_merger" name="laserscan_multi_merger">
+
+    <param name="destination_frame" value="base_link"/>
+
+    <param name="scan_destination_topic" value="/scan_merged"/>
+
+    <param name="laserscan_topics" value="/scan" />
+
+    <param name="angle_min" value="-3.14"/>
+    <param name="angle_max" value="3.14"/>
+    
+  </node>
+
+</launch>
