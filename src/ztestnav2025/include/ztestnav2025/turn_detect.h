@@ -4,6 +4,7 @@
 #include "ros/ros.h"
 #include "ros_nanodet/detect_result_srv.h"
 #include "ztestnav2025/getpose_server.h"
+#include "ztestnav2025/set_speed.h"
 
 #include <boost/algorithm/string/join.hpp>
 
@@ -22,6 +23,7 @@ public:
     void PID_change(ztestnav2025::drConfig &config, uint32_t level);    //解析动态参数
     std::vector<float> getCurrentPose();
     void cap_close();
+    bool forward(int z,double forward_speed);
 
     bool pid_change_flag=0;
 
@@ -44,7 +46,7 @@ private:
     ztestnav2025::getpose_server start_get_pose_;
 
     ros::ServiceClient set_speed_client_;
-    ztestnav2025::getpose_server set_speed_;
+    ztestnav2025::set_speed set_speed_;
 
     dynamic_reconfigure::Server<ztestnav2025::drConfig> server_;//动态参数
 

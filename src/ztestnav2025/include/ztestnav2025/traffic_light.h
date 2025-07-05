@@ -4,6 +4,7 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include "ros/ros.h"
+#include <cmath>
  
 int detectTrafficLightStatus();
 // 定义结构体存储机器人的位置和朝向
@@ -12,7 +13,7 @@ struct RobotPose {
     double y;        // 机器人的y坐标
     double heading;  // 机器人的朝向角度（度）
 };
-RobotPose calculate_destination(double cx, double cy, double slope, double square_size = 2.5);
+RobotPose calculate_destination(double cx, double cy, double slope, double center_x,double center_y);
 
 // 语音命令数组（二维数组，按类别分组）
 std::vector<std::vector<std::string>> voice = {

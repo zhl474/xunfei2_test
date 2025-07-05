@@ -112,10 +112,8 @@ int detectTrafficLightStatus() {
 //   slope - 板子的斜率
 //   square_size - 正方形区域尺寸 (默认2.5m)
 // 返回: RobotPose结构体包含目标位置和朝向
-RobotPose calculate_destination(double cx, double cy, double slope, double square_size){//利用雷达数据计算机器人拣货区的目的地，板前定位
-    const double center_x = square_size / 2.0;
-    const double center_y = square_size / 2.0;
-    const double distance = 0.5;  // 30cm
+RobotPose calculate_destination(double cx, double cy, double slope, double center_x,double center_y){//利用雷达数据计算机器人拣货区的目的地，板前定位
+    const double distance = 0.5;  // 30cm雷达和baselink不一样
 
     // 计算指向正方形中心的向量
     const double cp_x = center_x - cx;

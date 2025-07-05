@@ -75,6 +75,7 @@ add_service_files(
   FILES
   getpose_server.srv
   lidar_process.srv
+  set_speed.srv
 )
 
 ## Generate actions in the 'action' folder

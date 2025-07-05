@@ -1,24 +1,23 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
-#include "ztestnav2025/getpose_server.h"//套用定位请求的文件
+#include "ztestnav2025/set_speed.h"//套用定位请求的文件
 
-float speed;
+geometry_msgs::Twist twist_msg;
 bool start = false;
 // 速度设置服务回调
-bool setSpeedCallback(ztestnav2025::getpose_server::Request &req,ztestnav2025::getpose_server::Response &resp)
+bool setSpeedCallback(ztestnav2025::set_speed::Request &req,ztestnav2025::set_speed::Response &resp)
 {
-    if (req.getpose_start == 0) {
+    if (req.work == false) {
         ROS_INFO("运动控制节点停止");
         start=false;
     }
     else {
         // 业务逻辑：检测成功时设置为正向速度，失败时为0
-        speed = req.getpose_start / 100.0;
+        twist_msg = req.target_twist;
         start = true;
         // ROS_INFO("运动控制节点运行中");
     }
-    resp.pose_at.resize(1);
-    resp.pose_at[0] = 1.0;
+    resp.success = true;
     return true;
 }
 
@@ -37,15 +36,12 @@ int main(int argc, char *argv[]) {
     
     // 初始化控制循环
     ros::Rate control_rate(20); // 严格20Hz频率
-    geometry_msgs::Twist twist_msg;
-    twist_msg.angular.z = 0;
     
     ROS_INFO("运动控制节点已启动 (20Hz 控制循环)");
     
     while (ros::ok()) {
         // 1. 处理回调获取当前速度值
         ros::spinOnce();
-        twist_msg.angular.z = speed;
         if(start) cmd_pub.publish(twist_msg);
         control_rate.sleep();
     }

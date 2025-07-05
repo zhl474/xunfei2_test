@@ -31,8 +31,8 @@ MecanumController::MecanumController(ros::NodeHandle& nh) :
     cmd_pub_(nh.advertise<geometry_msgs::Twist>("cmd_vel", 10)),
     detect_client_(nh.serviceClient<ros_nanodet::detect_result_srv>("nanodet_detect")),
     getpose_client_(nh.serviceClient<ztestnav2025::getpose_server>("getpose_server")),
-    set_speed_client_(nh.serviceClient<ztestnav2025::getpose_server>("set_speed")),
-    timer(nh.createTimer(ros::Duration(17.0), &MecanumController::timerCallback, this, false, false))
+    set_speed_client_(nh.serviceClient<ztestnav2025::set_speed>("set_speed"))
+    // timer(nh.createTimer(ros::Duration(17.0), &MecanumController::timerCallback, this, false, false))
 {
     if (!detect_client_.waitForExistence()) {
         ROS_FATAL("检测服务 nanodet_detect 不可用！");
@@ -107,13 +107,13 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
     result = {-1,-1,-1,-1,-1,-1};
     double integral = 0, prev_error = 0;
     // ros::Rate rate(20);     // 控制频率20Hz
-    geometry_msgs::Twist twist;
+    set_speed_.request.work = true;
     start_time_ = ros::Time::now();
     while(ros::ok()&&!exit_flag){
         detect(result, z);     // 持续检测目标
         // ROS_INFO("%d",result[4]);
         if(result[4] < (z-1)*3 || result[4] >= z*3){
-            set_speed_.request.getpose_start= static_cast<int>(angular_speed*100);
+            set_speed_.request.target_twist.angular.z = angular_speed;
             set_speed_client_.call(set_speed_);
             integral = 0;
             if ((ros::Time::now() - start_time_).toSec()>17){
@@ -130,7 +130,7 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
         if(std::abs(center_x - img_width/2) < 7){
             ROS_INFO("已经对准");
             integral = 0;
-            set_speed_.request.getpose_start = 0;
+            set_speed_.request.work = false;
             set_speed_client_.call(set_speed_);
             exit_flag = false;
             return result[4];
@@ -145,16 +145,64 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
         // ROS_INFO("速度发布:%f",output*0.2);
         
         // 执行旋转（限制输出范围）
-        set_speed_.request.getpose_start = static_cast<int>(0.2*100*output);
+        set_speed_.request.target_twist.angular.z = 0.2*output;
         set_speed_client_.call(set_speed_);
         
         prev_error = error;
         
     }
     exit_flag = false;
-    set_speed_.request.getpose_start = 0;
+    set_speed_.request.work = false;
     set_speed_client_.call(set_speed_);
     return result[4];
+}
+
+bool MecanumController::forward(int z,double forward_speed){
+    result = {-1,-1,-1,-1,-1,-1};
+    double integral = 0, prev_error = 0;
+    set_speed_.request.target_twist.linear.x = 0.3;
+    set_speed_.request.work = true;
+    while(ros::ok()){
+        detect(result, z);     // 持续检测目标
+        // ROS_INFO("%d",result[4]);
+        if(result[4] < (z-1)*3 || result[4] >= z*3){
+            // set_speed_.request.work = false;
+            // set_speed_client_.call(set_speed_);
+            // return false;
+            continue;
+        }  // 目标丢失则退出
+        ROS_INFO("%d",result[3]-result[1]);
+        if(result[3]-result[1] >= 140){
+            set_speed_.request.work = false;
+            set_speed_client_.call(set_speed_);
+            return true;
+        }  // 已经接近目标
+        // 计算中心点偏差（误差输入）
+        int center_x = (result[0]+result[2])/2;
+        if(std::abs(center_x - img_width/2) < 7){
+            integral = 0;
+            set_speed_.request.target_twist.angular.z = 0;
+            set_speed_.request.target_twist.linear.x = 0.3;
+            set_speed_client_.call(set_speed_);
+        } 
+        double error = (img_width/2.0 - center_x)/100; 
+        
+        // 离散PID计算
+        integral += error * 0.05;       // dt=1/20≈0.05
+        double derivative = (error - prev_error)/0.05;
+        double output = Kp_*error + Ki_*integral + Kd_*derivative;
+        output = clamp(output, -1.0, 1.0);
+        // ROS_INFO("速度发布:%f",output*0.2);
+        
+        // 执行旋转（限制输出范围）
+        set_speed_.request.target_twist.angular.z = 0.2*output;
+        set_speed_client_.call(set_speed_);
+        
+        prev_error = error;
+    }
+    set_speed_.request.work = false;
+    set_speed_client_.call(set_speed_);
+    return false;
 }
 
     //解析动态参数

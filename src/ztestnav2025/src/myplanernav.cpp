@@ -199,10 +199,12 @@ int main(int argc, char *argv[])
     //         if (std::fabs(lidar_yaw-pose_result.response.pose_at[2])<0.3){
     //             flag = 1;
     //             float slope = where_board.response.lidar_results[i*4+3] / where_board.response.lidar_results[i*4+2];
-    //             RobotPose robot = calculate_destination(where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1],slope);//计算小车位姿
-    //             ROS_INFO("第%d个板是目标板,即将前往，%.2f,%.2f,%.2f",i,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading);
+    //             RobotPose robot = calculate_destination(where_board.response.lidar_results[i*4]+pose_result.response.pose_at[0],
+                //                         where_board.response.lidar_results[i*4+1]+pose_result.response.pose_at[1],slope,
+                //                         pose_result.response.pose_at[0],pose_result.response.pose_at[1]);//计算小车位姿
+                //    ROS_INFO("第%d个板是目标板,即将前往，%.2f,%.2f,%.2f",i,robot.x,robot.y,robot.heading);
     //             waitForContinue();
-    //             go_destination(goal,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading,q,ac);
+    //             go_destination(goal,robot.x,robot.y,robot.heading,q,ac);
     //             break;
     //         }
     //     }
@@ -227,28 +229,34 @@ int main(int argc, char *argv[])
             return 1;
         }
         board_name = mecanumController.turn_and_find(1,1,board_class);//请求视觉识别板子服务
-        if (board_name>=0 && board_name<9) std::cout << name.at(board_name) << std::endl;
-        if (board_name != -1){
-            if (poseget_client.call(pose_result)){
-                ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
-            }
-            else{
-                ROS_ERROR("获取位姿失败");
-            }
-            for(int i=0;i<board_count;i++){
-                lidar_yaw = std::atan2(where_board.response.lidar_results[i*4+1], where_board.response.lidar_results[i*4]);//计算雷达找到的板子在什么方向，是否和视觉识别结果匹配double atan2(double y, double x); 
-                ROS_INFO("板子相对小车夹角%f",lidar_yaw);
-                if (std::fabs(lidar_yaw-pose_result.response.pose_at[2])<0.3){
-                    flag = 1;
-                    float slope = where_board.response.lidar_results[i*4+3] / where_board.response.lidar_results[i*4+2];
-                    RobotPose robot = calculate_destination(where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1],slope);//计算小车位姿
-                    ROS_INFO("第%d个板是目标板,即将前往，%.2f,%.2f,%.2f",i,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading);
-                    waitForContinue();
-                    go_destination(goal,robot.x+pose_result.response.pose_at[0],robot.y+pose_result.response.pose_at[1],robot.heading,q,ac);
-                    break;
-                }
-            }
+        // if (board_name>=0 && board_name<9) std::cout << name.at(board_name) << std::endl;
+        // if (board_name != -1){
+        //     if (poseget_client.call(pose_result)){
+        //         ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
+        //     }
+        //     else{
+        //         ROS_ERROR("获取位姿失败");
+        //     }
+        //     for(int i=0;i<board_count;i++){
+        //         lidar_yaw = std::atan2(where_board.response.lidar_results[i*4+1], where_board.response.lidar_results[i*4]);//计算雷达找到的板子在什么方向，是否和视觉识别结果匹配double atan2(double y, double x); 
+        //         ROS_INFO("板子相对小车夹角%f",lidar_yaw);
+        //         if (std::fabs(lidar_yaw-pose_result.response.pose_at[2])<0.3){
+        //             flag = 1;
+        //             float slope = where_board.response.lidar_results[i*4+3] / where_board.response.lidar_results[i*4+2];
+        //             RobotPose robot = calculate_destination(where_board.response.lidar_results[i*4]+pose_result.response.pose_at[0],
+        //                                 where_board.response.lidar_results[i*4+1]+pose_result.response.pose_at[1],slope,
+        //                                 pose_result.response.pose_at[0],pose_result.response.pose_at[1]);//计算小车位姿
+        //             ROS_INFO("第%d个板是目标板,即将前往，%.2f,%.2f,%.2f",i,robot.x,robot.y,robot.heading);
+        //             waitForContinue();
+        //             go_destination(goal,robot.x,robot.y,robot.heading,q,ac);
+        //             break;
+        //         }
+        //     }
+        // }
+        if(mecanumController.forward(board_class,0.3)){
+            flag = 1;
         }
+
     }
     if (!flag){
         ROS_INFO("找不到板子，直接走了");
@@ -287,7 +295,6 @@ int main(int argc, char *argv[])
             go_destination(goal,4.75,3.50,-2.31,q,ac);
         } 
     }
-    while(1);
 
     //-----------------------------------------视觉巡线---------------------------------------------//
     if(line_client.call(linefollow_start)){
