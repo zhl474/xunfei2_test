@@ -242,7 +242,7 @@ int main(int argc, char** argv)
     //此处中断，并接收来自小车的数据
     try {
         //配置连接参数
-        std::string host = "192.168.43.39";
+        std::string host = "192.168.1.106";
         std::string port = "9090";
         std::string target = "/";
         //初始化网络组件
@@ -320,15 +320,18 @@ int main(int argc, char** argv)
     goal.target_pose.pose.position.y = 1.055;
     goal.target_pose.pose.orientation.z = 0.7071;
     goal.target_pose.pose.orientation.w = 0.7071;
-    room_a_class = driveAndDetect(goal, 1, ac, client, tf_buffer, -1);//第一次没有需要避免的对象
-    if(room_a_class = -1)//房间最内侧的板有可能因为速度过快导致错过，错过时重新来一次
+    room_a_class = driveAndDetect(goal, 1, ac, client, tf_buffer, 9);//第一次没有需要避免的对象
+    ROS_INFO("_room_a_class = %d",room_a_class);
+    //房间最内侧的板有可能因为速度过快导致错过，错过时重新来一次
+    if(room_a_class == 65535)//返回值-1不在范围内，最终会变成65535
     {
         goal.target_pose.header.stamp = ros::Time::now();
         goal.target_pose.pose.position.x = 3.735;
         goal.target_pose.pose.position.y = 1.555;
         goal.target_pose.pose.orientation.z = 0.7071;
         goal.target_pose.pose.orientation.w = 0.7071;
-        room_a_class = driveAndDetect(goal, 1, ac, client, tf_buffer, -1);
+        room_a_class = driveAndDetect(goal, 1, ac, client, tf_buffer, 9);
+        ROS_INFO("_room_a_class = %d",room_a_class);
     }
     // 前往房间 B 区域
     goal.target_pose.header.stamp = ros::Time::now();
@@ -416,7 +419,7 @@ int main(int argc, char** argv)
     //此处开始向小车发送探测结果
     try {
         // 配置连接参数
-        std::string host = "192.168.43.39";
+        std::string host = "192.168.1.106";
         std::string port = "9090";
         std::string target = "/";
         
