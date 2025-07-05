@@ -287,7 +287,7 @@ int main(int argc, char** argv)
     }
 
     //分析消息内容设置目标类型
-    if (class_1 == 0 || class_1 == 1 || class_1 == 1)//蔬菜
+    if (class_1 == 0 || class_1 == 1 || class_1 == 2)//蔬菜
     {
         target_1 = 0;
         target_2 = 1;
