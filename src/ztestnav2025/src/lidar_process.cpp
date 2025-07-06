@@ -83,16 +83,20 @@ private:
                 if(std::isinf(ranges_[count]) || ranges_[count] == 0.0f) {
                     continue;
                 }
-                if (ranges_[count+1]-ranges_[count]>0.2) break;
-                if (ranges_[count] < 0.6) continue;
+                if (fabs(ranges_[count+1]-ranges_[count]>0.2)) break;
+                if (ranges_[count] > 0.6) continue;
                 theta = count * angle_step;
                 cv::Point2f pt(ranges_[count] * cos(theta) * -1, ranges_[count] * sin(theta) * -1);
                 points.push_back(pt);
                 effective_point++;
                 average_distance += ranges_[count];
             }
-            left_x = points[-1].x;
-            left_y = points[-1].y;
+            if (effective_point==0){
+                resp.lidar_results.push_back(-1);
+                return true;
+            }
+            left_x = points[effective_point-1].x;
+            left_y = points[effective_point-1].y;
             count = 168;
             while(flag){
                 count--;
@@ -100,16 +104,16 @@ private:
                 if(std::isinf(ranges_[count]) || ranges_[count] == 0.0f) {
                     continue;
                 }
-                if (ranges_[count+1]-ranges_[count]>0.2) break;
-                if (ranges_[count] < 0.6) continue;
+                if (fabs(ranges_[count+1]-ranges_[count]>0.2)) break;
+                if (ranges_[count] > 0.6) continue;
                 theta = count * angle_step;
                 cv::Point2f pt(ranges_[count] * cos(theta) * -1, ranges_[count] * sin(theta) * -1);
                 points.push_back(pt);
                 effective_point++;
                 average_distance += ranges_[count];
             }
-            right_x = points[-1].x;
-            right_y = points[-1].y;
+            right_x = points[effective_point-1].x;
+            right_y = points[effective_point-1].y;
             average_distance = average_distance/effective_point;
             ROS_INFO("平均距离%f",average_distance);
             ROS_INFO("有效点数%d",effective_point);
@@ -120,7 +124,8 @@ private:
                 resp.lidar_results.push_back((right_y+left_y)/2);
                 resp.lidar_results.push_back(lineParams[0]);
                 resp.lidar_results.push_back(lineParams[1]);
-                ROS_INFO("已返回障碍物斜率");
+                ROS_INFO("障碍物水平距离%f",right_y+left_y/2);
+                ROS_INFO("已返回障碍物斜率%f,%f",lineParams[0],lineParams[1]);
                 return true;
             }
             else {//从else回来的第一项=-1就是没有障碍物

@@ -8,6 +8,7 @@ import numpy as np
 import time
 from line_follow.srv import line_follow,line_followRequest,line_followResponse
 from ztestnav2025.srv import lidar_process,lidar_processRequest,lidar_processResponse
+# from ztestnav2025.srv import getpose_server,getpose_serverRequest,getpose_serverResponse
 
 class PIDController:
     def __init__(self, Kp, Ki, Kd):
@@ -172,6 +173,7 @@ class PIDController:
         while not rospy.is_shutdown():
             rospy.loginfo("开始巡线")
             lidar_resp = self.lidar_client.call(self.lidar_Req)
+            print(lidar_resp)
             if lidar_resp.lidar_results[0] != -1:
                 self.avoid_move()
             ret, frame = cap.read()
@@ -227,38 +229,45 @@ class PIDController:
     def avoid_move(self):
         rospy.loginfo("雷达发现障碍物，开始避障")
         flag = 1
+        # integration_y = 0
+        integration_z = 0
         while flag:
-            self.lidar_client.call(self.lidar_Req)
-            self.vel_msg.linear.y = lidar_resp.lidar_results[1]
-            self.vel_msg.linear.z = lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3]
-            self.vel_publisher.publish(self.vel_msg) 
-            print(self.vel_msg.linear.y)
-            print(self.vel_msg.linear.z)
-            if self.vel_msg.linear.y < 0.1 and self.vel_msg.linear.z < 0.2:
-                break
-        cv2.waitKey(0)
+            lidar_resp = self.lidar_client.call(self.lidar_Req)
+            if(lidar_resp.lidar_results[0]!=-1):
+                # integration_y = max(min(integration_y + lidar_resp.lidar_results[1],-0.1),0.1)
+                integration_z = max(min(integration_z + lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3],-0.1),0.1)
+                # self.vel_msg.linear.y = max(min(lidar_resp.lidar_results[1]+integration_y, 0.1), -0.1)
+                self.vel_msg.angular.z = max(min((lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3]+integration_z) * -1, 0.1), -0.1)
+                
+                self.vel_publisher.publish(self.vel_msg) 
+                # if abs(self.vel_msg.linear.y) < 0.03:
+                #     integration_y = 0
+                if abs(self.vel_msg.angular.z) > 0.1:
+                    integration_z = 0
+                if abs(self.vel_msg.linear.y) < 0.03 and abs(self.vel_msg.angular.z) < 0.05:
+                    print("done")
+                    break
         start = time.time()
         while flag :
-            if time.time()-start > 1:
+            if time.time()-start > 2:
                 flag = 0
             self.vel_msg.linear.x = 0
             self.vel_msg.angular.z = 0
             self.vel_msg.linear.y = 0.3
             self.vel_publisher.publish(self.vel_msg)
         flag = 1
-        cv2.waitKey(0)
+        start = time.time()
         while flag :
-            if time.time()-end > 1.2:
+            if time.time()-start > 1.4:
                 flag = 0
             self.vel_msg.linear.x = 0.4
             self.vel_msg.angular.z = 0
             self.vel_msg.linear.y = 0
             self.vel_publisher.publish(self.vel_msg)
         flag = 1
-        cv2.waitKey(0)
         start = time.time()
         while flag :
-            if time.time()-start > 1:
+            if time.time()-start > 2:
                 flag = 0
             self.vel_msg.linear.x = 0
             self.vel_msg.angular.z = 0
@@ -268,6 +277,7 @@ class PIDController:
         self.vel_msg.angular.z = 0
         self.vel_msg.linear.y = 0
         self.vel_publisher.publish(self.vel_msg)
+
 
 
 # 初始化节点

@@ -1,6 +1,8 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
-#include "ztestnav2025/set_speed.h"//套用定位请求的文件
+#include "ztestnav2025/set_speed.h"
+
+// typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
 geometry_msgs::Twist twist_msg;
 bool start = false;
@@ -36,6 +38,8 @@ int main(int argc, char *argv[]) {
     
     // 初始化控制循环
     ros::Rate control_rate(20); // 严格20Hz频率
+    // MoveBaseClient ac("move_base", true); 
+    // tf2::Quaternion q;  
     
     ROS_INFO("运动控制节点已启动 (20Hz 控制循环)");
     
