@@ -31,7 +31,8 @@ MecanumController::MecanumController(ros::NodeHandle& nh) :
     cmd_pub_(nh.advertise<geometry_msgs::Twist>("cmd_vel", 10)),
     detect_client_(nh.serviceClient<ros_nanodet::detect_result_srv>("nanodet_detect")),
     getpose_client_(nh.serviceClient<ztestnav2025::getpose_server>("getpose_server")),
-    set_speed_client_(nh.serviceClient<ztestnav2025::set_speed>("set_speed"))
+    set_speed_client_(nh.serviceClient<ztestnav2025::set_speed>("set_speed")),
+    adjust_client_(nh.serviceClient<ztestnav2025::lidar_process>("/lidar_process/lidar_process"))
     // timer(nh.createTimer(ros::Duration(17.0), &MecanumController::timerCallback, this, false, false))
 {
     if (!detect_client_.waitForExistence()) {
@@ -130,6 +131,7 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
         if(std::abs(center_x - img_width/2) < 7){
             ROS_INFO("已经对准");
             integral = 0;
+            set_speed_.request.target_twist.linear.z = 0;
             set_speed_.request.work = false;
             set_speed_client_.call(set_speed_);
             exit_flag = false;
@@ -152,6 +154,7 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
         
     }
     exit_flag = false;
+    set_speed_.request.target_twist.linear.z = 0;
     set_speed_.request.work = false;
     set_speed_client_.call(set_speed_);
     return result[4];
@@ -160,19 +163,18 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
 bool MecanumController::forward(int z,double forward_speed){
     result = {-1,-1,-1,-1,-1,-1};
     double integral = 0, prev_error = 0;
-    set_speed_.request.target_twist.linear.x = 0.3;
+    set_speed_.request.target_twist.linear.x = 0.15;
     set_speed_.request.work = true;
     while(ros::ok()){
         detect(result, z);     // 持续检测目标
         // ROS_INFO("%d",result[4]);
         if(result[4] < (z-1)*3 || result[4] >= z*3){
-            // set_speed_.request.work = false;
-            // set_speed_client_.call(set_speed_);
-            // return false;
             continue;
         }  // 目标丢失则退出
         ROS_INFO("%d",result[3]-result[1]);
-        if(result[3]-result[1] >= 140){
+        if(result[3]-result[1] >= 70){
+            set_speed_.request.target_twist.linear.x = 0;
+            set_speed_.request.target_twist.linear.z = 0;
             set_speed_.request.work = false;
             set_speed_client_.call(set_speed_);
             return true;
@@ -200,6 +202,71 @@ bool MecanumController::forward(int z,double forward_speed){
         
         prev_error = error;
     }
+    set_speed_.request.target_twist.linear.x = 0;
+    set_speed_.request.target_twist.linear.z = 0;
+    set_speed_.request.work = false;
+    set_speed_client_.call(set_speed_);
+    return false;
+}
+
+bool MecanumController::adjust(int z,double adjust_speed){
+    result = {-1,-1,-1,-1,-1,-1};
+    double integral = 0, prev_error = 0;
+    double lidar_integral = 0, lidar_prev_error = 0;
+    set_speed_.request.target_twist.linear.x = 0;
+    set_speed_.request.target_twist.linear.z = 0;
+    set_speed_.request.work = true;
+    board_slope.request.lidar_process_start = 2;
+    while(ros::ok()){
+        detect(result, z);     // 持续检测目标
+        // ROS_INFO("%d",result[4]);
+        if(result[4] < (z-1)*3 || result[4] >= z*3){
+            continue;
+        }  // 目标丢失则退出
+        int center_x = (result[0]+result[2])/2;
+        if(std::abs(center_x - img_width/2) < 7){
+            integral = 0;
+            set_speed_.request.target_twist.angular.y = 0;
+            set_speed_client_.call(set_speed_);
+        } 
+        double error = (img_width/2.0 - center_x)/100; 
+        
+        // 离散PID计算
+        integral += error * 0.05;       // dt=1/20≈0.05
+        double derivative = (error - prev_error)/0.05;
+        double output = Kp_*error + Ki_*integral + Kd_*derivative;
+        output = clamp(output, -1.0, 1.0);
+        // ROS_INFO("速度发布:%f",output*0.2);
+        prev_error = error;
+        // 执行（限制输出范围）
+        set_speed_.request.target_twist.angular.y = 0.2*output;
+
+        double lidar_output;
+        if(adjust_client_.call(board_slope)){
+            if(std::abs(board_slope.response.lidar_results[0]) < 0.1){
+                lidar_integral = 0;
+                set_speed_.request.target_twist.angular.z = 0;
+                set_speed_client_.call(set_speed_);
+            } 
+            lidar_integral += board_slope.response.lidar_results[0] * 0.05;
+            double lidar_derivative = (board_slope.response.lidar_results[0] - lidar_prev_error)/0.05;
+            lidar_output = Kp_*board_slope.response.lidar_results[0] + Ki_*lidar_integral + Kd_*lidar_derivative;
+            lidar_output = clamp(lidar_output, -1.0, 1.0);
+            lidar_prev_error = board_slope.response.lidar_results[0];
+        }
+        if(std::abs(center_x - img_width/2) < 7 && std::abs(board_slope.response.lidar_results[0]) < 0.1){
+            set_speed_.request.target_twist.linear.x = 0;
+            set_speed_.request.target_twist.linear.z = 0;
+            set_speed_.request.work = false;
+            set_speed_client_.call(set_speed_);
+            return true;
+        }  // 已经接近目标退出循环
+        set_speed_.request.target_twist.angular.z = 0.2*lidar_output;
+
+        set_speed_client_.call(set_speed_);
+    }
+    set_speed_.request.target_twist.linear.x = 0;
+    set_speed_.request.target_twist.linear.z = 0;
     set_speed_.request.work = false;
     set_speed_client_.call(set_speed_);
     return false;

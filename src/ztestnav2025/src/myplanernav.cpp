@@ -164,13 +164,13 @@ int main(int argc, char *argv[])
     Sim_talkto_car sim_talkto_car(nh);
 
     //--------------------------------------语音唤醒等待--------------------------------//
-    AwakeDetector awakeDetector(nh);
-    if (!awakeDetector.waitForAwake()) {
-        ROS_ERROR("未接收到唤醒信号，程序退出");
-        return 1;
-    }
+    // AwakeDetector awakeDetector(nh);
+    // if (!awakeDetector.waitForAwake()) {
+    //     ROS_ERROR("未接收到唤醒信号，程序退出");
+    //     return 1;
+    // }
     
-    ROS_INFO("已唤醒，开始执行任务...");
+    // ROS_INFO("已唤醒，开始执行任务...");
     
 
     //--------------------------------------走廊环境导航，发布目标点--------------------------------//
@@ -259,28 +259,37 @@ int main(int argc, char *argv[])
         //前往区域中心找板子
         ROS_INFO("前往中心找板");
         go_destination(goal,1.25,3.75,0,q,ac);
-        where_board.request.lidar_process_start = 2;//请求雷达识别板子服务
-        if (client_find_board.call(where_board)){
-            size_t len_of_where_board = where_board.response.lidar_results.size();
-            board_count = len_of_where_board / 4;
-            ROS_INFO("找到%zu个板子",board_count);
-            for(size_t i=0;i<board_count;i++){
-                ROS_INFO("第%zu个板子位于%.2f,%.2f",i,where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1]);
-            }
-        }
-        else{
-            ROS_ERROR("找板服务请求失败");
-            return 1;
-        }
+        // where_board.request.lidar_process_start = 2;//请求雷达识别板子服务
+        // if (client_find_board.call(where_board)){
+        //     size_t len_of_where_board = where_board.response.lidar_results.size();
+        //     board_count = len_of_where_board / 4;
+        //     ROS_INFO("找到%zu个板子",board_count);
+        //     for(size_t i=0;i<board_count;i++){
+        //         ROS_INFO("第%zu个板子位于%.2f,%.2f",i,where_board.response.lidar_results[i*4],where_board.response.lidar_results[i*4+1]);
+        //     }
+        // }
+        // else{
+        //     ROS_ERROR("找板服务请求失败");
+        //     return 1;
+        // }
         board_name = mecanumController.turn_and_find(1,1,board_class,0.6);//请求视觉识别板子服务
         // if (board_name>=0 && board_name<9) std::cout << name.at(board_name) << std::endl;
         // if (board_name != -1){
-        //     if (poseget_client.call(pose_result)){
-        //         ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
-        //     }
-        //     else{
-        //         ROS_ERROR("获取位姿失败");
-        //     }
+        if (poseget_client.call(pose_result)){
+            ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
+        }
+        else{
+            ROS_ERROR("获取位姿失败");
+        }
+        where_board.request.lidar_process_start = 1;//请求雷达识别板子服务
+        if (client_find_board.call(where_board)){
+            double target_x = (where_board.response.lidar_results[0]-0.4)*cos(pose_result.response.pose_at[2])+pose_result.response.pose_at[0];
+            double target_y = (where_board.response.lidar_results[0]-0.4)*sin(pose_result.response.pose_at[2])+pose_result.response.pose_at[1];
+            ROS_INFO("目的地%f,%f,%f",target_x,target_y,pose_result.response.pose_at[2]);
+            go_destination(goal,target_x,target_y,pose_result.response.pose_at[2],q,ac);
+        }
+        waitForContinue();
+        mecanumController.adjust(board_class,0.4);
         //     for(int i=0;i<board_count;i++){
         //         lidar_yaw = std::atan2(where_board.response.lidar_results[i*4+1], where_board.response.lidar_results[i*4]);//计算雷达找到的板子在什么方向，是否和视觉识别结果匹配double atan2(double y, double x); 
         //         ROS_INFO("板子相对小车夹角%f",lidar_yaw);
@@ -297,6 +306,7 @@ int main(int argc, char *argv[])
         //         }
         //     }
         // }
+        waitForContinue();
         if(mecanumController.forward(board_class,0.3)){//直接前进，直到目标检测框高超过120
             flag = 1;
         }

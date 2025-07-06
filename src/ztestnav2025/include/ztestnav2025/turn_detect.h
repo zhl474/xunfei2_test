@@ -5,6 +5,8 @@
 #include "ros_nanodet/detect_result_srv.h"
 #include "ztestnav2025/getpose_server.h"
 #include "ztestnav2025/set_speed.h"
+#include "ztestnav2025/lidar_process.h"
+#include "ztestnav2025/traffic_light.h"
 
 #include <boost/algorithm/string/join.hpp>
 
@@ -24,6 +26,7 @@ public:
     std::vector<float> getCurrentPose();
     void cap_close();
     bool forward(int z,double forward_speed);
+    bool adjust(int z,double adjust_speed);
 
     bool pid_change_flag=0;
 
@@ -47,6 +50,9 @@ private:
 
     ros::ServiceClient set_speed_client_;
     ztestnav2025::set_speed set_speed_;
+
+    ros::ServiceClient adjust_client_;
+    ztestnav2025::lidar_process board_slope;//lidarprocess客户端
 
     dynamic_reconfigure::Server<ztestnav2025::drConfig> server_;//动态参数
 
