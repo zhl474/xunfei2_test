@@ -301,6 +301,12 @@ cv::Mat twoPassLabeling(const cv::Mat& binaryImg, int minArea) {
     return result;
 }
 
+double error_calculate(Mat binary,int height){
+    for (int i=height;i>0;i--){
+        for (int j=320;)
+    }
+}
+
 int main(int argc, char **argv) {
     setlocale(LC_ALL,"");
     ROS_INFO("111");
@@ -313,12 +319,8 @@ int main(int argc, char **argv) {
         ROS_ERROR("Failed to open camera!");
         return -1;
     }
-    // cap.set(cv::CAP_PROP_SETTINGS, 1);
     cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
-    // cap.set(cv::CAP_PROP_WB_TEMPERATURE, 0);
-    // cap.set(cv::CAP_PROP_AUTO_WB, 1); 
-    // cap.set(cv::CAP_PROP_WB_TEMPERATURE, 5800);
 
     cv::Rect roi(0, 200, 640, 280);  // (x, y, width, height)
     cv::Mat gray;
@@ -336,40 +338,59 @@ int main(int argc, char **argv) {
     steering_pid.last_error = 0;
     steering_pid.prev_error = 0;
     steering_pid.integral = 0;
-
-    while(ros::ok()) {
+    
+    while (ros::ok())
+    {
         cap.read(src);
         if (src.empty()) continue;
-        // ros::Time ros_start = ros::Time::now();
-        // balancedFrame = applyPerfectReflectionWB(src);
-        // double ros_duration = (ros::Time::now() - ros_start).toSec();
-        // ROS_INFO("[ROS时间] 耗时: %.6f 秒", ros_duration);
-        // cv::imshow("原始画面", src);
-        // cv::imshow("白平衡后", balancedFrame);
         cropped = src(roi);
-        cv::cvtColor(cropped, gray, cv::COLOR_BGR2GRAY); // BGR转灰度
-        cv::GaussianBlur(gray, blurred, cv::Size(5, 5), 1.5);  // 5×5核，标准差1.5
-        // double otsu_threshold = cv::threshold(gray, binary, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
-        cv::adaptiveThreshold(
-            gray,                          // 输入图像（单通道灰度图）
-            binary,                          // 输出二值图像
-            255,                          // 二值化最大值（满足条件时赋予的像素值）
-            cv::ADAPTIVE_THRESH_GAUSSIAN_C, // 自适应方法：高斯加权均值
-            cv::THRESH_BINARY,            // 二值化类型：大于阈值设为255，否则0
-            11,                           // 邻域块大小（奇数）
-            -15                             // 调整常数C
-        );
-        binary = twoPassLabeling(binary,70);
-        // // std::cout << "Otsu自动计算的阈值: " << otsu_threshold << std::endl;
-        // cv::imshow("原始图像", src);
-        // // cv::imshow("灰度图", gray);
-        cv::imshow("二值化结果", binary);
-        // cv::Mat histImage;
-        // drawGrayHistogram(gray, histImage); 
-        // cv::imshow("灰度直方图", histImage);
-        cv::waitKey(1);
-        rate.sleep();
+        cv::flip(cropped, cropped, 1);
+        cvtColor(cropped, gray, COLOR_BGR2GRAY);
+        cv::GaussianBlur(gray, blurred, cv::Size(5, 5), 1.5);
+        cv::threshold(gray,binary,200, 255,cv::THRESH_BINARY);
     }
+    
+
+
+
+
+
+
+
+
+    // while(ros::ok()) {
+    //     cap.read(src);
+    //     if (src.empty()) continue;
+    //     // ros::Time ros_start = ros::Time::now();
+    //     // balancedFrame = applyPerfectReflectionWB(src);
+    //     // double ros_duration = (ros::Time::now() - ros_start).toSec();
+    //     // ROS_INFO("[ROS时间] 耗时: %.6f 秒", ros_duration);
+    //     // cv::imshow("原始画面", src);
+    //     // cv::imshow("白平衡后", balancedFrame);
+    //     cropped = src(roi);
+    //     cv::cvtColor(cropped, gray, cv::COLOR_BGR2GRAY); // BGR转灰度
+    //     cv::GaussianBlur(gray, blurred, cv::Size(5, 5), 1.5);  // 5×5核，标准差1.5
+    //     // double otsu_threshold = cv::threshold(gray, binary, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+    //     // cv::adaptiveThreshold(
+    //     //     gray,                          // 输入图像（单通道灰度图）
+    //     //     binary,                          // 输出二值图像
+    //     //     255,                          // 二值化最大值（满足条件时赋予的像素值）
+    //     //     cv::ADAPTIVE_THRESH_GAUSSIAN_C, // 自适应方法：高斯加权均值
+    //     //     cv::THRESH_BINARY,            // 二值化类型：大于阈值设为255，否则0
+    //     //     11,                           // 邻域块大小（奇数）
+    //     //     -15                             // 调整常数C
+    //     // );
+    //     // binary = twoPassLabeling(binary,70);
+    //     // // std::cout << "Otsu自动计算的阈值: " << otsu_threshold << std::endl;
+    //     // cv::imshow("原始图像", src);
+    //     // // cv::imshow("灰度图", gray);
+    //     cv::imshow("二值化结果", binary);
+    //     // cv::Mat histImage;
+    //     // drawGrayHistogram(gray, histImage); 
+    //     // cv::imshow("灰度直方图", histImage);
+    //     cv::waitKey(1);
+    //     rate.sleep();
+    // }
     return 0;
 }
 

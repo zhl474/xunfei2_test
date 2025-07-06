@@ -36,7 +36,7 @@ def fixed_threshold_binarization(image, threshold=200, max_value=255, threshold_
         
         # 只保留图像下半部分
         height = gray.shape[0]
-        cropped_gray = gray[height//2+110:, :]  # 裁剪下半部分
+        cropped_gray = gray[height//2+30:, :]  # 裁剪下半部分
         
         # 高斯滤波降噪
         blur = cv2.GaussianBlur(cropped_gray, (5,5), 0)
@@ -71,8 +71,8 @@ def detect_center_line(binary_image):
     # 判断使用哪侧作为基准线
     use_right = len(nonzero_y_right) >= len(nonzero_y_left)
     
-    k1 = 1.5
-    k2 =1.5
+    k1 = 1.0
+    k2 =1.0
     # 初始化基准线数据
     if use_right and len(nonzero_y_right) > 0:
         # 右侧基准线处理
@@ -85,7 +85,7 @@ def detect_center_line(binary_image):
             
         # 计算偏移中线（右侧减偏移）
         centers = np.zeros(height, dtype=np.int32)
-        centers[valid_rows] = max_x_right[valid_rows] - (300 - k1 * (130 - y_coords))
+        centers[valid_rows] = max_x_right[valid_rows] - (420 - k1 * (210 - y_coords))
         
     elif len(nonzero_y_left) > 0:
         # 左侧基准线处理
@@ -98,7 +98,7 @@ def detect_center_line(binary_image):
             
         # 计算偏移中线（左侧加偏移）
         centers = np.zeros(height, dtype=np.int32)
-        centers[valid_rows] = min_x_left[valid_rows] + (320 - k2 * (130 - y_coords))
+        centers[valid_rows] = min_x_left[valid_rows] + (420 - k2 * (210 - y_coords))
         
     else:
         # 默认中线
@@ -112,7 +112,8 @@ def detect_center_line(binary_image):
 
     # 加权平均计算最终中线
     weights = np.arange(height, 0, -1) * 2
-    
+    # weights = np.arange(1, height + 1)  # 上方权重更高
+
     if np.any(valid_rows):
         weighted_sum = np.sum(centers[valid_rows] * weights[valid_rows])
         total_weight = np.sum(weights[valid_rows])
@@ -152,18 +153,19 @@ vel_publisher = rospy.Publisher('cmd_vel', Twist, queue_size=10)
 rate = rospy.Rate(10)
 cap = cv2.VideoCapture('/dev/video0', cv2.CAP_V4L2)
 
+
 if not cap.isOpened():
     rospy.logerr("打开摄像头失败")
 rospy.loginfo("视觉巡线节点已启动!")
 
-pid = PIDController(Kp=-0.1, Ki=0, Kd=-0.1)
+pid = PIDController(Kp=-0.3, Ki=0, Kd=-0.02)
 
 while not rospy.is_shutdown():
     ret, frame = cap.read()
     if not ret:
         rospy.logerr("获取图片失败")
         continue
-
+    # cv2.imshow('o', frame)
     frame = cv2.flip(frame, 1)
     
     binary_image = fixed_threshold_binarization(frame)
@@ -187,10 +189,10 @@ while not rospy.is_shutdown():
     height, width = frame.shape[:2]
     error = center_line_x - width // 2
     angular_z = pid.compute(error)
-    angular_z = np.clip(angular_z, -0.2, 0.2)  # 限制角速度范围
+    angular_z = np.clip(angular_z, -0.27, 0.27)  # 限制角速度范围
     
     # 动态调整线速度
-    max_speed = 0.3
+    max_speed = 0.2
     max_error = width // 2  # 图像中心到边缘的最大误差
     decay_factor = max(0.0, 1 - abs(error) / max_error)
     linear_x = max_speed * decay_factor
@@ -201,3 +203,4 @@ while not rospy.is_shutdown():
     
     vel_publisher.publish(vel_msg)
     rate.sleep()
+  

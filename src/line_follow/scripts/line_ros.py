@@ -54,7 +54,7 @@ class PIDController:
             
             # 只保留图像下半部分
             height = gray.shape[0]
-            cropped_gray = gray[height//2+110:, :]  # 裁剪下半部分
+            cropped_gray = gray[height//2+30:, :]  # 裁剪下半部分
             
             # 高斯滤波降噪
             blur = cv2.GaussianBlur(cropped_gray, (5,5), 0)
@@ -89,8 +89,8 @@ class PIDController:
         # 判断使用哪侧作为基准线
         use_right = len(nonzero_y_right) >= len(nonzero_y_left)
         
-        k1 = 1.5
-        k2 = 1.5
+        k1 = 1.0
+        k2 = 1.0
         # 初始化基准线数据
         if use_right and len(nonzero_y_right) > 0:
             # 右侧基准线处理
@@ -103,7 +103,7 @@ class PIDController:
                 
             # 计算偏移中线（右侧减偏移）
             centers = np.zeros(height, dtype=np.int32)
-            centers[valid_rows] = max_x_right[valid_rows] - (300 - k1 * (130 - y_coords))
+            centers[valid_rows] = max_x_right[valid_rows] - (420 - k1 * (210 - y_coords))
             
         elif len(nonzero_y_left) > 0:
             # 左侧基准线处理
@@ -116,7 +116,7 @@ class PIDController:
                 
             # 计算偏移中线（左侧加偏移）
             centers = np.zeros(height, dtype=np.int32)
-            centers[valid_rows] = min_x_left[valid_rows] + (320 - k2 * (130 - y_coords))
+            centers[valid_rows] = min_x_left[valid_rows] + (420 - k2 * (210 - y_coords))
             
         else:
             # 默认中线
@@ -207,10 +207,10 @@ class PIDController:
             height, width = frame.shape[:2]
             error = center_line_x - width // 2
             angular_z = pid.compute(error)
-            angular_z = np.clip(angular_z, -0.25, 0.25)  # 限制角速度范围
+            angular_z = np.clip(angular_z, -0.27, 0.27)  # 限制角速度范围
             
             # 动态调整线速度
-            max_speed = 0.3
+            max_speed = 0.2
             max_error = width // 2  # 图像中心到边缘的最大误差
             decay_factor = max(0.0, 1 - abs(error) / max_error)
             linear_x = max_speed * decay_factor
@@ -227,29 +227,38 @@ class PIDController:
     def avoid_move(self):
         rospy.loginfo("雷达发现障碍物，开始避障")
         flag = 1
+        while flag:
+            self.lidar_client.call(self.lidar_Req)
+            self.vel_msg.linear.y = lidar_resp.lidar_results[1]
+            self.vel_msg.linear.z = lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3]
+            self.vel_publisher.publish(self.vel_msg) 
+            print(self.vel_msg.linear.y)
+            print(self.vel_msg.linear.z)
+            if self.vel_msg.linear.y < 0.1 and self.vel_msg.linear.z < 0.2:
+                break
+        cv2.waitKey(0)
         start = time.time()
         while flag :
-            lidar_resp = self.lidar_client.call(self.lidar_Req)
-            if lidar_resp.lidar_results[0] == -1:
+            if time.time()-start > 1:
                 flag = 0
             self.vel_msg.linear.x = 0
             self.vel_msg.angular.z = 0
             self.vel_msg.linear.y = 0.3
             self.vel_publisher.publish(self.vel_msg)
-        end = time.time()
-        totol_time = end - start
         flag = 1
+        cv2.waitKey(0)
         while flag :
-            if time.time()-end > 1.5:
+            if time.time()-end > 1.2:
                 flag = 0
             self.vel_msg.linear.x = 0.4
             self.vel_msg.angular.z = 0
             self.vel_msg.linear.y = 0
             self.vel_publisher.publish(self.vel_msg)
         flag = 1
+        cv2.waitKey(0)
         start = time.time()
         while flag :
-            if time.time()-start > totol_time:
+            if time.time()-start > 1:
                 flag = 0
             self.vel_msg.linear.x = 0
             self.vel_msg.angular.z = 0
@@ -263,7 +272,7 @@ class PIDController:
 
 # 初始化节点
 rospy.init_node('line')
-pid = PIDController(Kp=-4, Ki=0, Kd=-0.1)
+pid = PIDController(Kp=-0.3, Ki=0, Kd=-0.02)
 rospy.loginfo("视觉巡线节点已启动!")
 
 rospy.spin()
