@@ -235,7 +235,7 @@ bool MecanumController::adjust(int z,double adjust_speed){
         integral += error * 0.05;       // dt=1/20≈0.05
         double derivative = (error - prev_error)/0.05;
         double output = Kp_*error + Ki_*integral + Kd_*derivative;
-        output = clamp(output, -1.0, 1.0);
+        output = clamp(output, -0.3, 0.3);
         // ROS_INFO("速度发布:%f",output*0.2);
         prev_error = error;
         // 执行（限制输出范围）

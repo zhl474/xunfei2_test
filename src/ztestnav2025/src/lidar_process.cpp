@@ -67,16 +67,13 @@ private:
             }
             return true;
         }
-        else if(req.lidar_process_start==-1){//视觉巡线区的雷达处理代码
+      else if(req.lidar_process_start==-1){//视觉巡线区的雷达处理代码
             int effective_point = 0;
             double average_distance = 0;
             std::vector<cv::Point2f> points;//准备拟合直线
+            std::vector<float> distance;
             bool flag = 1;
             int count = 168;
-            double left_x;
-            double left_y;
-            double right_x;
-            double right_y;
             while(flag){
                 count++;
                 if (count>332) break;
@@ -89,14 +86,13 @@ private:
                 cv::Point2f pt(ranges_[count] * cos(theta) * -1, ranges_[count] * sin(theta) * -1);
                 points.push_back(pt);
                 effective_point++;
-                average_distance += ranges_[count];
+                // average_distance += ranges_[count];
+                distance.push_back(ranges_[count]);
             }
             if (effective_point==0){
                 resp.lidar_results.push_back(-1);
                 return true;
             }
-            left_x = points[effective_point-1].x;
-            left_y = points[effective_point-1].y;
             count = 168;
             while(flag){
                 count--;
@@ -110,21 +106,19 @@ private:
                 cv::Point2f pt(ranges_[count] * cos(theta) * -1, ranges_[count] * sin(theta) * -1);
                 points.push_back(pt);
                 effective_point++;
-                average_distance += ranges_[count];
+                // average_distance += ranges_[count];
+                distance.push_back(ranges_[count]);
             }
-            right_x = points[effective_point-1].x;
-            right_y = points[effective_point-1].y;
-            average_distance = average_distance/effective_point;
-            ROS_INFO("平均距离%f",average_distance);
+            std::sort(distance.begin(), distance.end());
+            ROS_INFO("最小距离%f",distance[0]);
             ROS_INFO("有效点数%d",effective_point);
-            if (effective_point > 5 && average_distance < 0.51){ //满足条件就说明前方有障碍物
+            if (effective_point > 5 && distance[0] < 0.45){ //满足条件就说明前方有障碍物
                 cv::Vec4f lineParams;
                 cv::fitLine(points, lineParams, cv::DIST_L2, 0, 0.01, 0.01);
-                resp.lidar_results.push_back((right_x+left_x)/2);
-                resp.lidar_results.push_back((right_y+left_y)/2);
+                resp.lidar_results.push_back(distance[0]);
+                resp.lidar_results.push_back(-1);
                 resp.lidar_results.push_back(lineParams[0]);
                 resp.lidar_results.push_back(lineParams[1]);
-                ROS_INFO("障碍物水平距离%f",right_y+left_y/2);
                 ROS_INFO("已返回障碍物斜率%f,%f",lineParams[0],lineParams[1]);
                 return true;
             }

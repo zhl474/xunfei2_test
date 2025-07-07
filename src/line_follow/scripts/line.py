@@ -29,7 +29,7 @@ class PIDController:
         self.integral = 0
         self.last_error = 0
 
-def fixed_threshold_binarization(image, threshold=200, max_value=255, threshold_type=cv2.THRESH_BINARY_INV):
+def fixed_threshold_binarization(image, threshold=180, max_value=255, threshold_type=cv2.THRESH_BINARY_INV):
     try:
         # 转换为灰度图像
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)

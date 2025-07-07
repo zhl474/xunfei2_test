@@ -48,7 +48,7 @@ class PIDController:
         self.integral = 0
         self.last_error = 0
 
-    def fixed_threshold_binarization(self,image, threshold=210, max_value=255, threshold_type=cv2.THRESH_BINARY_INV):
+    def fixed_threshold_binarization(self,image, threshold=180, max_value=255, threshold_type=cv2.THRESH_BINARY_INV):
         try:
             # 转换为灰度图像
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -226,6 +226,59 @@ class PIDController:
         resp = line_followResponse(1)
         return resp
     
+    # def avoid_move(self):
+    #     rospy.loginfo("雷达发现障碍物，开始避障")
+    #     flag = 1
+    #     safe_distance = 1.0 
+    #     # integration_y = 0
+    #     integration_z = 0
+    #     while flag:
+    #         lidar_resp = self.lidar_client.call(self.lidar_Req)
+    #         if(lidar_resp.lidar_results[0]!=-1 and 
+    #             lidar_resp.lidar_results[3] < safe_distance ):
+    #             # integration_y = max(min(integration_y + lidar_resp.lidar_results[1],-0.1),0.1)
+    #             integration_z = max(min(integration_z + lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3],-0.1),0.1)
+    #             # self.vel_msg.linear.y = max(min(lidar_resp.lidar_results[1]+integration_y, 0.1), -0.1)
+    #             self.vel_msg.angular.z = max(min((lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3]+integration_z) * -1, 0.1), -0.1)
+    #             self.vel_publisher.publish(self.vel_msg) 
+    #             # if abs(self.vel_msg.linear.y) < 0.03:
+    #             #     integration_y = 0
+    #             if abs(self.vel_msg.angular.z) > 0.1:
+    #                 integration_z = 0
+    #             if abs(self.vel_msg.linear.y) < 0.03 and abs(self.vel_msg.angular.z) < 0.05:
+    #                 print("done")
+    #                 break
+    #     start = time.time()
+    #     while flag :
+    #         if time.time()-start > 2:
+    #             flag = 0
+    #         self.vel_msg.linear.x = 0
+    #         self.vel_msg.angular.z = 0
+    #         self.vel_msg.linear.y = 0.3
+    #         self.vel_publisher.publish(self.vel_msg)
+    #     flag = 1
+    #     start = time.time()
+    #     while flag :
+    #         if time.time()-start > 1.4:
+    #             flag = 0
+    #         self.vel_msg.linear.x = 0.4
+    #         self.vel_msg.angular.z = 0
+    #         self.vel_msg.linear.y = 0
+    #         self.vel_publisher.publish(self.vel_msg)
+    #     flag = 1
+    #     start = time.time()
+    #     while flag :
+    #         if time.time()-start > 2:
+    #             flag = 0
+    #         self.vel_msg.linear.x = 0
+    #         self.vel_msg.angular.z = 0
+    #         self.vel_msg.linear.y = -0.3
+    #         self.vel_publisher.publish(self.vel_msg)
+    #     self.vel_msg.linear.x = 0
+    #     self.vel_msg.angular.z = 0
+    #     self.vel_msg.linear.y = 0
+    #     self.vel_publisher.publish(self.vel_msg)
+
     def avoid_move(self):
         rospy.loginfo("雷达发现障碍物，开始避障")
         flag = 1
@@ -238,7 +291,6 @@ class PIDController:
                 integration_z = max(min(integration_z + lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3],-0.1),0.1)
                 # self.vel_msg.linear.y = max(min(lidar_resp.lidar_results[1]+integration_y, 0.1), -0.1)
                 self.vel_msg.angular.z = max(min((lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3]+integration_z) * -1, 0.1), -0.1)
-                
                 self.vel_publisher.publish(self.vel_msg) 
                 # if abs(self.vel_msg.linear.y) < 0.03:
                 #     integration_y = 0
@@ -277,7 +329,6 @@ class PIDController:
         self.vel_msg.angular.z = 0
         self.vel_msg.linear.y = 0
         self.vel_publisher.publish(self.vel_msg)
-
 
 
 # 初始化节点

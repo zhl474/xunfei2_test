@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
         else{
             ROS_ERROR("获取位姿失败");
         }
-        where_board.request.lidar_process_start = 1;//请求雷达识别板子服务
+        where_board.request.lidar_process_start = 1;//雷达获取前方障碍物距离
         if (client_find_board.call(where_board)){
             double target_x = (where_board.response.lidar_results[0]-0.4)*cos(pose_result.response.pose_at[2])+pose_result.response.pose_at[0];
             double target_y = (where_board.response.lidar_results[0]-0.4)*sin(pose_result.response.pose_at[2])+pose_result.response.pose_at[1];
@@ -289,6 +289,7 @@ int main(int argc, char *argv[])
             go_destination(goal,target_x,target_y,pose_result.response.pose_at[2],q,ac);
         }
         waitForContinue();
+        mecanumController.turn_and_find(1,1,board_class,0.6);
         mecanumController.adjust(board_class,0.4);
         //     for(int i=0;i<board_count;i++){
         //         lidar_yaw = std::atan2(where_board.response.lidar_results[i*4+1], where_board.response.lidar_results[i*4]);//计算雷达找到的板子在什么方向，是否和视觉识别结果匹配double atan2(double y, double x); 
