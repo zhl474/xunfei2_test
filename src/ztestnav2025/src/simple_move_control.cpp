@@ -15,6 +15,10 @@ bool setSpeedCallback(ztestnav2025::set_speed::Request &req,ztestnav2025::set_sp
     }
     else {
         // 业务逻辑：检测成功时设置为正向速度，失败时为0
+        if (req.target_twist.angular.x != 0 ||req.target_twist.angular.y !=0 || req.target_twist.linear.z != 0){
+            ROS_ERROR("请勿输入不存在的速度");
+            return false;
+        }
         twist_msg = req.target_twist;
         start = true;
         // ROS_INFO("运动控制节点运行中");

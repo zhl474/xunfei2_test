@@ -85,7 +85,7 @@ private:
         //--------------------------分界线--------------------------
             if(req.lidar_process_start==2){//到达板前，雷达对准
                 int effective_point = 0;
-                for (int i=138;i<=198;i++) {// 将雷达数据转化为xy坐标系
+                for (int i=158;i<=178;i++) {// 将雷达数据转化为xy坐标系
                     if (std::isinf(ranges_[i]) || ranges_[i] == 0.0f) {
                         continue;
                     }
@@ -98,7 +98,7 @@ private:
                 }
                 std::vector<double> slope;
                 for (int i=0;i<effective_point-1;i++){
-                    slope.push_back((result[i+1][0]-result[i][0])-(result[i+1][1]-result[i][1]));//这里是x/y，免得斜率变成无穷大了
+                    slope.push_back((result[i+1][0]-result[i][0])/(result[i+1][1]-result[i][1])*-1);//这里是x/y，免得斜率变成无穷大了
                 }
                 std::sort(slope.begin(), slope.end());
                 ROS_INFO("板子斜率%f",slope[effective_point/2]);

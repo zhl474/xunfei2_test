@@ -9,6 +9,8 @@ import time
 from line_follow.srv import line_follow,line_followRequest,line_followResponse
 from ztestnav2025.srv import lidar_process,lidar_processRequest,lidar_processResponse
 # from ztestnav2025.srv import getpose_server,getpose_serverRequest,getpose_serverResponse
+from nav_msgs.msg import Odometry  # 导入ROS的里程计消息类型
+
 
 class PIDController:
     def __init__(self, Kp, Ki, Kd):
@@ -20,6 +22,17 @@ class PIDController:
         self.vel_publisher = rospy.Publisher('cmd_vel', Twist, queue_size=10)
         self.rate = rospy.Rate(10)
         self.vel_msg = Twist()
+
+
+         # 里程计初始化 (原YourClass的内容)
+        self.current_pose = None
+        self.odom_sub = rospy.Subscriber("/odom", Odometry, self.odom_callback)
+        
+        # 速度控制初始化
+        self.vel_publisher = rospy.Publisher('cmd_vel', Twist, queue_size=10)
+        self.rate = rospy.Rate(10)
+        self.vel_msg = Twist()
+
         
         # 创建服务客户端并等待服务可用
         self.lidar_client = rospy.ServiceProxy("lidar_process/lidar_process", lidar_process)
@@ -32,6 +45,9 @@ class PIDController:
         # 初始化服务请求
         self.lidar_Req = lidar_processRequest()
         self.lidar_Req.lidar_process_start = -1
+
+    def odom_callback(self, msg):
+        self.current_pose = msg.pose.pose.position
 
         
     def compute(self, error):
@@ -227,28 +243,90 @@ class PIDController:
         resp = line_followResponse(1)
         return resp
     
+    def avoid_move(self):
+        rospy.loginfo("雷达发现障碍物，开始避障")
+        flag = 1
+        safe_distance = 1.0 
+        # integration_y = 0
+        integration_z = 0
+        while flag:
+            lidar_resp = self.lidar_client.call(self.lidar_Req)
+            if(lidar_resp.lidar_results[0]!=-1 and 
+                lidar_resp.lidar_results[3] < safe_distance ):
+                # integration_y = max(min(integration_y + lidar_resp.lidar_results[1],-0.1),0.1)
+                integration_z = max(min(integration_z + lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3],-0.1),0.1)
+                # self.vel_msg.linear.y = max(min(lidar_resp.lidar_results[1]+integration_y, 0.1), -0.1)
+                self.vel_msg.angular.z = max(min((lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3]+integration_z) * -1, 0.1), -0.1)
+                self.vel_publisher.publish(self.vel_msg) 
+                # if abs(self.vel_msg.linear.y) < 0.03:
+                #     integration_y = 0
+                if abs(self.vel_msg.angular.z) > 0.1:
+                    integration_z = 0
+                if abs(self.vel_msg.linear.y) < 0.03 and abs(self.vel_msg.angular.z) < 0.05:
+                    print("done")
+                    break
+
+        # 横向移动（仅替换计时逻辑）
+        target_distance = 0.6  # 原代码对应0.3m/s * 2s
+        start_pose = self.current_pose  # 记录起点
+        while flag :
+            moved_distance = abs(self.current_pose.y - start_pose.y)  # 计算已移动距离
+            if moved_distance >= target_distance:
+                break
+            self.vel_msg.linear.x = 0
+            self.vel_msg.angular.z = 0
+            self.vel_msg.linear.y = 0.3
+            self.vel_publisher.publish(self.vel_msg)
+        flag = 1
+        start = time.time()
+        while flag :
+            if time.time()-start > 1.4:
+                flag = 0
+            self.vel_msg.linear.x = 0.4
+            self.vel_msg.angular.z = 0
+            self.vel_msg.linear.y = 0
+            self.vel_publisher.publish(self.vel_msg)
+        flag = 1
+        target_distance = 0.6
+        start_pose = self.current_pose
+        while flag and self.current_pose:
+            moved_distance = abs(self.current_pose.y - start_pose.y)
+            if moved_distance >= target_distance:
+                break
+            self.vel_msg.linear.x = 0
+            self.vel_msg.angular.z = 0
+            self.vel_msg.linear.y = -0.3
+            self.vel_publisher.publish(self.vel_msg)
+        self.vel_msg.linear.x = 0
+        self.vel_msg.angular.z = 0
+        self.vel_msg.linear.y = 0
+        self.vel_publisher.publish(self.vel_msg)
+
     # def avoid_move(self):
     #     rospy.loginfo("雷达发现障碍物，开始避障")
     #     flag = 1
-    #     safe_distance = 1.0 
     #     # integration_y = 0
     #     integration_z = 0
+    #     self.vel_msg.linear.y = 0
+    #     self.vel_msg.linear.x = 0
+    #     self.vel_msg.angular.z = 0
     #     while flag:
     #         lidar_resp = self.lidar_client.call(self.lidar_Req)
-    #         if(lidar_resp.lidar_results[0]!=-1 and 
-    #             lidar_resp.lidar_results[3] < safe_distance ):
+    #         if(lidar_resp.lidar_results[0]!=-1):
     #             # integration_y = max(min(integration_y + lidar_resp.lidar_results[1],-0.1),0.1)
-    #             integration_z = max(min(integration_z + lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3],-0.1),0.1)
+    #             integration_z = max(min(integration_z + lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3],-0.2),0.2)
     #             # self.vel_msg.linear.y = max(min(lidar_resp.lidar_results[1]+integration_y, 0.1), -0.1)
-    #             self.vel_msg.angular.z = max(min((lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3]+integration_z) * -1, 0.1), -0.1)
+    #             self.vel_msg.angular.z = max(min((lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3]+integration_z) * -1, 0.2), -0.2)
     #             self.vel_publisher.publish(self.vel_msg) 
     #             # if abs(self.vel_msg.linear.y) < 0.03:
     #             #     integration_y = 0
-    #             if abs(self.vel_msg.angular.z) > 0.1:
+    #             print(self.vel_msg.angular.z)
+    #             if abs(self.vel_msg.angular.z) > 0.2:
     #                 integration_z = 0
-    #             if abs(self.vel_msg.linear.y) < 0.03 and abs(self.vel_msg.angular.z) < 0.05:
+    #             if abs(self.vel_msg.angular.z) < 0.05:
     #                 print("done")
     #                 break
+    #     rospy.loginfo("平移")
     #     start = time.time()
     #     while flag :
     #         if time.time()-start > 2:
@@ -260,7 +338,7 @@ class PIDController:
     #     flag = 1
     #     start = time.time()
     #     while flag :
-    #         if time.time()-start > 1.4:
+    #         if time.time()-start > 1.6:
     #             flag = 0
     #         self.vel_msg.linear.x = 0.4
     #         self.vel_msg.angular.z = 0
@@ -279,62 +357,6 @@ class PIDController:
     #     self.vel_msg.angular.z = 0
     #     self.vel_msg.linear.y = 0
     #     self.vel_publisher.publish(self.vel_msg)
-
-    def avoid_move(self):
-        rospy.loginfo("雷达发现障碍物，开始避障")
-        flag = 1
-        # integration_y = 0
-        integration_z = 0
-        self.vel_msg.linear.y = 0
-        self.vel_msg.linear.x = 0
-        self.vel_msg.angular.z = 0
-        while flag:
-            lidar_resp = self.lidar_client.call(self.lidar_Req)
-            if(lidar_resp.lidar_results[0]!=-1):
-                # integration_y = max(min(integration_y + lidar_resp.lidar_results[1],-0.1),0.1)
-                integration_z = max(min(integration_z + lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3],-0.2),0.2)
-                # self.vel_msg.linear.y = max(min(lidar_resp.lidar_results[1]+integration_y, 0.1), -0.1)
-                self.vel_msg.angular.z = max(min((lidar_resp.lidar_results[2]/lidar_resp.lidar_results[3]+integration_z) * -1, 0.2), -0.2)
-                self.vel_publisher.publish(self.vel_msg) 
-                # if abs(self.vel_msg.linear.y) < 0.03:
-                #     integration_y = 0
-                print(self.vel_msg.angular.z)
-                if abs(self.vel_msg.angular.z) > 0.2:
-                    integration_z = 0
-                if abs(self.vel_msg.angular.z) < 0.05:
-                    print("done")
-                    break
-        rospy.loginfo("平移")
-        start = time.time()
-        while flag :
-            if time.time()-start > 2:
-                flag = 0
-            self.vel_msg.linear.x = 0
-            self.vel_msg.angular.z = 0
-            self.vel_msg.linear.y = 0.3
-            self.vel_publisher.publish(self.vel_msg)
-        flag = 1
-        start = time.time()
-        while flag :
-            if time.time()-start > 1.6:
-                flag = 0
-            self.vel_msg.linear.x = 0.4
-            self.vel_msg.angular.z = 0
-            self.vel_msg.linear.y = 0
-            self.vel_publisher.publish(self.vel_msg)
-        flag = 1
-        start = time.time()
-        while flag :
-            if time.time()-start > 2:
-                flag = 0
-            self.vel_msg.linear.x = 0
-            self.vel_msg.angular.z = 0
-            self.vel_msg.linear.y = -0.3
-            self.vel_publisher.publish(self.vel_msg)
-        self.vel_msg.linear.x = 0
-        self.vel_msg.angular.z = 0
-        self.vel_msg.linear.y = 0
-        self.vel_publisher.publish(self.vel_msg)
 
 
 # 初始化节点
