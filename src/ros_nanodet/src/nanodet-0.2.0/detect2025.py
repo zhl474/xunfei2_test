@@ -100,8 +100,8 @@ def detect_start(req):
     response.x1 = x1
     response.y1 = y1
     response.class_name = target
-    # if best_bbox[0] != -1:
-    #     visualize(frame,x0, y0, x1, y1,target,conf)
+    if best_bbox[0] != -1:
+        visualize(frame,x0, y0, x1, y1,target,conf)
     return response
 
 server = rospy.Service("nanodet_detect",detect_result_srv,detect_start)

@@ -84,7 +84,7 @@ void MecanumController::rotateCircle(double rotate,int direction, double angular
     }
 }
 
-int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){//原地旋转小车x度，执行y次目标检测,寻找z号目标
+int MecanumController::turn_and_find(double find_time,int y,int z,double angular_speed){//原地旋转小车x度，执行y次目标检测,寻找z号目标
     result = {-1,-1,-1,-1,-1,-1};
     double integral = 0, prev_error = 0;
     // ros::Rate rate(20);     // 控制频率20Hz
@@ -97,7 +97,7 @@ int MecanumController::turn_and_find(double x,int y,int z,double angular_speed){
             set_speed_.request.target_twist.angular.z = angular_speed;
             set_speed_client_.call(set_speed_);
             integral = 0;
-            if ((ros::Time::now() - start_time_).toSec()>17){
+            if ((ros::Time::now() - start_time_).toSec()>find_time){
                 exit_flag = true;
                 result[4] = -1;
                 ROS_INFO("找板超时");
