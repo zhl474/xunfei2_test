@@ -164,7 +164,7 @@ add_executable(tf_pose_get src/tf_pose_get.cpp)
 add_executable(lidar_process src/lidar_process.cpp)
 add_executable(myplanernav src/myplanernav.cpp)
 add_executable(simple_move_control src/simple_move_control.cpp)
-add_executable(find_and_approach src/find_and_approach.cpp)
+
 
 # add_executable(turn_detect src/turn_detect.cpp)
 ## Rename C++ executable without prefix
@@ -181,7 +181,7 @@ add_dependencies(turn_detect ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORT
 add_dependencies(myplanernav ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(zhltest ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(traffic_light ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(find_and_approach ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(zhltest
@@ -213,10 +213,7 @@ target_link_libraries(traffic_light
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
 )
-target_link_libraries(find_and_approach
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
-)
+
 # target_link_libraries(lidar_test
 #   ${catkin_LIBRARIES}
 # )

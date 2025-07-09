@@ -40,7 +40,7 @@ private:
                 }
                 ROS_INFO("有效点数%d",effective_point);
                 std::sort(disdance.begin(), disdance.end());
-                ROS_INFO("平均距离%f",disdance[effective_point/2]);
+                ROS_INFO("距离%f",disdance[effective_point/2]);//中位数
                 resp.lidar_results.push_back(disdance[effective_point/2]);
                 return true;
             }

@@ -38,7 +38,7 @@ private:
     // 运动学参数
     double angle_error_ = 0.034;   //容忍2度偏差
     double Kp_ = 0.5;  // 先调这个参数
-    double Ki_ = 0.1;  // 最后调积分项
+    double Ki_ = 0.5;  // 最后调积分项
     double Kd_ = 0.1;  // 中间调微分项
 
     ros::ServiceClient detect_client_;

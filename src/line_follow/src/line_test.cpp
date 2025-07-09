@@ -301,11 +301,11 @@ cv::Mat twoPassLabeling(const cv::Mat& binaryImg, int minArea) {
     return result;
 }
 
-double error_calculate(Mat binary,int height){
-    for (int i=height;i>0;i--){
-        for (int j=320;)
-    }
-}
+// double error_calculate(cv::Mat binary,int height){
+//     for (int i=height;i>0;i--){
+//         for (int j=320;)
+//     }
+// }
 
 int main(int argc, char **argv) {
     setlocale(LC_ALL,"");
@@ -345,7 +345,7 @@ int main(int argc, char **argv) {
         if (src.empty()) continue;
         cropped = src(roi);
         cv::flip(cropped, cropped, 1);
-        cvtColor(cropped, gray, COLOR_BGR2GRAY);
+        cvtColor(cropped, gray, cv::COLOR_BGR2GRAY);
         cv::GaussianBlur(gray, blurred, cv::Size(5, 5), 1.5);
         cv::threshold(gray,binary,200, 255,cv::THRESH_BINARY);
     }
