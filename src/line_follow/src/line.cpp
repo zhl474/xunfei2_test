@@ -2,63 +2,111 @@
 #include <iostream>
 #include <vector>
 #include<ros/ros.h>
+#include <random>
 #include <string>
+
 
 using namespace cv;
 using namespace std;
 
+// RANSAC直线拟合函数
+// 输入：点集 points，距离阈值 distThreshold，最大迭代次数 maxIterations
+// 输出：直线参数 (a, b, c) 满足 ax+by+c=0，以及内点索引
+std::pair<std::vector<double>, std::vector<int>> fitLineRANSAC(
+    const std::vector<cv::Point2f>& points, 
+    float distThreshold, 
+    int maxIterations) 
+{
+    // 随机数生成器初始化
+    std::random_device rd;
+    std::mt19937 rng(rd());
+    std::uniform_int_distribution<int> uni(0, points.size()-1);
+
+    // 最佳模型和内点
+    std::vector<double> bestModel(3);
+    std::vector<int> bestInliers;
+    int bestInlierCount = 0;
+
+    // RANSAC主循环
+    for (int i = 0; i < maxIterations; ++i) {
+        // 1. 随机选两个点
+        int idx1 = uni(rng);
+        int idx2 = uni(rng);
+        while (idx2 == idx1) idx2 = uni(rng);  // 确保不同点
+        
+        const auto& p1 = points[idx1];
+        const auto& p2 = points[idx2];
+        
+        // 2. 计算直线参数 (a, b, c)
+        double a = p2.y - p1.y;
+        double b = p1.x - p2.x;
+        double c = p2.x * p1.y - p1.x * p2.y;
+        
+        // 处理重合点 (分母接近0)
+        double denom = std::sqrt(a*a + b*b);
+        if (denom < 1e-5) continue;  // 跳过无效直线
+        
+        // 3. 计算内点
+        std::vector<int> inliers;
+        for (int j = 0; j < points.size(); ++j) {
+            const auto& pt = points[j];
+            double dist = std::abs(a*pt.x + b*pt.y + c) / denom;
+            if (dist < distThreshold) inliers.push_back(j);
+        }
+        
+        // 4. 更新最佳模型
+        if (inliers.size() > bestInlierCount) {
+            bestInlierCount = inliers.size();
+            bestModel = {a, b, c};
+            bestInliers = std::move(inliers);
+        }
+    }
+    
+    return {bestModel, bestInliers};
+}
+
+// 使用内点精确拟合直线
+cv::Vec4f refineLine(const std::vector<cv::Point2f>& points, 
+                    const std::vector<int>& inliers) 
+{
+    std::vector<cv::Point2f> inlierPoints;
+    for (int idx : inliers) inlierPoints.push_back(points[idx]);
+    
+    cv::Vec4f line;
+    cv::fitLine(inlierPoints, line, cv::DIST_L2, 0, 0.01, 0.01);
+    return line;  // 返回格式: (vx, vy, x0, y0)
+}
+
 // 从图像底部向上搜索指定行数，分别独立寻找左右两侧的赛道边缘起始点
-void find_track_edge(Mat& gray_img, vector<Point>& left_points, vector<Point>& right_points, 
+void find_track_edge(Mat& gray_img, Point& right_point, 
                      int& last_scanned_y, int scan_rows = 200, int brightness_threshold = 20) {
     int height = gray_img.rows;
     int width = gray_img.cols;
     int middle_x = width / 2;
-    last_scanned_y = max(0, height - scan_rows);
-
-    left_points.clear();
-    right_points.clear();
-
-    cout << "扫描底部" << scan_rows << "行寻找赛道起始点..." << endl;
-
-    // 从底部向上逐行扫描
+    bool flag = 1;
+    last_scanned_y = height - scan_rows;
     for (int y = height - 1; y >= last_scanned_y; y--) {
-        // 向左搜索边界
-        if (left_points.empty()) {
-            for (int x = middle_x - 1; x > 0; x--) {
-                int current = gray_img.at<uchar>(y, x);
-                int next = gray_img.at<uchar>(y, x + 1);
-                int brightness_change = current - next;
-                
-                if (brightness_change >= brightness_threshold) {
-                    left_points.push_back(Point(x, y));
-                    cout << "找到左侧边界起始点 (x=" << x << ", y=" << y 
-                         << "), 亮度变化: " << brightness_change << endl;
-                    break;
-                }
-            }
-        }
-
         // 向右搜索边界
-        if (right_points.empty()) {
+        if (right_point.x = -1) {
             for (int x = middle_x + 1; x < width - 1; x++) {
                 int current = gray_img.at<uchar>(y, x);
                 int prev = gray_img.at<uchar>(y, x - 1);
                 int brightness_change = current - prev;
                 
                 if (brightness_change >= brightness_threshold) {
-                    right_points.push_back(Point(x, y));
+                    right_point = Point(x, y);
                     cout << "找到右侧边界起始点 (x=" << x << ", y=" << y 
                          << "), 亮度变化: " << brightness_change << endl;
                     break;
                 }
             }
         }
+        else break;
     }
 }
 
 // 从起始点开始追踪赛道边线（添加断裂检测机制）
-void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, bool& broken,
-                bool is_left_edge = true, int search_range = 20, 
+void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, bool& broken, int search_range = 20, 
                 int brightness_threshold = 20, Mat* visual_img = nullptr) {
     int height = gray_img.rows;
     int width = gray_img.cols;
@@ -73,10 +121,6 @@ void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, 
     // 初始化搜索中心
     int center_x = start_point.x;
     int center_y = start_point.y - 1;  // 从起始点上方开始搜索
-    
-    string color_name = is_left_edge ? "左侧" : "右侧";
-    cout << "开始追踪" << color_name << "边界 (起始点: (" 
-         << start_point.x << "," << start_point.y << "))..." << endl;
 
     while (center_y > 0) {  // 向上追踪直到图像顶部
         bool found = false;
@@ -84,53 +128,52 @@ void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, 
         int max_brightness_change = 0;
 
         // 在当前行搜索范围内检查所有可能点
-        for (int dx = -search_range; dx <= search_range; dx++) {
+        for (int dx = 0; dx <= search_range/2; dx++) {
             // 计算候选点位置
             int cand_x = center_x + dx;
-            int cand_y = center_y;
-
+            int cand_x2 = center_x - dx;
+            bool left_check = 1;
+            bool right_check = 1;
             // 边界检查
-            if (cand_x < 1 || cand_x >= width - 1 || cand_y < 0 || cand_y >= height) {
-                continue;
+            if (cand_x >= width - 1) {
+                right_check = 0;
             }
-
-            // 跳过已追踪点
-            bool already_traced = false;
-            for (const auto& pt : traced_points) {
-                if (pt.x == cand_x && pt.y == cand_y) {
-                    already_traced = true;
-                    break;
-                }
+            if (cand_x2 < 1) {
+                left_check = 0;
             }
-            if (already_traced) continue;
 
             // 计算亮度变化（根据边界类型确定方向）
             int brightness_change;
-            if (is_left_edge) {
-                // 左侧边缘：检测右边暗到左边亮的变化
-                int current = gray_img.at<uchar>(cand_y, cand_x);
-                int next = gray_img.at<uchar>(cand_y, cand_x + 1);
-                brightness_change = current - next;
-            } else {
-                // 右侧边缘：检测左边暗到右边亮的变化
-                int current = gray_img.at<uchar>(cand_y, cand_x);
-                int prev = gray_img.at<uchar>(cand_y, cand_x - 1);
+            //右减左
+            if (left_check){
+                int current = gray_img.at<uchar>(center_y, cand_x2);
+                int prev = gray_img.at<uchar>(center_y, cand_x2 - 1);
                 brightness_change = current - prev;
             }
-
-            // 检查是否满足阈值
             if (brightness_change >= brightness_threshold) {
-                // 选择变化最大的点
                 if (brightness_change > max_brightness_change) {
                     max_brightness_change = brightness_change;
-                    best_point = Point(cand_x, cand_y);
+                    best_point = Point(cand_x2, center_y);
                     found = true;
+                }
+            }
+            else{
+                if (right_check) {
+                    int current = gray_img.at<uchar>(center_y, cand_x);
+                    int next = gray_img.at<uchar>(center_y, cand_x + 1);
+                    brightness_change = next-current;
+                } 
+                if (brightness_change >= brightness_threshold) {
+                    if (brightness_change > max_brightness_change) {
+                        max_brightness_change = brightness_change;
+                        best_point = Point(cand_x, center_y);
+                        found = true;
+                    }
                 }
             }
         }
 
         if (found) {
-            // 添加到追踪点列表
             traced_points.push_back(best_point);
             // 重置失败计数器
             fail_count = 0;
@@ -138,25 +181,13 @@ void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, 
             center_x = best_point.x;
             center_y = best_point.y - 1;
 
-            // 调试输出
-            if (traced_points.size() % 20 == 0) {
-                cout << color_name << "边界追踪进度: y=" << center_y 
-                     << ", 已找到" << traced_points.size() << "个点" << endl;
-            }
         } else {
             // 没有找到符合条件的点
             fail_count++;
             // 向上移动一行继续搜索
             center_y--;
-
-            // 调试输出
-            cout << color_name << "边界在y=" << center_y + 1 
-                 << "未找到边界点 (失败次数: " << fail_count << "/2)" << endl;
-
             // 如果连续2行找不到点，判定为赛道断裂
             if (fail_count >= 2) {
-                cout << "!! " << color_name << "边界发生断裂 !! (连续" 
-                     << fail_count << "行未找到边界点)" << endl;
                 broken = true;
                 break;
             }
@@ -168,12 +199,9 @@ void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, 
         }
     }
 
-    cout << color_name << "边界追踪完成: 共找到" << traced_points.size() << "个点" << endl;
-
     // 可视化追踪过程
     if (visual_img != nullptr) {
-        Scalar color = is_left_edge ? Scalar(0, 0, 255) : Scalar(0, 255, 0);  // 红色:左, 绿色:右
-
+        Scalar color = Scalar(0, 255, 0);  // 红色:左, 绿色:右
         // 绘制所有追踪点
         for (const auto& point : traced_points) {
             circle(*visual_img, point, 2, color, -1);
@@ -191,129 +219,119 @@ void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, 
         }
     }
 }
+//如果右边丢线，就只看左边，因为右边丢线了，所以直接从最右边开始找，找到就是左线，然后把左线拟合成直线，如果左线碰到图片底端，就开始旋转，通过定位来判断是否到达终点，到达终点前不启用停车逻辑
+bool find_left_edge(Mat gray_img,vector<Point>& left_edge_points,int brightness_threshold){
+    int height = gray_img.rows;
+    int width = gray_img.cols;
+    bool flag = 1;
+    for (int y = height - 1; y >= 200; y--) {
+        for (int x = width -1; x > 1; x--) {
+            int brightness_change = gray_img.at<uchar>(y, x - 1) - gray_img.at<uchar>(y, x);
+            if (brightness_change >= brightness_threshold) {
+                left_edge_points.push_back(Point(x, y));
+                break;
+            }
+        }
+    }
+    if(left_edge_points.empty()) return false;
+    else {
+        cv::Vec4d lineModel;
+        cv::fitLine(left_edge_points, lineModel, DIST_L2, 0, 0.01, 0.01); // 额外的计算开销
+        if(lineModel[2]-(lineModel[3]*lineModel[0]/lineModel[1])>0){
+            return true;
+        }//如果与x轴交点小于0，那么还可以直线前进，大于0，则原地转弯
+        else {
+            return false;
+        }
+    }
+}
+
+// void speed_calculater(Mat gray,)
 
 int main(int argc, char **argv) {
     setlocale(LC_ALL,"");
     ros::init(argc, argv, "line");
+    FileStorage fs("calibration_params.yaml", FileStorage::READ);
+    if (!fs.isOpened()) {
+        cerr << "无法打开标定文件" << endl;
+        return -1;
+    }
+
+    Mat cameraMatrix, distCoeffs;
+    int imgWidth, imgHeight;
+    fs["camera_matrix"] >> cameraMatrix;
+    fs["distortion_coefficients"] >> distCoeffs;
+    fs.release();
     // 1. 读取图像并转换为灰度图
     cv::VideoCapture cap("/dev/video0", cv::CAP_V4L2);
     if (!cap.isOpened()) {
         ROS_ERROR("Failed to open camera!");
         return -1;
     }
-    cap.set(cv::CAP_PROP_FRAME_WIDTH, 1280);
-    cap.set(cv::CAP_PROP_FRAME_HEIGHT, 720);
-    Mat image;
+    cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
+    cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
+    Mat map1, map2;
+    Mat newCameraMatrix = getOptimalNewCameraMatrix(
+        cameraMatrix, distCoeffs, Size(imgWidth, imgHeight), 
+        0.85, // 缩放因子（0.8-1.0之间减少黑边）
+        Size(imgWidth, imgHeight)
+    );
+    initUndistortRectifyMap(
+        cameraMatrix, 
+        distCoeffs, 
+        Mat(), // 无旋转
+        newCameraMatrix, 
+        Size(imgWidth, imgHeight), 
+        CV_32FC1, // 32位浮点类型（速度优化）
+        map1, 
+        map2
+    );
+    Mat image,undistorted;
 
     while(1){
         cap.read(image);
         if (image.empty()) continue;
-
+        remap(
+            image, 
+            undistorted, 
+            map1, 
+            map2, 
+            INTER_LINEAR, 
+            BORDER_CONSTANT, 
+            Scalar(0, 0, 0) // 黑边填充
+        );
+        flip(image, image, 1);
         Mat gray_img;
         cvtColor(image, gray_img, COLOR_BGR2GRAY);
         int height = gray_img.rows;
         int width = gray_img.cols;
         cout << "图像尺寸: " << width << "x" << height << endl;
-
+        
         // 创建可视化图像
         Mat result_image = image.clone();
 
         // 2. 搜索赛道边缘点
         int scan_rows = 200;  // 向上搜索的行数
         int brightness_threshold = 20;  // 亮度变化阈值
-        vector<Point> left_edge_points, right_edge_points;
+        Point right_edge_point = Point(-1, -1);
         int last_scanned_y;
         
-        find_track_edge(gray_img, left_edge_points, right_edge_points, last_scanned_y, 
-                        scan_rows, brightness_threshold);
+        find_track_edge(gray_img,right_edge_point, last_scanned_y, scan_rows, brightness_threshold);
 
-        // 3. 追踪赛道边线
-        vector<Point> traced_left, traced_right;
-        bool left_broken = false, right_broken = false;
-
-        // 追踪左侧边线
-        if (!left_edge_points.empty()) {
-            Point start_point = left_edge_points[0];
-            trace_edge(start_point, gray_img, traced_left, left_broken, true,
-                    20, brightness_threshold, &result_image);
-            cout << "左侧边界追踪结果: 点数=" << traced_left.size() 
-                << ", 是否断裂=" << (left_broken ? "是" : "否") << endl;
-        } else {
-            cout << "未找到左侧起始点，跳过左侧追踪" << endl;
-        }
-
+        vector<Point> traced_right,left_edge_points;
+        bool right_broken = false;
         // 追踪右侧边线
-        if (!right_edge_points.empty()) {
-            Point start_point = right_edge_points[0];
-            trace_edge(start_point, gray_img, traced_right, right_broken, false,
-                    20, brightness_threshold, &result_image);
-            cout << "右侧边界追踪结果: 点数=" << traced_right.size() 
-                << ", 是否断裂=" << (right_broken ? "是" : "否") << endl;
+        if (right_edge_point.x != -1) {
+            trace_edge(right_edge_point, gray_img, traced_right, right_broken,20, brightness_threshold, &result_image);
+            cout << "右侧边界追踪结果: 点数=" << traced_right.size() << endl;
         } else {
-            cout << "未找到右侧起始点，跳过右侧追踪" << endl;
+            cout << "未找到右侧起始点，左侧巡线" << endl;
+            find_left_edge(gray_img, left_edge_points,brightness_threshold);
         }
-
-        // 4. 根据追踪结果判断赛道类型
-        cout << "\n=== 赛道分析报告 ===" << endl;
-        cout << "左侧边界点数: " << traced_left.size() 
-            << ", 断裂状态: " << (left_broken ? "是" : "否") << endl;
-        cout << "右侧边界点数: " << traced_right.size() 
-            << ", 断裂状态: " << (right_broken ? "是" : "否") << endl;
-
-        // 简单的赛道类型判断
-        string track_type;
-        if (traced_left.empty() && traced_right.empty()) {
-            track_type = "未识别到赛道";
-            cout << "赛道类型: " << track_type << endl;
-        } else if (left_broken && right_broken) {
-            track_type = "完全断裂（可能是急转弯或障碍区）";
-            cout << "赛道类型: " << track_type << endl;
-        } else if (!left_broken && !right_broken) {
-            track_type = "完整赛道";
-            cout << "赛道类型: " << track_type << endl;
-        } else if (left_broken && !right_broken) {
-            track_type = "左侧断裂（可能是左急转弯）";
-            cout << "赛道类型: " << track_type << endl;
-        } else if (!left_broken && right_broken) {
-            track_type = "右侧断裂（可能是右急转弯）";
-            cout << "赛道类型: " << track_type << endl;
-        } else {
-            track_type = "复杂情况，需要进一步分析";
-            cout << "赛道类型: " << track_type << endl;
-        }
-
-        // 5. 绘制扫描区域
-        rectangle(result_image, Point(0, last_scanned_y), Point(width - 1, height - 1), 
-                Scalar(255, 0, 255), 1);
-        putText(result_image, "Scan Area: " + to_string(height - last_scanned_y) + " rows",
-                Point(10, last_scanned_y - 5), FONT_HERSHEY_SIMPLEX, 0.6, Scalar(255, 0, 255), 1);
-
-        // 6. 添加文本说明
-        if (!traced_left.empty()) {
-            string status = left_broken ? "断裂" : "连续";
-            putText(result_image, "Left: " + to_string(traced_left.size()) + "点 " + status,
-                    Point(10, 30), FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 0, 255), 2);
-        }
-        
-        if (!traced_right.empty()) {
-            string status = right_broken ? "断裂" : "连续";
-            putText(result_image, "Right: " + to_string(traced_right.size()) + "点 " + status,
-                    Point(width - 200, 30), FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 255, 0), 2);
-        }
-        
-        // 在图像底部显示赛道类型
-        putText(result_image, "Track Type: " + track_type, Point(width / 2 - 150, height - 20),
-                FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 255, 255), 2);
-        
-        putText(result_image, "Threshold: " + to_string(brightness_threshold), Point(10, height - 20),
-                FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 255, 255), 1);
 
         // 7. 显示结果
         imshow("Gray Image", gray_img);
         imshow("Track Edge Detection", result_image);
-
-        // 8. 保存调试图像（可选）
-        imwrite("/home/zhl/track_edge_result.jpg", gray_img);
 
         // 9. 等待按键后退出
         waitKey(1);

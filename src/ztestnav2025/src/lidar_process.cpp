@@ -29,7 +29,7 @@ private:
         num_points_ = ranges_.size();
         std::vector<std::vector<float>> result;
         float theta = 0;
-        if (req.lidar_process_start!=-1){//这部分是找板用的雷达处理代码，后面是巡线避障的雷达处理代码
+        if (req.lidar_process_start!=-1 && req.lidar_process_start!=0){//这部分是找板用的雷达处理代码，后面是巡线避障的雷达处理代码
             if(req.lidar_process_start==1){//视觉发现板子，雷达查看正前方数据
                 int effective_point = 0;
                 std::vector<float> disdance;
@@ -72,14 +72,15 @@ private:
     //---------------------------新增的模式：为避障获取精确前方距离和角度---------------------
         if(req.lidar_process_start == 0){ 
             if (lasar_scan_.ranges.empty()) { // 检查是否有雷达数据
+                ROS_INFO("无雷达数据");
                 resp.lidar_results.push_back(-1); // 返回-1表示无数据
                 return true;
             }
             float min_dist = std::numeric_limits<float>::infinity();
             int min_index = -1;
     
-            // 根据要求，检查索引110到126的范围
-            for(int i = 110; i <= 126; i++){
+            // 根据要求，检查索引150到186的范围
+            for(int i = 150; i <= 186; i++){
                 // 安全检查，防止索引越界
                 if(i >= lasar_scan_.ranges.size()) break; 
         
@@ -102,9 +103,11 @@ private:
                 // 返回最小距离和对应的精确角度
                 resp.lidar_results.push_back(min_dist);
                 resp.lidar_results.push_back(angle);
+                ROS_INFO("找到有效点");
             } else {
                 // 如果在该范围内没有找到有效点，返回-1
                 resp.lidar_results.push_back(-1); 
+                ROS_INFO("未找到有效点");
             }
             return true;
         }

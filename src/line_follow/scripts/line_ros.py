@@ -17,8 +17,6 @@ import math
 # 新增move_base和tf的库
 import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
-# 导入tf转换库，仅用于欧拉角和四元数转换，不进行监听
-from tf.transformations import quaternion_from_euler
 
 
 
@@ -225,6 +223,7 @@ class PIDController:
             # print(lidar_resp)
             if lidar_resp.lidar_results[0] != -1:
                 # cv2.waitKey(0)
+                rospy.loginfo("准备开始避障")
                 self.avoid_move()
             ret, frame = cap.read()
             if not ret:
@@ -326,7 +325,7 @@ class PIDController:
     #         moved_distance = abs(self.current_pose.y - start_pose.y)
     #         if moved_distance >= target_distance:
     #             break
-    #         self.vel_msg.linear.x = 0
+    #         self.vel_msg.linear.x = 0ucar_car
     #         self.vel_msg.angular.z = 0
     #         self.vel_msg.linear.y = -0.3
     #         self.vel_publisher.publish(self.vel_msg)
@@ -380,8 +379,8 @@ class PIDController:
             return
 
         # 3. 计算目标点
-        # 目标点位于障碍物后方30cm处，沿着雷达探测到的方向
-        target_dist = min_dist + 0.30
+        # 目标点位于障碍物后方25cm处，沿着雷达探测到的方向
+        target_dist = min_dist + 0.25
 
         # 在机器人坐标系 (base_link) 中计算目标位置
         # ROS标准坐标系: X轴向前, Y轴向左, 角度逆时针为正
@@ -408,9 +407,20 @@ class PIDController:
         goal.target_pose.pose.position.x = target_x_map
         goal.target_pose.pose.position.y = target_y_map
 
-        # 【新增】将yaw朝向角转换为四元数
-        q = quaternion_from_euler(0, 0, robot_yaw_map)
-        goal.target_pose.pose.orientation = Quaternion(*q)
+        half_yaw = robot_yaw_map * 0.5
+        # 计算sin和cos
+        qz = math.sin(half_yaw)
+        qw = math.cos(half_yaw)
+
+        # 创建四元数（x, y设置为0）
+        goal.target_pose.pose.orientation.x = 0.0
+        goal.target_pose.pose.orientation.y = 0.0
+        goal.target_pose.pose.orientation.z = qz
+        goal.target_pose.pose.orientation.w = qw
+
+        # # 【新增】将yaw朝向角转换为四元数
+        # q = quaternion_from_euler(0, 0, robot_yaw_map)
+        # goal.target_pose.pose.orientation = Quaternion(*q)
         
         rospy.loginfo("向move_base发送导航目标...")
         self.move_base_client.send_goal(goal)
