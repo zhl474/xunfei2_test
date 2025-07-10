@@ -80,7 +80,7 @@ private:
             int min_index = -1;
     
             // 根据要求，检查索引150到186的范围
-            for(int i = 150; i <= 186; i++){
+            for(int i = 120; i <= 216; i++){
                 // 安全检查，防止索引越界
                 if(i >= lasar_scan_.ranges.size()) break; 
         
@@ -112,9 +112,10 @@ private:
             return true;
         }
         
-      else if(req.lidar_process_start==-1){//视觉巡线区的雷达处理代码
+        else if(req.lidar_process_start==-1){//视觉巡线区的雷达处理代码
             int effective_point = 0;
-            double average_distance = 0;
+            double average_x = 0;
+            double average_y = 0;
             std::vector<cv::Point2f> points;//准备拟合直线
             std::vector<float> distance;
             bool flag = 1;
@@ -128,10 +129,11 @@ private:
                 if (fabs(ranges_[count+1]-ranges_[count])>0.2) break;
                 if (ranges_[count] > 0.6) continue;
                 theta = count * angle_step;
-                cv::Point2f pt(ranges_[count] * cos(theta) * -1, ranges_[count] * sin(theta) * -1);
+                cv::Point2f pt(ranges_[count] * cos(theta) * -1, ranges_[count] * sin(theta) * -1);//因为180度才是正前方，差了一个π所以*-1
                 points.push_back(pt);
                 effective_point++;
-                // average_distance += ranges_[count];
+                average_x += ranges_[count] * cos(theta)*-1;
+                average_y += ranges_[count] * sin(theta)*-1;
                 distance.push_back(ranges_[count]);
             }
             if (effective_point==0){
@@ -148,10 +150,11 @@ private:
                 if (fabs(ranges_[count+1]-ranges_[count])>0.2) break;
                 if (ranges_[count] > 0.6) continue;
                 theta = count * angle_step;
-                cv::Point2f pt(ranges_[count] * cos(theta) * -1, ranges_[count] * sin(theta) * -1);
+                cv::Point2f pt(ranges_[count] * cos(theta) * -1, ranges_[count] * sin(theta) * -1);//因为180度才是正前方，差了一个π所以*-1
                 points.push_back(pt);
                 effective_point++;
-                // average_distance += ranges_[count];
+                average_x += ranges_[count] * cos(theta)*-1;
+                average_y += ranges_[count] * sin(theta)*-1;
                 distance.push_back(ranges_[count]);
             }
             std::sort(distance.begin(), distance.end());
@@ -161,11 +164,11 @@ private:
                 // waitForContinue();
                 cv::Vec4f lineParams;
                 cv::fitLine(points, lineParams, cv::DIST_L2, 0, 0.01, 0.01);
-                resp.lidar_results.push_back(distance[0]);
-                resp.lidar_results.push_back(-1);
-                resp.lidar_results.push_back(lineParams[0]);
-                resp.lidar_results.push_back(lineParams[1]);
-                ROS_INFO("已返回障碍物斜率%f,%f",lineParams[0],lineParams[1]);
+                resp.lidar_results.push_back(distance[0]);//最短距离
+                resp.lidar_results.push_back(average_x/effective_point);//中点x坐标
+                resp.lidar_results.push_back(average_y/effective_point);//中点y坐标
+                resp.lidar_results.push_back(lineParams[0]/lineParams[1]);//板子斜率
+                ROS_INFO("已返回障碍物斜率%f",lineParams[0]/lineParams[1]);
                 return true;
             }
             else {//从else回来的第一项=-1就是没有障碍物

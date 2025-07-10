@@ -218,7 +218,7 @@ class PIDController:
             rospy.logerr("打开摄像头失败")
             return line_followResponse(0)
         while not rospy.is_shutdown():
-            rospy.loginfo("开始巡线")
+            # rospy.loginfo("开始巡线")
             lidar_resp = self.lidar_client.call(self.lidar_Req)
             # print(lidar_resp)
             if lidar_resp.lidar_results[0] != -1:
@@ -380,7 +380,7 @@ class PIDController:
 
         # 3. 计算目标点
         # 目标点位于障碍物后方25cm处，沿着雷达探测到的方向
-        target_dist = min_dist + 0.25
+        target_dist = min_dist + 0.19
 
         # 在机器人坐标系 (base_link) 中计算目标位置
         # ROS标准坐标系: X轴向前, Y轴向左, 角度逆时针为正
@@ -409,13 +409,25 @@ class PIDController:
         
         rospy.loginfo(f"原朝向: {math.degrees(robot_yaw_map):.2f}度 | "f"计算出的新朝向: {math.degrees(new_robot_yaw_map):.2f}度")
 
-
-
-
-
-
-        
         #--------------------------------分割线-------------------------------------------------------
+        #--------------------------------把障碍板的法线方向设为避障后小车的朝向   
+        # # 将雷达坐标系下的障碍物法线角度(angle)转换到map世界坐标系下
+        # obstacle_normal_map_frame = robot_yaw_map + angle
+
+        # # 直接将目标朝向设置为法线朝向
+        # new_robot_yaw_map = obstacle_normal_map_frame
+        
+        # # 标准化最终朝向角到[-pi, pi]范围内
+        # new_robot_yaw_map = math.atan2(math.sin(new_robot_yaw_map), math.cos(new_robot_yaw_map))
+        
+        # rospy.loginfo(f"原朝向: {math.degrees(robot_yaw_map):.2f}度 | "f"目标朝向(法线方向): {math.degrees(new_robot_yaw_map):.2f}度")
+
+        #-------------------------------分割线------------------------------------------------------------
+
+
+
+
+
         # 6. 创建并发送move_base目标
         goal = MoveBaseGoal()
         goal.target_pose.header.frame_id = 'map'

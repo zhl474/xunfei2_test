@@ -165,6 +165,40 @@ def sliding_window_search(binary_mask, leftx_base, rightx_base):
     
     return leftx, lefty, rightx, righty, out_img
 
+def draw_polynomial_fit(img, left_fitx, right_fitx, ploty):
+    """在图像上绘制拟合的多项式曲线"""
+    # 创建输出图像的副本
+    out_img = img.copy()
+    
+    # 确保所有参数有效
+    if left_fitx is not None and right_fitx is not None and ploty is not None:
+        # 创建左右车道线的点集
+        left_points = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+        right_points = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
+        
+        # 合并点集形成封闭区域
+        lane_points = np.hstack((left_points, right_points))
+        
+        # 绘制车道区域（绿色半透明）
+        cv2.fillPoly(out_img, np.int_([lane_points]), (0, 255, 0, 100))
+        
+        # 绘制左车道线（红色）
+        for i in range(1, len(ploty)):
+            if left_fitx[i-1] is not None and left_fitx[i] is not None:
+                cv2.line(out_img, 
+                         (int(left_fitx[i-1]), int(ploty[i-1])), 
+                         (int(left_fitx[i]), int(ploty[i])), 
+                         (0, 0, 255), 5)
+        
+        # 绘制右车道线（蓝色）
+        for i in range(1, len(ploty)):
+            if right_fitx[i-1] is not None and right_fitx[i] is not None:
+                cv2.line(out_img, 
+                         (int(right_fitx[i-1]), int(ploty[i-1])), 
+                         (int(right_fitx[i]), int(ploty[i])), 
+                         (255, 0, 0), 5)
+    
+    return out_img
 # 初始化摄像头
 cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
