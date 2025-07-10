@@ -1,147 +1,149 @@
 import cv2
 import numpy as np
-#计算透视变换矩阵用的
-# 全局变量
-points = []  # 存储选择的四个点
-dragging = False  # 是否正在拖动点
-current_point = -1  # 当前拖动的点索引
-dst_size = (400, 300)  # 目标矩形尺寸 (宽度, 高度)
 
-def mouse_callback(event, x, y, flags, param):
-    global points, dragging, current_point
+# 1. 加载针孔摄像头标定结果
+def load_pinhole_calibration(calib_file):
+    """加载针孔摄像头标定参数"""
+    fs = cv2.FileStorage(calib_file, cv2.FILE_STORAGE_READ)
     
-    # 左键点击：添加或选择点
-    if event == cv2.EVENT_LBUTTONDOWN:
-        # 如果已选4个点，检查是否点击了现有点
-        if len(points) == 4:
-            for i, pt in enumerate(points):
-                if np.linalg.norm(np.array(pt) - np.array((x, y))) < 15:  # 15像素内
-                    current_point = i
-                    dragging = True
-                    break
-        # 如果少于4个点，添加新点
-        elif len(points) < 4:
-            points.append((x, y))
+    # 获取相机内参矩阵
+    camera_matrix_node = fs.getNode("camera_matrix")
+    if camera_matrix_node.empty():
+        raise ValueError("未找到相机内参矩阵")
+    K = camera_matrix_node.mat()
     
-    # 左键释放：停止拖动
-    elif event == cv2.EVENT_LBUTTONUP:
-        dragging = False
-        current_point = -1
+    # 获取畸变系数
+    dist_coeffs_node = fs.getNode("distortion_coefficients")
+    if dist_coeffs_node.empty():
+        # 可能是旧格式的标定文件
+        dist_coeffs_node = fs.getNode("dist_coeffs") or fs.getNode("D")
     
-    # 鼠标移动：更新被拖动的点
-    if dragging and current_point != -1:
-        points[current_point] = (x, y)
+    if dist_coeffs_node.empty():
+        # 如果找不到畸变系数，使用零数组
+        D = np.zeros((5, 1), dtype=np.float64)
+        print("警告：未找到畸变系数，使用默认零值")
+    else:
+        D = dist_coeffs_node.mat().reshape(1, -1)  # 确保维度正确
+        
+    # 获取分辨率
+    width = int(fs.getNode("image_width").real() or 640)
+    height = int(fs.getNode("image_height").real() or 480)
+    
+    fs.release()
+    return K, D, (width, height)
 
-def calculate_perspective():
-    if len(points) != 4:
-        return None, None
+# 2. 针孔摄像头畸变校正
+def undistort_frame(frame, K, D, resolution):
+    """应用针孔畸变校正"""
+    # 确保畸变系数的正确维度 (1x5)
+    if D.size == 5:
+        D = D.reshape(1, 5)
+    elif D.size > 5:
+        D = D[:5].reshape(1, 5)
+    else:
+        D = np.zeros((1, 5), dtype=np.float64)
     
-    # 源点顺序：左上、右上、右下、左下
-    src_pts = np.array(points, dtype="float32")
+    # 高效校正方法：使用映射图
+    if not hasattr(undistort_frame, 'map1') or undistort_frame.resolution != resolution:
+        # 缓存映射图，只有当分辨率改变时才重新计算
+        new_camera_matrix, _ = cv2.getOptimalNewCameraMatrix(
+            K, D, resolution, 1, resolution
+        )
+        map1, map2 = cv2.initUndistortRectifyMap(
+            K, D, None, new_camera_matrix, resolution, cv2.CV_16SC2
+        )
+        undistort_frame.map1 = map1
+        undistort_frame.map2 = map2
+        undistort_frame.resolution = resolution
+        undistort_frame.new_camera_matrix = new_camera_matrix
     
-    # 目标点顺序：左上、右上、右下、左下
-    dst_pts = np.array([
-        [0, 0],
-        [dst_size[0]-1, 0],
-        [dst_size[0]-1, dst_size[1]-1],
-        [0, dst_size[1]-1]
-    ], dtype="float32")
+    # 使用预计算的映射图进行快速校正
+    undistorted = cv2.remap(
+        frame, 
+        undistort_frame.map1, 
+        undistort_frame.map2, 
+        cv2.INTER_LINEAR
+    )
     
-    # 计算变换矩阵
-    M = cv2.getPerspectiveTransform(src_pts, dst_pts)
-    return M, dst_pts
+    return undistorted
 
-def main():
-    global dst_size
-    
-    # 初始化摄像头
-    cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-        print("无法打开摄像头")
-        return
-    
-    # 创建窗口
-    cv2.namedWindow("原始图像")
-    cv2.namedWindow("透视变换")
-    cv2.setMouseCallback("原始图像", mouse_callback)
-    
-    # 创建尺寸调整滑块
-    def update_size(val):
-        global dst_size
-        dst_size = (cv2.getTrackbarPos("宽度", "透视变换"), 
-                    cv2.getTrackbarPos("高度", "透视变换"))
-    
-    cv2.createTrackbar("宽度", "透视变换", dst_size[0], 800, update_size)
-    cv2.createTrackbar("高度", "透视变换", dst_size[1], 600, update_size)
-    
-    print("使用说明:")
-    print("1. 在原始图像窗口点击4个点（顺序：左上、右上、右下、左下）")
-    print("2. 拖动点调整位置")
-    print("3. 调整宽度/高度滑块改变输出尺寸")
-    print("4. 按 's' 保存变换矩阵")
-    print("5. 按 'r' 重置所有点")
-    print("6. 按 'q' 退出")
-    
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("无法获取帧")
-            break
-        
-        # 在原始图像上绘制点和连线
-        display_frame = frame.copy()
-        for i, pt in enumerate(points):
-            cv2.circle(display_frame, (int(pt[0]), int(pt[1])), 8, (0, 0, 255), -1)
-            cv2.putText(display_frame, str(i+1), (int(pt[0])+10, int(pt[1])+5), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-        
-        if len(points) >= 2:
-            for i in range(len(points)):
-                cv2.line(display_frame, 
-                         (int(points[i][0]), int(points[i][1])),
-                         (int(points[(i+1)%len(points)][0]), int(points[(i+1)%len(points)][1])),
-                         (0, 255, 255), 2)
-        
-        # 计算并应用透视变换
-        if len(points) == 4:
-            M, dst_pts = calculate_perspective()
-            if M is not None:
-                warped = cv2.warpPerspective(frame, M, dst_size)
-                
-                # 在变换图像上绘制网格
-                for i in range(0, warped.shape[1], 50):
-                    cv2.line(warped, (i, 0), (i, warped.shape[0]), (0, 255, 0), 1)
-                for i in range(0, warped.shape[0], 50):
-                    cv2.line(warped, (0, i), (warped.shape[1], i), (0, 255, 0), 1)
-                
-                # 显示变换矩阵
-                matrix_text = f"变换矩阵:"
-                cv2.putText(warped, matrix_text, (10, 20), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-                
-                for i, row in enumerate(M):
-                    row_text = f"[{row[0]:.4f}, {row[1]:.4f}, {row[2]:.4f}]"
-                    cv2.putText(warped, row_text, (10, 40 + i*20), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-                
-                cv2.imshow("透视变换", warped)
-        
-        # 显示图像
-        cv2.imshow("原始图像", display_frame)
-        
-        # 键盘控制
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord('q'):  # 退出
-            break
-        elif key == ord('r'):  # 重置点
-            points = []
-        elif key == ord('s') and len(points) == 4:  # 保存矩阵
-            M, _ = calculate_perspective()
-            np.savetxt('perspective_matrix.txt', M)
-            print("变换矩阵已保存为 perspective_matrix.txt")
-    
+# 初始化摄像头
+cap = cv2.VideoCapture(0)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+if not cap.isOpened():
+    print("无法打开摄像头！")
+    exit()
+
+# 读取第一帧
+ret, frame = cap.read()
+if not ret:
+    print("无法读取摄像头画面！")
     cap.release()
-    cv2.destroyAllWindows()
+    exit()
 
-if __name__ == "__main__":
-    main()
+# 预设原始梯形区域坐标（示例坐标，根据实际场景调整）
+# 格式为 [左上, 右上, 右下, 左下]
+src_points = np.float32([[260, 230], [381, 230], [487, 335], [150, 335]])
+
+dst_points = np.float32([[150, 230], [487, 230], [487, 335], [150, 335]])
+
+
+# 计算透视变换矩阵
+M = cv2.getPerspectiveTransform(src_points, dst_points)
+print("透视变换矩阵：")
+print(M)
+
+CALIB_FILE = "/home/ucar/ucar_car/src/line_follow/camera_info/pinhole.yaml"  # 针孔标定文件路径
+K, D, calib_resolution = load_pinhole_calibration(CALIB_FILE)
+
+# 创建窗口
+cv2.namedWindow("Original")
+cv2.namedWindow("Transformed (Bird's-eye View)")
+
+# 在原始画面上标记梯形区域
+marked_frame = frame.copy()
+for i, point in enumerate(src_points):
+    cv2.circle(marked_frame, tuple(point.astype(int)), 8, (0, 0, 255), -1)
+    cv2.line(marked_frame, 
+             tuple(src_points[i].astype(int)), 
+             tuple(src_points[(i+1) % 4].astype(int)), 
+             (0, 255, 0), 2)
+
+cv2.putText(marked_frame, "Press 'q' to exit", 
+            (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 50, 200), 2)
+cv2.putText(marked_frame, "Source points:", 
+            (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 1)
+for i, point in enumerate(src_points):
+    cv2.putText(marked_frame, f"P{i+1}: {point.astype(int)}", 
+                (20, 90 + i*30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (100, 255, 255), 1)
+RESOLUTION = (640, 480)
+# 主循环
+while True:
+    # 读取当前帧
+    ret, frame = cap.read()
+    if not ret:
+        break
+    frame = undistort_frame(frame, K, D, RESOLUTION)
+    
+    # 在原始画面上显示标记点
+    display_frame = frame.copy()
+    for point in src_points:
+        cv2.circle(display_frame, tuple(point.astype(int)), 5, (0, 0, 255), -1)
+    
+    # 应用透视变换
+    transformed = cv2.warpPerspective(frame, M,(640,480))
+    
+    # 显示结果
+    cv2.imshow("Original", display_frame)
+    cv2.imshow("Transformed (Bird's-eye View)", transformed)
+    
+    # 退出条件
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        cv2.imwrite('original_frame.jpg', frame)
+        cv2.imwrite('transformed_view.jpg', transformed)
+        break
+
+# 释放资源
+cap.release()
+cv2.destroyAllWindows()
