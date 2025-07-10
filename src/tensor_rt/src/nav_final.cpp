@@ -390,7 +390,7 @@ int main(int argc, char** argv)
 
 
 
-
+ 
     //判断目标所在的房间并播报
     if (room_a_class == target_1 || room_a_class == target_2 || room_a_class == target_3)
     {
