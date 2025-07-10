@@ -314,14 +314,14 @@ int main(int argc, char** argv)
 
 
 
-    // 前往房间 A 区域
+    // 前往房间 C 区域
     goal.target_pose.header.stamp = ros::Time::now();
     goal.target_pose.pose.position.x = 3.735;
     goal.target_pose.pose.position.y = 1.055;
     goal.target_pose.pose.orientation.z = 0.7071;
     goal.target_pose.pose.orientation.w = 0.7071;
-    room_a_class = driveAndDetect(goal, 1, ac, client, tf_buffer, 9);//第一次没有需要避免的对象
-    ROS_INFO("_room_a_class = %d",room_a_class);
+    room_c_class = driveAndDetect(goal, 1, ac, client, tf_buffer, 9);//第一次没有需要避免的对象
+    ROS_INFO("_room_c_class = %d",room_c_class);
     //房间最内侧的板有可能因为速度过快导致错过，错过时重新来一次
     if(room_a_class == 65535)//返回值-1不在范围内，最终会变成65535
     {
@@ -330,8 +330,8 @@ int main(int argc, char** argv)
         goal.target_pose.pose.position.y = 1.555;
         goal.target_pose.pose.orientation.z = 0.7071;
         goal.target_pose.pose.orientation.w = 0.7071;
-        room_a_class = driveAndDetect(goal, 1, ac, client, tf_buffer, 9);
-        ROS_INFO("_room_a_class = %d",room_a_class);
+        room_c_class = driveAndDetect(goal, 1, ac, client, tf_buffer, 9);
+        ROS_INFO("_room_c_class = %d",room_c_class);
     }
     // 前往房间 B 区域
     goal.target_pose.header.stamp = ros::Time::now();
@@ -345,9 +345,9 @@ int main(int argc, char** argv)
     goal.target_pose.pose.position.y = 1.214;
     goal.target_pose.pose.orientation.z = 0.7071;
     goal.target_pose.pose.orientation.w = 0.7071;
-    room_b_class = driveAndDetect(goal, 2, ac, client, tf_buffer, room_a_class);
+    room_b_class = driveAndDetect(goal, 2, ac, client, tf_buffer, room_c_class);
 
-    // 前往房间 C 区域
+    // 前往房间 A 区域
     goal.target_pose.header.stamp = ros::Time::now();
     goal.target_pose.pose.position.x = 0.486;
     goal.target_pose.pose.position.y = 0.839;
@@ -361,7 +361,7 @@ int main(int argc, char** argv)
     goal.target_pose.pose.position.y = 0.839;
     goal.target_pose.pose.orientation.z = 0.5;
     goal.target_pose.pose.orientation.w = 0.866;
-    room_c_class = driveAndDetect(goal, 3, ac, client, tf_buffer, room_b_class);
+    room_a_class = driveAndDetect(goal, 3, ac, client, tf_buffer, room_b_class);
 
     // 返回原点
     ROS_INFO("返回起点");
@@ -385,8 +385,8 @@ int main(int argc, char** argv)
     ac.sendGoal(goal);
     ac.waitForResult();
 
-    ROS_INFO("Room A -> Class %d, Room B -> Class %d, Room C -> Class %d",
-             room_a_class, room_b_class, room_c_class);
+    ROS_INFO("Room C -> Class %d, Room B -> Class %d, Room A -> Class %d",
+             room_c_class, room_b_class, room_a_class);
 
 
 
