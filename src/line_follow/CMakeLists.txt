@@ -23,6 +23,7 @@ find_package(OpenCV REQUIRED COMPONENTS
   core
   highgui
   imgproc
+  calib3d
 )
 
 ## System dependencies are found with CMake's conventions
@@ -146,9 +147,11 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
+
 add_executable(line src/line.cpp)
-add_executable(line_server src/line_func.cpp)
-add_executable(line_test src/line_test.cpp)
+# add_executable(line_server src/line_func.cpp)
+# add_executable(line_test src/line_test.cpp)
+
 # 在add_executable之后添加以下内容调试用
 # target_compile_options(follower_line_pid
 #     PRIVATE 
@@ -167,18 +170,20 @@ add_executable(line_test src/line_test.cpp)
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
+
 target_link_libraries(line
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
 )
-target_link_libraries(line_server
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
-)
-target_link_libraries(line_test
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
-)
+# target_link_libraries(line_server
+#   ${catkin_LIBRARIES}
+#   ${OpenCV_LIBS}
+# )
+# target_link_libraries(line_test
+#   ${catkin_LIBRARIES}
+#   ${OpenCV_LIBS}
+# )
+
 #############
 ## Install ##
 #############

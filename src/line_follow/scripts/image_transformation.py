@@ -67,6 +67,104 @@ def undistort_frame(frame, K, D, resolution):
     
     return undistorted
 
+# 3. 获取车道线起始位置（直方图法）
+def get_linebase(binary_mask):
+    """通过直方图找到车道线的起始位置"""
+    height, width = binary_mask.shape[:2]
+    
+    # 计算下半部分图像的直方图（列方向求和）
+    histogram = np.sum(binary_mask[height//2:, :], axis=0)
+    
+    # 找到直方图峰值位置
+    midpoint = len(histogram) // 2
+    leftx_base = np.argmax(histogram[:midpoint])
+    rightx_base = np.argmax(histogram[midpoint:]) + midpoint
+    
+    return leftx_base, rightx_base
+
+# 4. 滑动窗口搜索车道线
+def sliding_window_search(binary_mask, leftx_base, rightx_base):
+    """使用滑动窗口搜索车道线像素"""
+    height, width = binary_mask.shape
+    
+    # 滑动窗口参数
+    nwindows = 9  # 窗口数量
+    window_height = height // nwindows  # 每个窗口的高度
+    margin = 100  # 窗口宽度的一半
+    minpix = 50   # 重新定位窗口所需的最小像素数
+    
+    # 创建输出图像（三通道）
+    out_img = np.dstack((binary_mask, binary_mask, binary_mask)) * 255
+    
+    # 初始化当前位置
+    leftx_current = leftx_base
+    rightx_current = rightx_base
+    
+    # 存储车道线像素的索引
+    left_lane_inds = []
+    right_lane_inds = []
+    
+    # 获取所有非零像素的位置
+    nonzero = binary_mask.nonzero()
+    nonzeroy = np.array(nonzero[0])
+    nonzerox = np.array(nonzero[1])
+    
+    # 遍历所有窗口
+    for window in range(nwindows):
+        # 计算窗口边界
+        win_y_low = height - (window + 1) * window_height
+        win_y_high = height - window * window_height
+        
+        # 左车道线窗口边界
+        win_xleft_low = leftx_current - margin
+        win_xleft_high = leftx_current + margin
+        
+        # 右车道线窗口边界
+        win_xright_low = rightx_current - margin
+        win_xright_high = rightx_current + margin
+        
+        # 在输出图像上绘制窗口
+        cv2.rectangle(out_img, (int(win_xleft_low), int(win_y_low)), 
+                      (int(win_xleft_high), int(win_y_high)), (0, 255, 0), 2)
+        cv2.rectangle(out_img, (int(win_xright_low), int(win_y_low)), 
+                      (int(win_xright_high), int(win_y_high)), (0, 255, 0), 2)
+        
+        # 找到窗口内的非零像素
+        good_left_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & 
+                          (nonzerox >= win_xleft_low) & (nonzerox < win_xleft_high)).nonzero()[0]
+        good_right_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & 
+                           (nonzerox >= win_xright_low) & (nonzerox < win_xright_high)).nonzero()[0]
+        
+        # 添加这些索引到列表中
+        left_lane_inds.append(good_left_inds)
+        right_lane_inds.append(good_right_inds)
+        
+        # 如果找到足够的像素，重新计算窗口中心
+        if len(good_left_inds) > minpix:
+            leftx_current = int(np.mean(nonzerox[good_left_inds]))
+        if len(good_right_inds) > minpix:
+            rightx_current = int(np.mean(nonzerox[good_right_inds]))
+    
+    # 连接数组（将列表中的索引连接成一维数组）
+    if left_lane_inds:
+        left_lane_inds = np.concatenate(left_lane_inds)
+    if right_lane_inds:
+        right_lane_inds = np.concatenate(right_lane_inds)
+    
+    # 提取左右车道线像素位置
+    leftx = nonzerox[left_lane_inds] if left_lane_inds.size > 0 else np.array([])
+    lefty = nonzeroy[left_lane_inds] if left_lane_inds.size > 0 else np.array([])
+    rightx = nonzerox[right_lane_inds] if right_lane_inds.size > 0 else np.array([])
+    righty = nonzeroy[right_lane_inds] if right_lane_inds.size > 0 else np.array([])
+    
+    # 给车道线像素着色
+    if leftx.size > 0 and lefty.size > 0:
+        out_img[lefty, leftx] = [255, 0, 0]  # 红色表示左车道线
+    if rightx.size > 0 and righty.size > 0:
+        out_img[righty, rightx] = [0, 0, 255]  # 蓝色表示右车道线
+    
+    return leftx, lefty, rightx, righty, out_img
+
 # 初始化摄像头
 cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
@@ -83,10 +181,10 @@ if not ret:
     exit()
 
 # 预设原始梯形区域坐标（示例坐标，根据实际场景调整）
-# 格式为 [左上, 右上, 右下, 左下]
-src_points = np.float32([[260, 230], [381, 230], [487, 335], [150, 335]])
+# 格式为 [左下, 右下, 左上, 右上]
+src_points = np.float32([[56, 344], [600, 356], [114, 300], [540, 300]])
 
-dst_points = np.float32([[150, 230], [487, 230], [487, 335], [150, 335]])
+dst_points = np.float32([[40, 480], [600, 480], [40, 0], [600, 0]])
 
 
 # 计算透视变换矩阵
@@ -134,10 +232,32 @@ while True:
     # 应用透视变换
     transformed = cv2.warpPerspective(frame, M,(640,480))
     
-    # 显示结果
-    cv2.imshow("Original", display_frame)
-    cv2.imshow("Transformed (Bird's-eye View)", transformed)
+    # 转换到 HSV 颜色空间
+    hsv = cv2.cvtColor(transformed, cv2.COLOR_BGR2HSV)
     
+    # 设置白色阈值
+    lower_white = np.array([0, 0, 200])
+    upper_white = np.array([180, 70, 255])
+    
+    # 创建掩膜
+    mask = cv2.inRange(hsv, lower_white, upper_white)
+    
+    # 形态学操作去噪
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    binary_lane = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+
+     # 滑动窗口检测车道线
+    leftx_base, rightx_base = get_linebase(binary_lane)
+    leftx, lefty, rightx, righty, window_img = sliding_window_search(binary_lane, leftx_base, rightx_base)
+    
+    # 在滑动窗口图像上显示起始位置
+    cv2.circle(window_img, (leftx_base, binary_lane.shape[0] - 10), 10, (0, 255, 255), -1)  # 黄色圆点
+    cv2.circle(window_img, (rightx_base, binary_lane.shape[0] - 10), 10, (0, 255, 255), -1)  # 黄色圆点
+    # 显示结果
+    # cv2.imshow("Original", display_frame)
+    # cv2.imshow("Transformed (Bird's-eye View)", transformed)
+    cv2.imshow("Binary Lane Mask", binary_lane)  # 显示二值化图像
+    cv2.imshow("Sliding Window Search", window_img)
     # 退出条件
     if cv2.waitKey(1) & 0xFF == ord('q'):
         cv2.imwrite('original_frame.jpg', frame)

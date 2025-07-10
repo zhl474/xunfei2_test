@@ -71,7 +71,8 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "forward_list": "cpp",
-        "future": "cpp"
+        "future": "cpp",
+        "random": "cpp"
     },
     "ros.distro": "melodic",
     "C_Cpp.errorSquiggles": "disabled"

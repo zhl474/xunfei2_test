@@ -13,7 +13,7 @@ using namespace std;
 // 输入：点集 points，距离阈值 distThreshold，最大迭代次数 maxIterations
 // 输出：直线参数 (a, b, c) 满足 ax+by+c=0，以及内点索引
 std::pair<std::vector<double>, std::vector<int>> fitLineRANSAC(
-    const std::vector<cv::Point2f>& points, 
+    std::vector<cv::Point2f>& points, 
     float distThreshold, 
     int maxIterations) 
 {
@@ -95,8 +95,6 @@ void find_track_edge(Mat& gray_img, Point& right_point,
                 
                 if (brightness_change >= brightness_threshold) {
                     right_point = Point(x, y);
-                    cout << "找到右侧边界起始点 (x=" << x << ", y=" << y 
-                         << "), 亮度变化: " << brightness_change << endl;
                     break;
                 }
             }
@@ -228,7 +226,7 @@ bool find_left_edge(Mat gray_img,vector<Point>& left_edge_points,int brightness_
         for (int x = width -1; x > 1; x--) {
             int brightness_change = gray_img.at<uchar>(y, x - 1) - gray_img.at<uchar>(y, x);
             if (brightness_change >= brightness_threshold) {
-                left_edge_points.push_back(Point(x, y));
+                left_edge_points.push_back(Point(x, height-y));
                 break;
             }
         }
@@ -246,19 +244,38 @@ bool find_left_edge(Mat gray_img,vector<Point>& left_edge_points,int brightness_
     }
 }
 
-// void speed_calculater(Mat gray,)
+
+double speed_calculater(vector<Point>& traced_points,int ystart,Mat visualizeImg = Mat()){
+    double total_error;
+    for (int i=0;i<traced_points.size();i++){
+        int y = ystart-i;
+        double mid_error = ((traced_points[i].x - 320 + y * 1.2)-320)*y/480.0;
+        total_error += mid_error;
+    }
+    if (!visualizeImg.empty()) {
+        // 可视化代码（例如在图像上绘制轨迹）
+        for (int i=0;i<traced_points.size();i++) {
+            int y = ystart-i;
+            Point pt = Point(traced_points[i].x - 320 + y * 1.2,ystart-i);
+            circle(visualizeImg, pt, 3, Scalar(0, 255, 0), -1);
+        }
+        imshow("visualize",visualizeImg);
+        waitKey(1);
+    }
+    return total_error*0.01;
+}
 
 int main(int argc, char **argv) {
     setlocale(LC_ALL,"");
     ros::init(argc, argv, "line");
-    FileStorage fs("calibration_params.yaml", FileStorage::READ);
+    FileStorage fs("/home/ucar/ucar_car/src/line_follow/camera_info/pinhole.yaml", FileStorage::READ);
     if (!fs.isOpened()) {
         cerr << "无法打开标定文件" << endl;
         return -1;
     }
-
+    ros::Publisher cmd_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
+    geometry_msgs::Twist twist;
     Mat cameraMatrix, distCoeffs;
-    int imgWidth, imgHeight;
     fs["camera_matrix"] >> cameraMatrix;
     fs["distortion_coefficients"] >> distCoeffs;
     fs.release();
@@ -271,17 +288,13 @@ int main(int argc, char **argv) {
     cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
     Mat map1, map2;
-    Mat newCameraMatrix = getOptimalNewCameraMatrix(
-        cameraMatrix, distCoeffs, Size(imgWidth, imgHeight), 
-        0.85, // 缩放因子（0.8-1.0之间减少黑边）
-        Size(imgWidth, imgHeight)
-    );
+    Mat optimalMatrix = getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, Size(640, 480), 1,Size(640, 480));
     initUndistortRectifyMap(
         cameraMatrix, 
         distCoeffs, 
         Mat(), // 无旋转
-        newCameraMatrix, 
-        Size(imgWidth, imgHeight), 
+        optimalMatrix, 
+        Size(640, 480), 
         CV_32FC1, // 32位浮点类型（速度优化）
         map1, 
         map2
@@ -300,15 +313,18 @@ int main(int argc, char **argv) {
             BORDER_CONSTANT, 
             Scalar(0, 0, 0) // 黑边填充
         );
-        flip(image, image, 1);
         Mat gray_img;
-        cvtColor(image, gray_img, COLOR_BGR2GRAY);
+        // cvtColor(undistorted, gray_img, COLOR_BGR2GRAY);
+        Mat red_channel;
+        vector<Mat> channels;
+        split(undistorted, channels);
+        gray_img = channels[2];//红色通道代替灰度图
+        flip(gray_img, gray_img, 1);
         int height = gray_img.rows;
         int width = gray_img.cols;
-        cout << "图像尺寸: " << width << "x" << height << endl;
         
         // 创建可视化图像
-        Mat result_image = image.clone();
+        Mat result_image = undistorted.clone();
 
         // 2. 搜索赛道边缘点
         int scan_rows = 200;  // 向上搜索的行数
@@ -323,17 +339,27 @@ int main(int argc, char **argv) {
         // 追踪右侧边线
         if (right_edge_point.x != -1) {
             trace_edge(right_edge_point, gray_img, traced_right, right_broken,20, brightness_threshold, &result_image);
-            cout << "右侧边界追踪结果: 点数=" << traced_right.size() << endl;
+            double speed = speed_calculater(traced_right,right_edge_point.y,undistorted);
+            twist.linear.x = 0.3;
+            twist.angular.z = speed;
         } else {
-            cout << "未找到右侧起始点，左侧巡线" << endl;
             find_left_edge(gray_img, left_edge_points,brightness_threshold);
+            std::pair<std::vector<double>, std::vector<int>> result;
+            result = fitLineRANSAC(left_edge_points,7,1000);
+            if(result[0][0]*result[0][2]<0){
+                twist.linear.x = 0;
+                twist.angular.z = 0.3;
+            }
+            else {
+                twist.linear.x = 0.3;
+                twist.angular.z = 0;
+            }
         }
 
-        // 7. 显示结果
-        imshow("Gray Image", gray_img);
+        cmd_pub.publish(twist);
+        imshow("gray",gray_img);
         imshow("Track Edge Detection", result_image);
 
-        // 9. 等待按键后退出
         waitKey(1);
     }
 

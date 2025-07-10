@@ -397,17 +397,33 @@ class PIDController:
         target_y_map = robot_y_map + (x_robot_frame * sin_yaw + y_robot_frame * cos_yaw)
         
         rospy.loginfo(f"计算出 map 坐标系目标点: x={target_x_map:.2f}, y={target_y_map:.2f}")
+        #--------------------------------新加上避障后朝向与避障前朝向关于板的法线对称----------------------
+        # 将雷达坐标系下的障碍物法线角度(angle)转换到map世界坐标系下
+        obstacle_normal_map_frame = robot_yaw_map + angle
+
+        # 根据反射定律 (新朝向 = 2*法线朝向 - 旧朝向) 计算最终朝向
+        new_robot_yaw_map = 2 * obstacle_normal_map_frame - robot_yaw_map
+
+        #  标准化最终朝向角到[-pi, pi]范围内
+        new_robot_yaw_map = math.atan2(math.sin(new_robot_yaw_map), math.cos(new_robot_yaw_map))
+        
+        rospy.loginfo(f"原朝向: {math.degrees(robot_yaw_map):.2f}度 | "f"计算出的新朝向: {math.degrees(new_robot_yaw_map):.2f}度")
+
+
+
+
 
 
         
-
+        #--------------------------------分割线-------------------------------------------------------
         # 6. 创建并发送move_base目标
         goal = MoveBaseGoal()
         goal.target_pose.header.frame_id = 'map'
         goal.target_pose.pose.position.x = target_x_map
         goal.target_pose.pose.position.y = target_y_map
 
-        half_yaw = robot_yaw_map * 0.5
+        # half_yaw = robot_yaw_map * 0.5
+        half_yaw = new_robot_yaw_map * 0.5
         # 计算sin和cos
         qz = math.sin(half_yaw)
         qw = math.cos(half_yaw)
