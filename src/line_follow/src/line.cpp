@@ -3,6 +3,7 @@
 #include <vector>
 #include<ros/ros.h>
 #include <random>
+#include <geometry_msgs/Twist.h>
 #include <string>
 
 
@@ -13,7 +14,7 @@ using namespace std;
 // 输入：点集 points，距离阈值 distThreshold，最大迭代次数 maxIterations
 // 输出：直线参数 (a, b, c) 满足 ax+by+c=0，以及内点索引
 std::pair<std::vector<double>, std::vector<int>> fitLineRANSAC(
-    std::vector<cv::Point2f>& points, 
+    std::vector<Point>& points, 
     float distThreshold, 
     int maxIterations) 
 {
@@ -66,10 +67,10 @@ std::pair<std::vector<double>, std::vector<int>> fitLineRANSAC(
 }
 
 // 使用内点精确拟合直线
-cv::Vec4f refineLine(const std::vector<cv::Point2f>& points, 
+cv::Vec4f refineLine(const std::vector<cv::Point>& points, 
                     const std::vector<int>& inliers) 
 {
-    std::vector<cv::Point2f> inlierPoints;
+    std::vector<cv::Point> inlierPoints;
     for (int idx : inliers) inlierPoints.push_back(points[idx]);
     
     cv::Vec4f line;
@@ -259,8 +260,8 @@ double speed_calculater(vector<Point>& traced_points,int ystart,Mat visualizeImg
             Point pt = Point(traced_points[i].x - 320 + y * 1.2,ystart-i);
             circle(visualizeImg, pt, 3, Scalar(0, 255, 0), -1);
         }
-        imshow("visualize",visualizeImg);
-        waitKey(1);
+        // imshow("visualize",visualizeImg);
+        // waitKey(1);
     }
     return total_error*0.01;
 }
@@ -273,6 +274,7 @@ int main(int argc, char **argv) {
         cerr << "无法打开标定文件" << endl;
         return -1;
     }
+    ros::NodeHandle nh;
     ros::Publisher cmd_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
     geometry_msgs::Twist twist;
     Mat cameraMatrix, distCoeffs;
@@ -346,7 +348,7 @@ int main(int argc, char **argv) {
             find_left_edge(gray_img, left_edge_points,brightness_threshold);
             std::pair<std::vector<double>, std::vector<int>> result;
             result = fitLineRANSAC(left_edge_points,7,1000);
-            if(result[0][0]*result[0][2]<0){
+            if(result.first[0]*result.first[2]<0){
                 twist.linear.x = 0;
                 twist.angular.z = 0.3;
             }
@@ -356,7 +358,7 @@ int main(int argc, char **argv) {
             }
         }
 
-        cmd_pub.publish(twist);
+        // cmd_pub.publish(twist);
         imshow("gray",gray_img);
         imshow("Track Edge Detection", result_image);
 
