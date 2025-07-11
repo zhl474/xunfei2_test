@@ -46,11 +46,9 @@ std::vector<std::vector<std::string>> voice = {
     {
         "aplay ~/ucar_car/src/broadcast/20_wav/4_road_1.wav",
         "aplay ~/ucar_car/src/broadcast/20_wav/4_road_2.wav"
-    }
-};
-
-// 费用相关语音（一维数组）
-std::vector<std::string> cost = {
+    },
+    //第4组：费用提示
+    {
     "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_chili.wav",
     "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_tomato.wav",
     "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_potato.wav",
@@ -69,7 +67,30 @@ std::vector<std::string> cost = {
     "aplay ~/ucar_car/src/broadcast/20_wav/5_cake_cake.wav",
     "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cake.wav",    
     "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_milk.wav"    
+    }
 };
+
+// // 费用相关语音（一维数组）
+// std::vector<std::string> cost = {
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_chili.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_tomato.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_potato.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_tomato.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_potato.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_potato_potato.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_banana.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_banana.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_watermelon.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_apple.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_watermelon.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_watermelon_watermelon.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_cola_cola.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_cake_cola.wav",    
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cola.wav",  
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_cake_cake.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cake.wav",    
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_milk.wav"    
+// };
 
 void play_audio(const std::string& command);
 

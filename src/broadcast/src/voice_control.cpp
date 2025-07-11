@@ -6,7 +6,6 @@
 // 全局变量定义
 int room_index = 0;       // 当前房间号
 int awake_flag = 0;      // 语音唤醒标志位
-
 // 语音命令数组（二维数组，按类别分组）
 std::vector<std::vector<std::string>> voice = {
     // 第0组：任务类型（甜点/水果/蔬菜）
@@ -37,29 +36,50 @@ std::vector<std::vector<std::string>> voice = {
     {
         "aplay ~/ucar_car/src/broadcast/20_wav/4_road_1.wav",
         "aplay ~/ucar_car/src/broadcast/20_wav/4_road_2.wav"
+    },
+     //第4组：费用提示
+    {
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_chili.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_tomato.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_potato.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_tomato.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_potato.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_potato_potato.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_banana.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_banana.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_watermelon.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_apple.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_watermelon.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_watermelon_watermelon.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_cola_cola.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_cake_cola.wav",    
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cola.wav",  
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_cake_cake.wav",
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cake.wav",    
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_milk.wav"    
     }
 };
 
-// 费用相关语音（一维数组）
-std::vector<std::string> cost = {
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_apple.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_banana.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_watermelon.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_banana.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_watermelon.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_cake_cola.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_chili.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_potato.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_tomato.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_cola_cola.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cake.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cola.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_milk.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_potato_potato.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_potato.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_tomato.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_watermelon_watermelon.wav"
-};
+// // 费用相关语音（一维数组）
+// std::vector<std::string> cost = {
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_apple.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_banana.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_watermelon.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_banana.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_watermelon.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_cake_cola.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_chili.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_potato.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_tomato.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_cola_cola.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cake.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cola.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_milk.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_potato_potato.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_potato.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_tomato.wav",
+//     "aplay ~/ucar_car/src/broadcast/20_wav/5_watermelon_watermelon.wav"
+// };
 
 // 播放语音函数
 void play_audio(const std::string& command) {
@@ -132,12 +152,67 @@ void command_interaction() {
             }
 
             case 6: { // 费用语音
-                int index;
-                std::cout << "输入费用索引（0-16）：";
-                std::cin >> index;
-                if (index >= 0 && index < cost.size()) {
-                    play_audio(cost[index]);
-                }
+                int a,b;
+                // std::cout << "输入费用索引（0-16）：";
+                // std::cin >> index;
+                std::cout << "输入对应物品1编码：";
+                std::cin >> a;
+                std::cout << "输入对应物品2编码：";
+                std::cin >> b;
+                
+                    if(a == 0 &&b == 0 )
+                    play_audio(voice[4][0]);
+
+                     if(a == 1 &&b == 1 )
+                     play_audio(voice[4][1]);
+
+                     if(a == 2 &&b == 2)
+                     play_audio(voice[4][2]);
+
+                     if(a == 3 &&b == 3)
+                     play_audio(voice[4][3]);
+
+                     if(a == 4 &&b == 4)
+                     play_audio(voice[4][4]);
+
+                     if(a == 5 &&b == 5)
+                     play_audio(voice[4][5]);
+
+                     if(a == 6 &&b == 6)
+                     play_audio(voice[4][6]);
+
+                     if(a == 7 &&b == 7)
+                     play_audio(voice[4][7]);
+
+                     if(a == 8 &&b == 8)
+                     play_audio(voice[4][8]);
+
+                     if((a == 0 && b == 1) || (a == 1 && b == 0))
+                    play_audio(voice[4][9]);
+
+                    if((a == 0 && b == 2) || (a == 2 && b == 0))
+                        play_audio(voice[4][10]);
+
+                    if((a == 1 && b == 2) || (a == 2 && b == 1))
+                        play_audio(voice[4][11]);
+
+                    if((a == 3 && b == 4) || (a == 4 && b == 3))
+                        play_audio(voice[4][12]);
+
+                    if((a == 3 && b == 5) || (a == 5 && b == 3))
+                        play_audio(voice[4][13]);
+
+                    if((a == 4 && b == 5) || (a == 5 && b == 4))
+                        play_audio(voice[4][14]);
+
+                    if((a == 6 && b == 7) || (a == 7 && b == 6))
+                        play_audio(voice[4][15]);
+
+                    if((a == 6 && b == 8) || (a == 8 && b == 6))
+                        play_audio(voice[4][16]);
+
+                    if((a == 7 && b == 8) || (a == 8 && b == 7))
+                        play_audio(voice[4][17]);
                 break;
             }
 

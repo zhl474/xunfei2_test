@@ -1,6 +1,28 @@
 import cv2
 import numpy as np
 
+class PIDController:
+    def __init__(self, Kp, Ki, Kd):
+        self.Kp = Kp
+        self.Ki = Ki
+        self.Kd = Kd
+        self.last_error = 0
+        self.integral = 0
+        
+    def compute(self, error):
+        self.integral += error
+        integral_limited = np.clip(self.integral, -1000, 1000)
+        
+        derivative = error - self.last_error
+        output = (self.Kp * error) + (self.Ki * integral_limited) + (self.Kd * derivative)
+        
+        self.last_error = error
+        return output
+    
+    def reset(self):
+        self.integral = 0
+        self.last_error = 0
+
 # 1. 加载针孔摄像头标定结果
 def load_pinhole_calibration(calib_file):
     """加载针孔摄像头标定参数"""
@@ -165,40 +187,27 @@ def sliding_window_search(binary_mask, leftx_base, rightx_base):
     
     return leftx, lefty, rightx, righty, out_img
 
-def draw_polynomial_fit(img, left_fitx, right_fitx, ploty):
-    """在图像上绘制拟合的多项式曲线"""
-    # 创建输出图像的副本
-    out_img = img.copy()
+# 5. 多项式拟合车道线
+def fit_polynomial(leftx, lefty, rightx, righty, img_shape):
+    """对车道线像素进行二次多项式拟合"""
+    height = img_shape[0]
+    left_fit = right_fit = None
+    left_fitx = right_fitx = ploty = None
     
-    # 确保所有参数有效
-    if left_fitx is not None and right_fitx is not None and ploty is not None:
-        # 创建左右车道线的点集
-        left_points = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
-        right_points = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
-        
-        # 合并点集形成封闭区域
-        lane_points = np.hstack((left_points, right_points))
-        
-        # 绘制车道区域（绿色半透明）
-        cv2.fillPoly(out_img, np.int_([lane_points]), (0, 255, 0, 100))
-        
-        # 绘制左车道线（红色）
-        for i in range(1, len(ploty)):
-            if left_fitx[i-1] is not None and left_fitx[i] is not None:
-                cv2.line(out_img, 
-                         (int(left_fitx[i-1]), int(ploty[i-1])), 
-                         (int(left_fitx[i]), int(ploty[i])), 
-                         (0, 0, 255), 5)
-        
-        # 绘制右车道线（蓝色）
-        for i in range(1, len(ploty)):
-            if right_fitx[i-1] is not None and right_fitx[i] is not None:
-                cv2.line(out_img, 
-                         (int(right_fitx[i-1]), int(ploty[i-1])), 
-                         (int(right_fitx[i]), int(ploty[i])), 
-                         (255, 0, 0), 5)
+    if leftx.size > 0:
+        left_fit = np.polyfit(lefty, leftx, 2)
+    if rightx.size > 0:
+        right_fit = np.polyfit(righty, rightx, 2)
     
-    return out_img
+    if left_fit is not None or right_fit is not None:
+        ploty = np.linspace(0, height - 1, height)
+        if left_fit is not None:
+            left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
+        if right_fit is not None:
+            right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
+    
+    return left_fit, right_fit, left_fitx, right_fitx, ploty
+
 # 初始化摄像头
 cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
@@ -230,8 +239,8 @@ CALIB_FILE = "/home/ucar/ucar_car/src/line_follow/camera_info/pinhole.yaml"  # �
 K, D, calib_resolution = load_pinhole_calibration(CALIB_FILE)
 
 # 创建窗口
-cv2.namedWindow("Original")
-cv2.namedWindow("Transformed (Bird's-eye View)")
+# cv2.namedWindow("Original")
+# cv2.namedWindow("Transformed (Bird's-eye View)")
 
 # 在原始画面上标记梯形区域
 marked_frame = frame.copy()
@@ -283,15 +292,31 @@ while True:
      # 滑动窗口检测车道线
     leftx_base, rightx_base = get_linebase(binary_lane)
     leftx, lefty, rightx, righty, window_img = sliding_window_search(binary_lane, leftx_base, rightx_base)
+    left_fit, right_fit, left_fitx, right_fitx, ploty = fit_polynomial(leftx, lefty, rightx, righty, binary_lane.shape)
+
+# 绘制最终结果
+    result = transformed.copy()
+    if left_fitx is not None and right_fitx is not None:
+        # # 绘制车道区域
+        # pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+        # pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
+        # pts = np.hstack((pts_left, pts_right))
+        # cv2.fillPoly(result, np.int32([pts]), (0, 255, 0))
+            
+        # 绘制车道线
+        for i in range(1, len(ploty)):
+            cv2.line(result, (int(left_fitx[i-1]), int(ploty[i-1])), 
+                    (int(left_fitx[i]), int(ploty[i])), (0,0,255), 3)
+            cv2.line(result, (int(right_fitx[i-1]), int(ploty[i-1])), 
+                    (int(right_fitx[i]), int(ploty[i])), (255,0,0), 3)
     
-    # 在滑动窗口图像上显示起始位置
-    cv2.circle(window_img, (leftx_base, binary_lane.shape[0] - 10), 10, (0, 255, 255), -1)  # 黄色圆点
-    cv2.circle(window_img, (rightx_base, binary_lane.shape[0] - 10), 10, (0, 255, 255), -1)  # 黄色圆点
+
     # 显示结果
-    # cv2.imshow("Original", display_frame)
-    # cv2.imshow("Transformed (Bird's-eye View)", transformed)
-    cv2.imshow("Binary Lane Mask", binary_lane)  # 显示二值化图像
+    cv2.imshow("Lane Detection", result)
+    # cv2.imshow("Binary Lane Mask", binary_lane)  # 显示二值化图像
     cv2.imshow("Sliding Window Search", window_img)
+    
+    
     # 退出条件
     if cv2.waitKey(1) & 0xFF == ord('q'):
         cv2.imwrite('original_frame.jpg', frame)

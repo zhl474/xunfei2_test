@@ -224,7 +224,7 @@ class PIDController:
             if lidar_resp.lidar_results[0] != -1:
                 # cv2.waitKey(0)
                 rospy.loginfo("准备开始避障")
-                self.avoid_move()
+                self.avoid_move(cap)
             ret, frame = cap.read()
             if not ret:
                 rospy.logerr("获取图片失败")
@@ -336,7 +336,7 @@ class PIDController:
         #--------------------------------------分界线---------------------------------------
 
     #----------------------------------------------新的避障代码-------------------------
-    def avoid_move(self):
+    def avoid_move(self,cap):#增加变量，让避障函数也能调用摄像头
         
         #新的避障逻辑: 使用move_base导航到障碍物后方30cm处。
         
@@ -458,6 +458,74 @@ class PIDController:
 
         if finished_within_time and self.move_base_client.get_state() == actionlib.GoalStatus.SUCCEEDED:
             rospy.loginfo("避障成功，已到达目标点。")
+
+        #---------------------------------------新增旋转对准--------------------------------------------
+
+            rospy.loginfo("开始执行避障后对准...")
+
+            # 确保小车完全停止
+            self.vel_msg.linear.x = 0.0
+            self.vel_msg.angular.z = 0.0
+            self.vel_publisher.publish(self.vel_msg)
+            rospy.sleep(0.5) # 等待小车稳定
+
+            # 重置PID控制器，避免历史误差影响
+            pid.reset()
+
+            # 循环调整朝向，直到对准赛道或超时
+            realign_start_time = rospy.get_time()
+            realign_timeout = 5.0 # 5秒超时
+            
+            while rospy.get_time() - realign_start_time < realign_timeout:
+                ret, frame = cap.read()
+                if not ret:
+                    rospy.logerr("对准时获取图像失败")
+                    continue
+                
+                frame = cv2.flip(frame, 1)
+                binary_image = self.fixed_threshold_binarization(frame)
+                center_line_x, visual_img = self.detect_center_line(binary_image)
+
+                # 可视化对准过程
+                cv2.imshow('Realigning View', visual_img)
+                cv2.waitKey(1)
+
+                height, width = frame.shape[:2]
+                error = center_line_x - width // 2
+
+                # 如果误差足够小，则认为已对准，退出循环
+                if abs(error) < 15: # 误差阈值，可根据实际情况调整
+                    rospy.loginfo("赛道已对准!")
+                    break
+                
+                # 使用PID计算角速度进行调整
+                angular_z = pid.compute(error)
+                # 限制一个较小的转动速度，以求稳定
+                angular_z = np.clip(angular_z, -0.2, 0.2)
+
+                # 只进行原地旋转调整
+                self.vel_msg.linear.x = 0.0
+                self.vel_msg.angular.z = angular_z
+                self.vel_publisher.publish(self.vel_msg)
+                
+                self.rate.sleep()
+            
+            # 无论成功还是超时，最后都要停下小车
+            self.vel_msg.linear.x = 0.0
+            self.vel_msg.angular.z = 0.0
+            self.vel_publisher.publish(self.vel_msg)
+            cv2.destroyWindow('Realigning View') # 关闭对准用的CV窗口
+            rospy.loginfo("对准结束，返回巡线模式。")
+
+        #-------------------------------分割线-------------------------------
+
+
+
+
+
+
+
+
         else:
             rospy.logwarn("避障失败，move_base未能到达目标点或已超时。")
             self.move_base_client.cancel_goal()

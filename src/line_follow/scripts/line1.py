@@ -206,5 +206,5 @@ while not rospy.is_shutdown():
     vel_msg.linear.x = linear_x
     vel_msg.angular.z = angular_z  # 方向修正
     
-    vel_publisher.publish(vel_msg)
+    # vel_publisher.publish(vel_msg)
     rate.sleep()
