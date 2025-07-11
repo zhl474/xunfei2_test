@@ -31,7 +31,7 @@ std::vector<std::vector<std::string>> voice = {
         "aplay ~/ucar_car/src/broadcast/20_wav/2_get_poatato.wav",  
         "aplay ~/ucar_car/src/broadcast/20_wav/2_get_banana.wav",
         "aplay ~/ucar_car/src/broadcast/20_wav/2_get_apple.wav",
-        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_watermelon.wav"
+        "aplay ~/ucar_car/src/broadcast/20_wav/2_get_watermelon.wav",
         "aplay ~/ucar_car/src/broadcast/20_wav/2_get_cola.wav",
         "aplay ~/ucar_car/src/broadcast/20_wav/2_get_cake.wav",
         "aplay ~/ucar_car/src/broadcast/20_wav/2_get_milk.wav" 
@@ -62,7 +62,7 @@ std::vector<std::string> cost = {
     "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_watermelon.wav",
     "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_apple.wav",
     "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_watermelon.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_watermelon_watermelon.wav"
+    "aplay ~/ucar_car/src/broadcast/20_wav/5_watermelon_watermelon.wav",
     "aplay ~/ucar_car/src/broadcast/20_wav/5_cola_cola.wav",
     "aplay ~/ucar_car/src/broadcast/20_wav/5_cake_cola.wav",    
     "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cola.wav",  

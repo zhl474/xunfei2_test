@@ -87,7 +87,7 @@ def detect_center_line(binary_image):
 
         while queue:
             x, y = queue.pop(0)
-            boundary.appendx, y
+            boundary.append((x, y))
 
             # 检查8邻域
             for dx, dy in directions:
@@ -95,7 +95,7 @@ def detect_center_line(binary_image):
                 if (0 <= nx < width and 0 <= ny < height and 
                     binary_image[ny, nx] == 0 and not mask[ny, nx]):
                     mask[ny, nx] = True
-                    queue.appendnx, ny
+                    queue.append((nx, ny))
         return boundary
 
     # 初始化掩膜
@@ -121,7 +121,7 @@ def detect_center_line(binary_image):
         
         for y in sorted(common_ys):
             cx = (left_dict[y] + right_dict[y]) // 2
-            center_line.appendcx, y
+            center_line.append((cx, y))
     else:
         # 回退到默认中线
         center_line = [(mid_x, y) for y in range(height)]
@@ -180,8 +180,13 @@ while not rospy.is_shutdown():
 
     height, width = binary_image.shape
     # 检测中线并获取中心点位置
-    center_line_x,visual_img = detect_center_line(binary_image)
+    center_line,visual_img = detect_center_line(binary_image)
 
+    if center_line:  # 如果检测到中线
+        center_line_x = center_line[-1][0]  # 取最后一个点的x坐标
+        error = center_line_x - width // 2
+    else:  # 无中线时默认居中
+        error = 0
 
     cv2.imshow('Center Line Detection', visual_img)
     cv2.waitKey(1)
@@ -201,6 +206,5 @@ while not rospy.is_shutdown():
     vel_msg.linear.x = linear_x
     vel_msg.angular.z = angular_z  # 方向修正
     
-    # vel_publisher.publish(vel_msg)
+    vel_publisher.publish(vel_msg)
     rate.sleep()
-  
