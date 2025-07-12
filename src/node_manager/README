@@ -1,0 +1,11 @@
+# 这个文件是有两个功能，分别是kill节点，及launch节点
+
+## 其中调用文件的方法是：
+
+``` rosrun node_manager node_manager_server ```
+
+## 然后启动：
+
+```rosservice call /kill_node```   # 杀死节点
+
+```rosservice call /launch_node``` # 登陆节点

@@ -1,0 +1,7 @@
+<launch>
+  <include file="$(find ucar_controller)/launch/base_driver.launch" />
+  <include file="$(find ydlidar)/launch/ydlidar.launch"/>
+  <!-- <include file="$(find xf_mic_asr_offline)/launch/mic_init.launch"/> -->
+  <!--  启动底盘 雷达 麦克风-->
+  <!--node pkg="voice_test" name="voice_test" type="voice_test" output="screen" ></node-->
+</launch> 

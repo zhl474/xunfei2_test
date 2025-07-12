@@ -1,0 +1,7 @@
+image: 3_19.pgm
+resolution: 0.05000  #default:0.05
+origin: [-2.560214, -8.222090, 0.000000]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196
+

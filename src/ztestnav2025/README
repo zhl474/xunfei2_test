@@ -1,0 +1,14 @@
+# 启动小车的步骤：
+## 1.终端打开底盘 ：
+```roslaunch ucar_controller base_driver.launch ```
+
+## 2.启动mapserver ：
+``` roslaunch ztestnav2025 map_server.launch  ```
+
+## 3.启动amcl ：
+``` roslaunch ztestnav2025  amcl.launch ```
+
+## 4.启动movebase ：
+``` roslaunch ztestnav2025 move_base.launch ```
+
+## 三四步可以合并放在nav.launch文件夹下面

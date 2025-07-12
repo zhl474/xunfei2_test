@@ -1,0 +1,4 @@
+sensor_msgs/Image original_images
+
+---
+int32[8] position

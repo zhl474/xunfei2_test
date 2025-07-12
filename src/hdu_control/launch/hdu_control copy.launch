@@ -1,0 +1,42 @@
+<launch>
+  <node pkg="hdu_control" name="control_start" type="control_start" output="screen" >
+  
+    <!-- 设置目标点个数  -->
+    <param name="goal_num"     type="int"     value="4  "/>
+    
+    <!-- goal0  -->
+    <param name="goal0_x"     type="double"     value="4.372  "/>  
+    <param name="goal0_y"     type="double"     value="-2.889  "/>
+    <param name="goal0_z"     type="double"     value="0.724 "/>
+
+		<!-- goal1 -->
+    <param name="goal1_x"     type="double"     value="1.780 	"/>
+    <param name="goal1_y"     type="double"     value="-3.835 	"/>
+    <param name="goal1_z"     type="double"     value="0.690 	"/>
+
+		<!-- goal2 -->
+    <param name="goal2_x"     type="double"     value="0.353 	"/>  
+    <param name="goal2_y"     type="double"     value="-1.128  	"/>
+    <param name="goal2_z"     type="double"     value="0.046	"/>
+
+		<!-- goal3 -->
+    <param name="goal3_x"     type="double"     value="0.103		"/>
+    <param name="goal3_y"     type="double"     value="-0.132	"/>
+    <param name="goal3_z"     type="double"     value="0.041	"/>
+
+		<!-- goal4  -->
+    <param name="goal4_x"     type="double"     value="2.75"/>
+    <param name="goal4_y"     type="double"     value="0.25"/>
+    <param name="goal4_z"     type="double"     value="3.20"/>
+
+		<!-- goal5 -->
+    <param name="goal5_x"     type="double"     value="0.75"/>
+    <param name="goal5_y"     type="double"     value="2.15"/>
+    <param name="goal5_z"     type="double"     value="1.57"/>
+    
+		<!-- goal6  -->
+    <param name="goal6_x"     type="double"     value="2.25"/>
+    <param name="goal6_y"     type="double"     value="1.85"/>
+    <param name="goal6_z"     type="double"     value="0.0"/>
+  </node>
+</launch> 

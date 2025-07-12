@@ -1,0 +1,3 @@
+int32 lidar_process_start
+---
+float32[] lidar_results

@@ -1,0 +1,42 @@
+<launch>
+
+  <!-- Run the map server -->
+   
+  <include file="$(find ucar_controller)/launch/base_driver.launch" > </include>
+
+  <include file="$(find ydlidar)/launch/ydlidar_1.launch" > </include>
+  <!--  <remap from="/cmd_vel" to="/cmd_vel_111" /> -->
+
+  <node name="map_server" pkg="map_server" type="map_server" args="$(find ucar_nav)/maps/quantu.yaml" output="screen">
+   <param name="frame_id" value="map" />
+  </node>
+
+  <include file="$(find ucar_nav)/launch/config/amcl/amcl.launch" > </include>
+
+  <!-- 运行move_base节点  -->
+  <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen" clear_params="true">
+    
+    <!--move_base参数配置http://wiki.ros.org/move_base -->
+    <param name="base_global_planner" value="global_planner/GlobalPlanner" /><!-- 选择全局规划器类型 -->
+    <rosparam file="$(find gazebo_nav)/config/base_global_planner_params.yaml" command="load" />
+    <param name="planner_frequency" value="10.0" /><!--下面三行 -->
+    <param name="planner_patience" value="2" />
+    <param name="use_dijkstra" value="true" />
+    <!--<param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS" /> 选择本地规划器类型 -->
+    <!-- dwa_local_planner参数配置http://wiki.ros.org/dwa_local_planner 
+    <rosparam file="$(find gazebo_nav)/config/dwa_local_planner_params.yaml" command="load" />-->
+    <param name="base_local_planner" value="teb_local_planner/TebLocalPlannerROS" />
+    <param name="controller_frequency" value="30.0" /><!--下面三行 -->
+    <param name="controller_patience" value="10.0" />
+    <param name="clearing_rotation_allowed" value="true" />
+    <rosparam file="$(find ucar_nav)/launch/config/move_base/1/teb_local_planner_params_final.yaml" command="load" /><!-- race_navigation)/config/teb/ -->
+    <rosparam file="$(find ucar_nav)/launch/config/move_base/1/move_base_params.yaml" command="load" /><!-- race_navigation)/config/teb/ -->
+    <rosparam file="$(find ucar_nav)/launch/config/move_base/1/costmap_common_params.yaml" command="load" ns = "global_costmap" /><!-- 其它参数 -->
+    <rosparam file="$(find ucar_nav)/launch/config/move_base/1/costmap_common_params.yaml" command="load" ns = "local_costmap" /><!-- 其它参数 -->
+    <!-- <rosparam file="$(find ucar_nav)/launch/config/move_base/2/global_planner_params.yaml" command="load" /> -->
+    <rosparam file="$(find ucar_nav)/launch/config/move_base/1/base_global_planner_params.yaml" command="load" />
+   <rosparam file="$(find ucar_nav)/launch/config/move_base/1/local_costmap_params.yaml" command="load" />
+   <rosparam file="$(find ucar_nav)/launch/config/move_base/1/global_costmap_params.yaml" command="load" />
+    <rosparam file="$(find ucar_nav)/launch/config/move_base/1/costmap_converter_params.yaml" command="load" />
+  </node>
+</launch>

@@ -1,0 +1,34 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "",
+        "limitSymbolsToIncludedHeaders": true
+      },
+      "includePath": [
+        "/home/ucar/ucar_car/devel/include/**",
+        "/opt/ros/melodic/include/**",
+        "/home/ucar/catkin_workspace/src/vision_opencv-noetic/cv_bridge/include/**",
+        "/home/ucar/ucar_car/src/geometry/eigen_conversions/include/**",
+        "/home/ucar/ucar_car/src/fdilink_ahrs/include/**",
+        "/home/ucar/ucar_car/src/geometry/kdl_conversions/include/**",
+        "/home/ucar/ucar_car/src/simple_navigation_goals/include/**",
+        "/home/ucar/ucar_car/src/geometry/tf/include/**",
+        "/home/ucar/ucar_car/src/geometry2/tf2/include/**",
+        "/home/ucar/ucar_car/src/geometry2/tf2_bullet/include/**",
+        "/home/ucar/ucar_car/src/geometry2/tf2_eigen/include/**",
+        "/home/ucar/ucar_car/src/geometry2/tf2_geometry_msgs/include/**",
+        "/home/ucar/ucar_car/src/geometry2/tf2_kdl/include/**",
+        "/home/ucar/ucar_car/src/geometry2/tf2_msgs/include/**",
+        "/home/ucar/ucar_car/src/geometry2/tf2_ros/include/**",
+        "/home/ucar/ucar_car/src/geometry2/tf2_sensor_msgs/include/**",
+        "/home/ucar/ucar_car/src/geometry/tf_conversions/include/**",
+        "/home/ucar/ucar_car/src/ucar_controller/include/**",
+        "/home/ucar/ucar_car/src/xf_mic_asr_offline/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS"
+    }
+  ],
+  "version": 4
+}

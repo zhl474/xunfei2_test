@@ -1,0 +1,17 @@
+hangZhengyou-Method$ python run_calib_RGB.py 
+ret: 1.1902405562204725
+intrinsic matrix: 
+ [[323.1740914    0.         321.89001709]
+ [  0.         321.78632823 225.45122827]
+ [  0.           0.           1.        ]]
+distortion cofficients: 
+ [[-0.19496105  0.10238411  0.01717503  0.01584783 -0.02607986]]
+rotation vectors: 
+ [array([[ 0.23058305],
+       [-0.15845215],
+       [-0.02005369]])]
+translation vectors: 
+ [array([[-0.10288171],
+       [-0.10114384],
+       [ 0.15614961]])]
+Average error of reproject: 0.17179636934281883

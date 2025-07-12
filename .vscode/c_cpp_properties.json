@@ -1,0 +1,26 @@
+{
+    "configurations": [
+        {
+            "browse": {
+                "databaseFilename": "",
+                "limitSymbolsToIncludedHeaders": true
+            },
+            "includePath": [
+                "/opt/ros/melodic/include/**",
+                "/home/tianbot/jwf_ws/src/my_rviz/include/**",
+                "/usr/include/**",
+                "/home/ucar/ucar_car/devel/include/**",
+                "/usr/include/websocketpp/**",
+                "/usr/include/websocketpp/config/",
+                "${workspaceFolder}/src/my_planner/include",
+                "/home/ucar/ucar_car/src/ztestnav2025/include/ztestnav2025"
+            ],
+            "name": "ROS",
+            "intelliSenseMode": "gcc-x64",
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "gnu11",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
+}
