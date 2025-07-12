@@ -5,12 +5,18 @@
 #include <random>
 #include <string>
 #include <geometry_msgs/Twist.h>
+#include <cmath>
+#include <sstream>
 
 
 using namespace cv;
 using namespace std;
 
-#include <opencv2/opencv.hpp>
+string output_file = "/home/ucar/ucar_car/src/line_follow/image/line.avi";//录制视频避免网络传输卡顿
+VideoWriter out;
+int fourcc = VideoWriter::fourcc('X', 'V', 'I', 'D'); // MP4V编码
+ostringstream displayStream;
+
 
 void drawLineFromEquation(cv::Mat& img, double a, double b, double c, const cv::Scalar& color, int thickness) {
     int width = img.cols;
@@ -288,8 +294,9 @@ bool find_left_edge(Mat gray_img,Point& left_edge_point,int brightness_threshold
     else {
         if (!visualizeImg.empty()) {
             circle(visualizeImg, left_edge_point, 3, Scalar(0, 0, 255), -1);
-            imshow("visualize",visualizeImg);
-            waitKey(1);
+            // imshow("visualize",visualizeImg);
+            // waitKey(1);
+            out.write(visualizeImg);
         }
         return false;
     }
@@ -328,8 +335,9 @@ bool find_left_line(Mat gray_img,vector<Point>& left_edge_points,int brightness_
             for (int i=0;i<left_edge_points.size();i++) {
                 circle(visualizeImg, left_edge_points[i], 3, Scalar(255, 0, 0), -1);
             }
-            imshow("visualize",visualizeImg);
-            waitKey(1);
+            // imshow("visualize",visualizeImg);
+            // waitKey(1);
+            out.write(visualizeImg);
         }
         ROS_INFO("直线方程abc%f,%f,%f",result.first[0],result.first[1],result.first[2]);
         ROS_INFO("直线与图像底部交点%f",(-1*result.first[2]-(480.0*result.first[1]))/result.first[0]);
@@ -342,26 +350,26 @@ bool find_left_line(Mat gray_img,vector<Point>& left_edge_points,int brightness_
 }
 
 
-double error_calculater(vector<Point>& traced_points,int ystart,Mat visualizeImg = Mat()){
+double error_calculater(vector<Point>& traced_points,int ystart,Mat& visualizeImg){
     double total_error;
-    size_t count = std::min(traced_points.size(),static_cast<size_t>(90));
+    size_t count = std::min(traced_points.size(),static_cast<size_t>(150));
     for (size_t i=0;i<count;i++){
         int y = ystart-i;
         double mid_error = (traced_points[i].x - (280 - (424-y)*1.34)-320);
         total_error += mid_error;
     }
-    if (!visualizeImg.empty()) {
-        // 可视化代码（例如在图像上绘制轨迹）
-        for (int i=0;i<count;i++) {
-            int y = ystart-i;
-            Point pt = Point(traced_points[i].x - (320 - (424-y)*1.34),ystart-i);
-            circle(visualizeImg, pt, 3, Scalar(0, 255, 0), -1);
-        }
-        imshow("visualize",visualizeImg);
-        waitKey(1);
+    double error_normalize = total_error/count*-1;
+
+    // 可视化代码（例如在图像上绘制轨迹）
+    for (int i=0;i<count;i++) {
+        int y = ystart-i;
+        Point pt = Point(traced_points[i].x - (320 - (424-y)*1.34),ystart-i);
+        circle(visualizeImg, pt, 3, Scalar(0, 255, 0), -1);
     }
-    // ROS_INFO("误差计算,大于0则中线在图像右边%f",total_error/count*-1);
-    return total_error/count*-1;
+    // imshow("visualize",visualizeImg);
+    // waitKey(1);
+
+    return error_normalize;
 }
 
 int main(int argc, char **argv) {
@@ -402,13 +410,15 @@ int main(int argc, char **argv) {
     Mat image,undistorted;
 
     double p,i,d,integration,pre_error;
-    p = 1;
-    i = 0;
-    d = 0;
+    p = 0.006;
+    i = 0.1;
+    d = 0.1;
     bool right = true;//判断现在是右边线还是左边线
     int first_point_x_last = 320;//上一帧的赛道起点，发生突变就说明右赛道变成左赛道了
     bool left_forward = true;
     bool point_forward = true;
+
+    out.open(output_file, fourcc, 15, Size(640, 480));
     while(ros::ok()){
         cap.read(image);
         if (image.empty()) continue;
@@ -443,11 +453,11 @@ int main(int argc, char **argv) {
         
         find_track_edge(gray_img,right_edge_point, scan_rows, brightness_threshold);
         // ROS_INFO("上帧起点位置%d,现在起点位置%d",first_point_x_last,right_edge_point.x);
-        if (right && (first_point_x_last - right_edge_point.x>50 || (right_edge_point.x < 400&&right_edge_point.y<360))){//如果右边线丢了或者右边界首个点发生剧烈左移动
+        if (right && (first_point_x_last - right_edge_point.x>90 || (right_edge_point.x < 380&&right_edge_point.y<360))){//如果右边线丢了或者右边界首个点发生剧烈左移动
             right = false;
             ROS_INFO("进入左巡线逻辑");
         }
-        if(!right && (right_edge_point.x-first_point_x_last>50||right_edge_point.x>550)){//左线发生剧烈偏移说明又看到右线了
+        if(!right && (right_edge_point.x-first_point_x_last>50||right_edge_point.x>480)){//左线发生剧烈偏移说明又看到右线了
             right = true;
             ROS_INFO("进入右巡线逻辑");
         }
@@ -461,37 +471,44 @@ int main(int argc, char **argv) {
             left_forward = true;
             point_forward = true;
             trace_edge(right_edge_point, gray_img, traced_right, right_broken,40, brightness_threshold, &result_image);
-            // double error = error_calculater(traced_right,right_edge_point.y,undistorted);//有调试图片输出
+            double error = error_calculater(traced_right,right_edge_point.y,undistorted);//有调试图片输出
             // imshow("Track Edge Detection", result_image);
-            double error = error_calculater(traced_right,right_edge_point.y);
-            twist.linear.x = 0.3;
+            // double error = error_calculater(traced_right,right_edge_point.y);
+            // ROS_INFO("误差%f",error);
+            twist.linear.x = 0.3 / exp(abs(error) / 100.0);
             integration += error*0.02;
             integration = std::max(std::min(integration,1.0),-1.0);
             double diff = (error - pre_error)/0.02;
             diff = std::max(std::min(diff,1.0),-1.0);
             twist.angular.z = std::max(std::min(error*p+integration*i+diff*d,1.0),-1.0);
+            displayStream << "error: " << error << "x" << twist.linear.x <<"z"<< twist.angular.z;
+
+            string displayText = displayStream.str();
+            putText(result_image, displayText, Point(50, 50),
+            FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 0), 1);
+            out.write(result_image);
             // ROS_INFO("输出速度%f",twist.angular.z);
         } else {
             if(left_forward){
                 if(point_forward){
                     // ROS_INFO("前进");
-                    // find_left_edge(gray_img, left_edge_point,brightness_threshold,result_image);
-                    find_left_edge(gray_img, left_edge_point,brightness_threshold);
+                    find_left_edge(gray_img, left_edge_point,brightness_threshold,result_image);
+                    // find_left_edge(gray_img, left_edge_point,brightness_threshold);
                     ROS_INFO("转折点坐标x%d,y%d",left_edge_point.x,left_edge_point.y);
-                    if(left_edge_point.x>320 && left_edge_point.y >410){
+                    if(left_edge_point.x>320 && left_edge_point.y >370){
                         point_forward = false;
                     }
                     twist.linear.x = std::max(std::min((480-left_edge_point.y)/100.0,0.15),-0.15);
                     twist.angular.z = std::max(std::min((330-left_edge_point.x)/100.0,0.1),-0.1);
                 }
                 else{
-                    // ROS_INFO("出圆环");
-                    // if(find_left_line(gray_img,left_edge_points,brightness_threshold,result_image)){
-                    //     left_forward = false;
-                    // }
-                    if(find_left_line(gray_img,left_edge_points,brightness_threshold)){
+                    ROS_INFO("出圆环");
+                    if(find_left_line(gray_img,left_edge_points,brightness_threshold,result_image)){
                         left_forward = false;
                     }
+                    // if(find_left_line(gray_img,left_edge_points,brightness_threshold)){
+                    //     left_forward = false;
+                    // }
                     else{
                         twist.linear.x = 0.1;
                         twist.angular.z = 0.0;
@@ -501,6 +518,7 @@ int main(int argc, char **argv) {
             else{
                 twist.linear.x = 0;
                 twist.angular.z = -0.3;
+                out.write(result_image);
             }
         }
         first_point_x_last = right_edge_point.x;//更新起点位置
@@ -512,6 +530,7 @@ int main(int argc, char **argv) {
         //     imwrite("/home/ucar/ucar_car/src/line_follow/image/test.jpg", gray_img);
         // }
     }
-
+    cap.release();
+    out.release();
     return 0;
 }

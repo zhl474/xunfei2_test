@@ -50,12 +50,25 @@ def fixed_threshold_binarization(image, threshold=180, max_value=255, threshold_
         rospy.logwarn(f"二值化异常: {str(e)}")
         return np.zeros((1, 1), dtype=np.uint8)  # 返回空图像
 
+def detect_curvature(nonzero_x, nonzero_y):
+    """计算曲率 [[9]]"""
+    if len(nonzero_x) < 10:
+        return float('inf')
+    
+    x = nonzero_x.astype(np.float32) / max(nonzero_x)
+    y = nonzero_y.astype(np.float32) / max(nonzero_y)
+    
+    # 二次多项式拟合
+    A = np.vstack([y, np.ones(len(y))]).T
+    m, c = np.linalg.lstsq(A, x, rcond=None)[0]
+    curvature = abs(m)  # 简化曲率计算
+    return curvature
         
 def detect_center_line(binary_image):
     height, width = binary_image.shape
     
     # 获取所有黑色像素位置
-    nonzero_y, nonzero_x = np.nonzero(binary_image == 0)
+    nonzero_y, nonzero_x = np.nonzero(binary_image == 0) 
     
     # 分割左右半区
     mid_x = width // 2
@@ -68,6 +81,13 @@ def detect_center_line(binary_image):
     nonzero_y_right = nonzero_y[right_mask]
     nonzero_x_right = nonzero_x[right_mask]
     
+    # 计算曲率 [[9]]
+    left_curvature = detect_curvature(nonzero_x_left, nonzero_y_left) if len(nonzero_x_left) > 0 else float('inf')
+    right_curvature = detect_curvature(nonzero_x_right, nonzero_y_right) if len(nonzero_x_right) > 0 else float('inf')
+    print("left_curvature")
+    print(left_curvature)
+    print("\nright_curvature")
+    print(right_curvature)
     # 判断使用哪侧作为基准线
     use_right = len(nonzero_y_right) >= len(nonzero_y_left)
     
@@ -134,7 +154,9 @@ def detect_center_line(binary_image):
         if valid_rows[y]:
             cv2.circle(visual_img, (centers[y], y), 2, (0, 0, 255), -1)
 
-    return center_line_x, visual_img
+    in_curve = (right_curvature > 0.005 or left_curvature > 0.005) if (right_curvature != float('inf') and left_curvature != float('inf')) else False
+
+    return center_line_x, visual_img,in_curve
 
 def detect_stopping_line(binary_image):
     height, width = binary_image.shape
@@ -146,6 +168,8 @@ def detect_stopping_line(binary_image):
         if black_pixels > width * 0.25:   # 黑色像素超过80%
             return True
     return False
+
+
 
 # 初始化节点
 rospy.init_node('line', anonymous=True)
@@ -159,6 +183,10 @@ if not cap.isOpened():
 rospy.loginfo("视觉巡线节点已启动!")
 
 pid = PIDController(Kp=-0.3, Ki=0, Kd=-0.02)
+
+in_corner = False
+rotation_complete = False
+corner_detection_active = False
 
 while not rospy.is_shutdown():
     ret, frame = cap.read()
@@ -180,7 +208,7 @@ while not rospy.is_shutdown():
 
     height, width = binary_image.shape
     # 检测中线并获取中心点位置
-    center_line_x,visual_img = detect_center_line(binary_image)
+    center_line_x,visual_img,, in_curve = detect_center_line(binary_image)
 
 
     cv2.imshow('Center Line Detection', visual_img)
