@@ -7,16 +7,27 @@ project(line_follow)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
+
+# find_package(catkin REQUIRED COMPONENTS
+#   geometry_msgs
+#   roscpp
+#   rospy
+#   std_msgs
+#   # cv_bridge
+#   sensor_msgs
+#   # image_transport
+#   message_generation
+# )
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   roscpp
   rospy
   std_msgs
   # cv_bridge
-  sensor_msgs
+  # sensor_msgs
   # image_transport
-  message_generation
-)
+  # message_generation
+)#调试用
 
 # 查找 OpenCV 并指定必要组件
 find_package(OpenCV REQUIRED COMPONENTS
@@ -67,10 +78,11 @@ find_package(OpenCV REQUIRED COMPONENTS
 # )
 
 ## Generate services in the 'srv' folder
-add_service_files(
-  FILES
-  line_follow.srv
-)
+
+# add_service_files(//方便调试，后续需要启用
+#   FILES
+#   line_follow.srv
+# )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -80,11 +92,12 @@ add_service_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-  geometry_msgs#   sensor_msgs
-)
+
+# generate_messages(
+#   DEPENDENCIES
+#   std_msgs
+#   geometry_msgs#   sensor_msgs
+# )//调试用，后续放开注释
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -118,7 +131,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES line_follow
- CATKIN_DEPENDS geometry_msgs roscpp sensor_msgs std_msgs message_runtime #cv_bridge image_transport
+ CATKIN_DEPENDS geometry_msgs roscpp std_msgs message_runtime #cv_bridge image_transport sensor_msgs 
 #  DEPENDS system_lib
 )
 
