@@ -419,7 +419,9 @@ int main(int argc, char **argv) {
     bool point_forward = true;
 
     out.open(output_file, fourcc, 15, Size(640, 480));
+    displayStream << fixed << setprecision(2);
     while(ros::ok()){
+        displayStream.str("");
         cap.read(image);
         if (image.empty()) continue;
         remap(
@@ -481,12 +483,12 @@ int main(int argc, char **argv) {
             double diff = (error - pre_error)/0.02;
             diff = std::max(std::min(diff,1.0),-1.0);
             twist.angular.z = std::max(std::min(error*p+integration*i+diff*d,1.0),-1.0);
-            displayStream << "error: " << error << "x" << twist.linear.x <<"z"<< twist.angular.z;
+            displayStream << "error:  " << error << "x:  " << twist.linear.x <<"z:  "<< twist.angular.z;
 
             string displayText = displayStream.str();
-            putText(result_image, displayText, Point(50, 50),
+            putText(undistorted, displayText, Point(50, 50),
             FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 0), 1);
-            out.write(result_image);
+            out.write(undistorted);
             // ROS_INFO("输出速度%f",twist.angular.z);
         } else {
             if(left_forward){
