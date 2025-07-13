@@ -149,14 +149,14 @@ void find_track_edge(Mat& gray_img, Point& right_point, int scan_rows = 200, int
 }
 
 // 从起始点开始追踪赛道边线（添加断裂检测机制）
-void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, bool& broken, int search_range = 20, 
+void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, bool& right, int search_range = 20, 
                 int brightness_threshold = 20,Mat* visual_img = nullptr) {
     int height = gray_img.rows;
     int width = gray_img.cols;
     
     traced_points.clear();
     traced_points.push_back(start_point);
-    broken = false;
+    bool broken = false;
     // int right_total = 0;//计算右线的平均坐标，用来判断正前方到底是右边线还是左边线
     // int effective_point = 1;
     // 计数器：记录连续未找到点的行数
@@ -165,6 +165,7 @@ void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, 
     // 初始化搜索中心
     int center_x = start_point.x;
     int center_y = start_point.y - 1;  // 从起始点上方开始搜索
+    int number = 1;//没必要找太多，60个点够了
 
     while (center_y > 0) {  // 向上追踪直到图像顶部
         bool found = false;
@@ -225,6 +226,7 @@ void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, 
             traced_points.push_back(best_point);
             // 重置失败计数器
             fail_count = 0;
+            number++;
             // 更新搜索中心（继续向上移动）
             center_x = best_point.x;
             center_y = best_point.y - 1;
@@ -242,33 +244,31 @@ void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, 
         }
 
         // 如果已经到达图像顶部，结束追踪
-        if (center_y <= 0) {
+        if (number>80|| center_y <= 0) {
             break;
         }
     }
-
+    
+    Vec4f lineParams; // 存放结果的 Vec4f
+    fitLine(traced_points, lineParams, DIST_L2, 0, 0.01, 0.01);
+    ROS_INFO("右线斜率%f",lineParams[1]/lineParams[0]);
+    ROS_INFO("有效点数%d",traced_points.size());
+    if((lineParams[1]/lineParams[0]<-0.1&&lineParams[1]/lineParams[0]>-10 && start_point.x<320)||traced_points.size()<10){//不接受右线向右倾斜数量太少不要
+        right = false;
+    }
     // 可视化追踪过程
     if (visual_img != nullptr) {
         Scalar color = Scalar(0, 255, 0);  // 红色:左, 绿色:右
-        // 绘制所有追踪点
         for (const auto& point : traced_points) {
             circle(*visual_img, point, 2, color, -1);
         }
-
-        // 绘制起始点（更大更显眼）
         circle(*visual_img, start_point, 5, color, -1);
-
-        // 绘制断裂点（如果有）
-        if (broken) {
-            Point break_point(center_x, center_y + 1);
-            circle(*visual_img, break_point, 8, Scalar(255, 255, 0), -1);  // 青色标记断裂点
-            putText(*visual_img, "Break Point", Point(break_point.x - 50, break_point.y - 10),
-                    FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 0), 1);
-        }
+        // imshow("test",*visual_img);
+        // waitKey(1);
     }
 }
 //如果右边丢线，就只看左边，因为右边丢线了，所以直接从最右边开始找，找到就是左线，然后把左线拟合成直线，如果左线碰到图片底端，就开始旋转，通过定位来判断是否到达终点，到达终点前不启用停车逻辑
-bool find_left_edge(Mat gray_img,Point& left_edge_point,int brightness_threshold,Mat visualizeImg = Mat()){
+bool find_left_edge(Mat gray_img,Point& left_edge_point,int brightness_threshold,Mat& visualizeImg){
     int height = gray_img.rows;
     int width = gray_img.cols;
     bool flag = false;
@@ -296,7 +296,7 @@ bool find_left_edge(Mat gray_img,Point& left_edge_point,int brightness_threshold
             circle(visualizeImg, left_edge_point, 3, Scalar(0, 0, 255), -1);
             // imshow("visualize",visualizeImg);
             // waitKey(1);
-            out.write(visualizeImg);
+            
         }
         return false;
     }
@@ -339,8 +339,8 @@ bool find_left_line(Mat gray_img,vector<Point>& left_edge_points,int brightness_
             // waitKey(1);
             out.write(visualizeImg);
         }
-        ROS_INFO("直线方程abc%f,%f,%f",result.first[0],result.first[1],result.first[2]);
-        ROS_INFO("直线与图像底部交点%f",(-1*result.first[2]-(480.0*result.first[1]))/result.first[0]);
+        // ROS_INFO("直线方程abc%f,%f,%f",result.first[0],result.first[1],result.first[2]);
+        // ROS_INFO("直线与图像底部交点%f",(-1*result.first[2]-(480.0*result.first[1]))/result.first[0]);
         if((-1*result.first[2]-(480*result.first[1]))/result.first[0]>320){//直线和图像底部的交点
             return true;
         }else{
@@ -351,25 +351,34 @@ bool find_left_line(Mat gray_img,vector<Point>& left_edge_points,int brightness_
 
 
 double error_calculater(vector<Point>& traced_points,int ystart,Mat& visualizeImg){
-    double total_error;
-    size_t count = std::min(traced_points.size(),static_cast<size_t>(30));
-    for (size_t i=0;i<count;i++){
+    double total_error = 0;
+    // size_t count = std::min(traced_points.size(),static_cast<size_t>(60));//注意了这里number最大就到80记得把前面对number的限制也改了
+    for (size_t i=0;i<traced_points.size();i++){
         int y = ystart-i;
-        double mid_error = (traced_points[i].x - (280 - (424-y)*1.34)-320)*(1-i/60);
-        total_error += mid_error;
+        if (i <= 30.0) {
+            double mid_error = (traced_points[i].x - (280 - (424-y)*1.34)-320)*(1-i/100);
+            total_error += mid_error;
+        }
+        else {
+            double mid_error = (traced_points[i].x - (280 - (424-y)*1.34)-320)*0.7 * exp(-0.064 * (i - 30.0));
+            total_error += mid_error;
+        }
     }
-    double error_normalize = total_error/count*-1;
 
     // 可视化代码（例如在图像上绘制轨迹）
-    for (int i=0;i<count;i++) {
+    for (int i=0;i<traced_points.size();i++) {
         int y = ystart-i;
         Point pt = Point(traced_points[i].x - (320 - (424-y)*1.34),ystart-i);
         circle(visualizeImg, pt, 3, Scalar(0, 255, 0), -1);
     }
     // imshow("visualize",visualizeImg);
     // waitKey(1);
-
-    return error_normalize;
+    if (traced_points.size()==0){
+        return 100.0;
+    }
+    else{
+        return total_error/traced_points.size()*-1;
+    }
 }
 
 int main(int argc, char **argv) {
@@ -410,15 +419,21 @@ int main(int argc, char **argv) {
     Mat image,undistorted;
 
     double p,i,d,integration,pre_error;
-    p = 0.006;
+    p = 0.004;
     i = 0.1;
     d = 0.1;
+    integration = 0;
+    pre_error = 0;
+    double pointx_integration = 0;
+    double pointx_pre_error = 0;
+    double pointy_integration = 0;
+    double pointy_pre_error = 0;
     bool right = true;//判断现在是右边线还是左边线
     int first_point_x_last = 320;//上一帧的赛道起点，发生突变就说明右赛道变成左赛道了
     bool left_forward = true;
     bool point_forward = true;
 
-    out.open(output_file, fourcc, 15, Size(640, 480));
+    out.open(output_file, fourcc, 10, Size(640, 480));
     displayStream << fixed << setprecision(2);
     while(ros::ok()){
         displayStream.str("");
@@ -465,46 +480,67 @@ int main(int argc, char **argv) {
         }
         vector<Point> traced_right,left_edge_points;
         Point left_edge_point;
-
-        bool right_broken = false;
         // 追踪右侧边线
-
+        bool right_checker = true;//右线不一定真的是右线，可能是太偏的左线，不接受右线向右倾斜，不满足条件切换逻辑
         if (right) {
-            left_forward = true;
-            point_forward = true;
-            trace_edge(right_edge_point, gray_img, traced_right, right_broken,40, brightness_threshold, &result_image);
+            trace_edge(right_edge_point, gray_img, traced_right, right_checker,40, brightness_threshold, &result_image);
             double error = error_calculater(traced_right,right_edge_point.y,undistorted);//有调试图片输出
             // imshow("Track Edge Detection", result_image);
             // double error = error_calculater(traced_right,right_edge_point.y);
             // ROS_INFO("误差%f",error);
-            twist.linear.x = 0.3 / exp(abs(error) / 100.0);
+            twist.linear.x = 0.5 / exp(abs(error) / 100.0);
             integration += error*0.02;
             integration = std::max(std::min(integration,1.0),-1.0);
+            if (abs(error*p)>1.5 ){
+                integration = 0;
+            }
             double diff = (error - pre_error)/0.02;
             diff = std::max(std::min(diff,1.0),-1.0);
             twist.angular.z = std::max(std::min(error*p+integration*i+diff*d,1.0),-1.0);
-            displayStream << "error:  " << error << "x:  " << twist.linear.x <<"z:  "<< twist.angular.z;
 
+            displayStream << "error:  " << error << "x:  " << twist.linear.x <<"z:  "<< twist.angular.z;
             string displayText = displayStream.str();
             putText(undistorted, displayText, Point(50, 50),
-            FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 0), 1);
+            FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
             out.write(undistorted);
-            // ROS_INFO("输出速度%f",twist.angular.z);
+            // ROS_INFO("积分项%f",integration);
+
+            if(!right_checker){
+                ROS_INFO("右线斜率出错，舍弃");
+                twist.linear.x = 0;
+                twist.angular.z = -0.3;
+                left_forward = true;
+                point_forward = true;
+            }
         } else {
             if(left_forward){
                 if(point_forward){
                     // ROS_INFO("前进");
                     find_left_edge(gray_img, left_edge_point,brightness_threshold,result_image);
                     // find_left_edge(gray_img, left_edge_point,brightness_threshold);
-                    ROS_INFO("转折点坐标x%d,y%d",left_edge_point.x,left_edge_point.y);
-                    if(left_edge_point.x>320 && left_edge_point.y >370){
+                    double error_x = 320-left_edge_point.x;double error_y = 370-left_edge_point.y;
+                    if(error_x>100) pointx_integration = 0;if(error_y>100) pointy_integration = 0;
+                    pointx_integration += error_x*0.02;pointy_integration += error_y*0.02;
+                    // ROS_INFO("转折点坐标x%d,y%d",left_edge_point.x,left_edge_point.y);
+                    if(abs(left_edge_point.x-320) < 20 && abs(left_edge_point.y -370)<20){
+                        pointx_integration = 0;
+                        pointy_integration = 0;
                         point_forward = false;
                     }
-                    twist.linear.x = std::max(std::min((480-left_edge_point.y)/100.0,0.15),-0.15);
-                    twist.angular.z = std::max(std::min((330-left_edge_point.x)/100.0,0.1),-0.1);
+                    pointx_integration = std::max(std::min(pointx_integration,1.0),-1.0);pointy_integration = std::max(std::min(pointy_integration,1.0),-1.0);
+                    // ROS_INFO("P%f,I%f",error_y/400,pointy_integration/400);
+                    twist.linear.x = std::max(std::min(error_y/400+pointy_integration/400,0.3),-0.3);
+                    twist.angular.z = std::max(std::min(error_x/400+pointx_integration/400,0.5),-0.5);
+                    pointx_pre_error = error_x;pointy_pre_error = error_y;
+                    displayStream << "error:  " << error_x << "x:  " << twist.linear.x <<"z:  "<< twist.angular.z;
+                    string displayText = displayStream.str();
+                    putText(result_image, displayText, Point(50, 50),
+                    FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
+                    out.write(result_image);
                 }
                 else{
                     ROS_INFO("出圆环");
+                    ros::Time start_time = ros::Time::now();
                     if(find_left_line(gray_img,left_edge_points,brightness_threshold,result_image)){
                         left_forward = false;
                     }
@@ -513,13 +549,14 @@ int main(int argc, char **argv) {
                     // }
                     else{
                         twist.linear.x = 0.1;
-                        twist.angular.z = 0.0;
+                        twist.angular.z = -0.05;
                     }
+                    ROS_INFO("耗时%f",(ros::Time::now()-start_time).toSec());
                 }
             }
             else{
                 twist.linear.x = 0;
-                twist.angular.z = -0.3;
+                twist.angular.z = -0.6;
                 out.write(result_image);
             }
         }
