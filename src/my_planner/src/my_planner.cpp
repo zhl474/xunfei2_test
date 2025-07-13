@@ -88,8 +88,8 @@ namespace my_planner
             if(i == global_plan_.size()-1)
                 target_pose = pose_base; 
         }
-        cmd_vel.linear.x = target_pose.pose.position.x * 1.5;//小车运动速度比例系数
-        cmd_vel.angular.z = target_pose.pose.position.y * 5.5;
+        cmd_vel.linear.x = target_pose.pose.position.x * 2.0;//小车运动速度比例系数
+        cmd_vel.angular.z = target_pose.pose.position.y * 6.8;
         //路径点显示，去除以减少运算压力
         // cv::Mat plan_image(600, 600, CV_8UC3, cv::Scalar(0, 0, 0));        
         // for(int i=0;i<global_plan_.size();i++)

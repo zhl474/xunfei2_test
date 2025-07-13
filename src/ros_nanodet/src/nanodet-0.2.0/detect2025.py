@@ -6,6 +6,7 @@ from ros_nanodet.srv import detect_result_srv, detect_result_srvRequest, detect_
 from demo.demo import detect
 from demo.demo import init
 import cv2
+import numpy as np
 
 predictor = init()
 rospy.init_node("nanodet_detect", anonymous=True)
@@ -18,6 +19,15 @@ print("warm up done")
 # 全局变量管理摄像头状态
 camera_active = False
 cap = None
+
+output_filename = "/home/ucar/ucar_car/src/ztestnav2025/nanodet_debug/nanodet.avi"#录制视频防止可视化卡顿
+fourcc = cv2.VideoWriter_fourcc(*'XVID')  # MP4格式，其他选项：'XVID'->AVI, 'MJPG'->MJPEG
+fps = 10.0
+frame_size = (640, 480)  # 必须和实际帧尺寸一致
+out = cv2.VideoWriter(output_filename, fourcc, fps, frame_size)
+# 检查是否成功创建
+if not out.isOpened():
+    print("无法创建视频文件！")
 
 def shutdown_cap(response):
     global camera_active, cap
@@ -44,6 +54,7 @@ def open_cap():
         rospy.loginfo("摄像头成功打开")
 
 def visualize(image, x0, y0, x1, y1, name, conf):
+    global out
     color = (0, 255, 0)  # 绿色边框
     cv2.rectangle(image, (x0, y0), (x1, y1), color, 2)  # 2是边框粗细
     label = f"{name}: {conf:.2f}"
@@ -64,12 +75,13 @@ def visualize(image, x0, y0, x1, y1, name, conf):
         (0, 0, 0),      # 黑色文本
         2               # 文本粗细
     )
-    cv2.imshow('Detection', image)
-    cv2.waitKey(1)
+    # cv2.imshow('Detection', image)
+    # cv2.waitKey(1)
+    # out.write(image)
 
 #首次启动要发个-1启动摄像头，发送-2关闭摄像头防止冲突
 def detect_start(req):
-    global camera_active, cap
+    global camera_active, cap, out
     response = detect_result_srvResponse()
     if req.detect_start==-1:
         open_cap()
@@ -93,20 +105,24 @@ def detect_start(req):
                     best_bbox = bbox
                     target = label
                     # print("检测到目标")
-                    print(target)
+                    # print(target)
     x0, y0, x1, y1, conf = [int(coord) for coord in best_bbox]
     response.x0 = x0
     response.y0 = y0
     response.x1 = x1
     response.y1 = y1
     response.class_name = target
+    print((x0+x1)/2)
     if best_bbox[0] != -1:
         visualize(frame,x0, y0, x1, y1,target,conf)
+    out.write(frame)
     return response
 
 server = rospy.Service("nanodet_detect",detect_result_srv,detect_start)
 print("目标检测就绪")
 rospy.spin()
+out.release()
+print("结束")
 
 
 

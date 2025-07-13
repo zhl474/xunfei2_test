@@ -120,11 +120,11 @@ int MecanumController::turn_and_find(double find_time,int y,int z,double angular
         double error = (img_width/2.0 - center_x)/100; 
         
         // 离散PID计算
-        integral += error * 0.05;       // dt=1/20≈0.05
-        double derivative = (error - prev_error)/0.05;
+        integral += error * 0.1;       // dt=1/20≈0.05
+        double derivative = (error - prev_error)/0.1;
         double output = Kp_*error + Ki_*integral + Kd_*derivative;
         output = clamp(output, -1.0, 1.0);
-        // ROS_INFO("速度发布:%f",output*0.2);
+        ROS_INFO("速度发布:%f",output*0.2);//
         
         // 执行旋转（限制输出范围）
         set_speed_.request.target_twist.angular.z = 0.2*output;

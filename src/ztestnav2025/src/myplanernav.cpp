@@ -182,8 +182,15 @@ int main(int argc, char *argv[])
     ROS_INFO("走廊环境导航开始");
     mecanumController.rotateCircle(3.14,1,0.6);
     mecanumController.rotateCircle(3.14,1,0.6);
+    // ros::Time start_time = ros::Time::now();
+    // geometry_msgs::Twist twist;
+    // twist.angular.z = 2;
+    // while((ros::Time::now() - start_time).toSec() < 3.14){
+    //     mecanumController.cmd_pub_.publish(twist);
+    // }//旋转收敛定位
+
     go_destination(goal,1.25,0.75,3.14,q,ac);
-    ros::Duration(0.5).sleep();
+    // ros::Duration(0.5).sleep();
     what_qr.request.qr_start = 1;
     while(ros::ok()){
         if (!client_qr.call(what_qr)){
@@ -219,7 +226,7 @@ int main(int argc, char *argv[])
     //视觉识别开始，先传个-1把摄像头打开
     std::vector<int> a = {-1,-1,-1,-1,-1,-1};
     mecanumController.detect(a,-1);
-    board_name = mecanumController.turn_and_find(7,1,board_class,-0.6);//请求视觉识别板子服务
+    board_name = mecanumController.turn_and_find(5.5,1,board_class,-0.4);//请求视觉识别板子服务
     if (board_name != -1) {
         if (poseget_client.call(pose_result)){
             ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
@@ -245,7 +252,7 @@ int main(int argc, char *argv[])
         //前往区域中心找板子
         ROS_INFO("前往中心找板");
         go_destination(goal,1.25,3.75,0,q,ac);
-        board_name = mecanumController.turn_and_find(17,1,board_class,0.6);//请求视觉识别板子服务
+        board_name = mecanumController.turn_and_find(17,1,board_class,0.4);//请求视觉识别板子服务
         if(board_name!=-1){
             if (poseget_client.call(pose_result)){
                 ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
@@ -271,7 +278,7 @@ int main(int argc, char *argv[])
         //前往第三区域找板子
         ROS_INFO("前往第三点找板");
         go_destination(goal,2.0,4.25,0,q,ac);
-        board_name = mecanumController.turn_and_find(17,1,board_class,0.6);//请求视觉识别板子服务
+        board_name = mecanumController.turn_and_find(17,1,board_class,0.4);//请求视觉识别板子服务
         if(board_name!=-1){
             if (poseget_client.call(pose_result)){
                 ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
@@ -308,7 +315,7 @@ int main(int argc, char *argv[])
     go_destination(goal,1.25,3.75,0.0,q,ac);
     //发送仿真消息
     ros::Rate rate(1);
-    waitForContinue();
+    // waitForContinue();
     // while (ros::ok()) {
     //     sim_talkto_car.car_msg_publish(board_name);
     //     rate.sleep();
@@ -351,7 +358,7 @@ int main(int argc, char *argv[])
         ROS_ERROR("视觉巡线失败....");
     }
     
-    play_audio(cost[board_name*3+sim_talkto_car.sim_detect_class]);
+    play_audio(voice[4][board_name*3+sim_talkto_car.sim_detect_class]);
     // play_audio(voice[board_name*3][1]);
     ros::spin();
 

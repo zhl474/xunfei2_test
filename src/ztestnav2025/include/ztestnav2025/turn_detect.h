@@ -30,11 +30,12 @@ public:
 
     bool pid_change_flag=0;
 
+    ros::Publisher cmd_pub_;
+
 private:
     // ROS通信接口
     ros::NodeHandle nh_;
-    ros::Publisher cmd_pub_;
-    
+
     // 运动学参数
     double angle_error_ = 0.034;   //容忍2度偏差
     double Kp_ = 0.5;  // 先调这个参数
