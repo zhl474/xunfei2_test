@@ -124,7 +124,7 @@ int MecanumController::turn_and_find(double find_time,int y,int z,double angular
         double derivative = (error - prev_error)/0.1;
         double output = Kp_*error + Ki_*integral + Kd_*derivative;
         output = clamp(output, -1.0, 1.0);
-        ROS_INFO("速度发布:%f",output*0.2);//
+        // ROS_INFO("速度发布:%f",output*0.2);
         
         // 执行旋转（限制输出范围）
         set_speed_.request.target_twist.angular.z = 0.2*output;
@@ -199,7 +199,9 @@ bool MecanumController::adjust(int z,double adjust_speed){
     set_speed_.request.target_twist.angular.z = 0;
     set_speed_.request.work = true;
     board_slope.request.lidar_process_start = 2;
-    start_time_ = ros::Time::now();
+    // start_time_ = ros::Time::now();
+    int count = 0;//连续三帧目标都在中心，才认为对准
+    double limit_change = 1.0;
     while(ros::ok()){
         detect(result, z);     // 持续检测目标
         // ROS_INFO("%d",result[4]);
@@ -207,20 +209,28 @@ bool MecanumController::adjust(int z,double adjust_speed){
             continue;
         }  // 目标丢失则退出
         int center_x = (result[0]+result[2])/2;
-        if(std::abs(center_x - img_width/2) < 7){
+        ROS_INFO("目标中心:%d",center_x);
+        if(std::abs(center_x - img_width/2) < 20){
             integral = 0;
             ROS_INFO("在视野中心");
             set_speed_.request.target_twist.linear.y = 0;
             set_speed_client_.call(set_speed_);
         } 
+        if(std::abs(center_x - img_width/2) > 50){
+            integral = 0;//差距过大调节靠p
+        }
         double error = (img_width/2.0 - center_x)/100; 
         
         // 离散PID计算
-        integral += error * 0.15;       // dt=1/100≈0.1
-        integral = clamp(integral, -1.0, 1.0);
-        double derivative = (error - prev_error)/0.15;
+        integral += error;       // dt=1/100≈0.1加快积分，并且限制积分幅度
+        integral = clamp(integral, -5.0, 5.0);
+        ROS_INFO("积分数值:%f",integral);
+        double derivative = (error - prev_error)/0.2;
         double output = Kp_*error + Ki_*integral + Kd_*derivative;
-        output = clamp(output, -1.0, 1.0);
+        ROS_INFO("P:%f",Kp_*error);
+        ROS_INFO("I:%f",Ki_*integral);
+        ROS_INFO("D:%f",Kd_*derivative);
+        output = clamp(output, -1.0, 1.0)*limit_change;
         ROS_INFO("速度发布:%f",output*0.1);
         prev_error = error;
         // 执行（限制输出范围）
@@ -242,17 +252,26 @@ bool MecanumController::adjust(int z,double adjust_speed){
             lidar_output = clamp(lidar_output, -1.0, 1.0);
             lidar_prev_error = board_slope.response.lidar_results[0];
         }
-        if(std::abs(center_x - img_width/2) < 7 && std::abs(board_slope.response.lidar_results[0]) < 0.05){
+        if(std::abs(center_x - img_width/2) < 20 && std::abs(board_slope.response.lidar_results[0]) < 0.05){
+            count++;
             set_speed_.request.target_twist.linear.y = 0;
             set_speed_.request.target_twist.angular.z = 0;
-            set_speed_.request.work = false;
             set_speed_client_.call(set_speed_);
-            return true;
+            limit_change = 0.5;
+            if (count>3){
+                set_speed_.request.work = false;
+                set_speed_client_.call(set_speed_);
+                return true;//连续三帧都合格才退出
+            }
+            continue;
         }  // 已经接近目标退出循环
+        else{
+            count = 0;
+        }
         set_speed_.request.target_twist.angular.z = 0.2*lidar_output;
-        ROS_INFO("%f", (ros::Time::now() - start_time_).toSec());
+        // ROS_INFO("%f", (ros::Time::now() - start_time_).toSec());
         set_speed_client_.call(set_speed_);
-        start_time_ = ros::Time::now();
+        // start_time_ = ros::Time::now();
     }
     set_speed_.request.target_twist.linear.x = 0;
     set_speed_.request.target_twist.linear.y = 0;

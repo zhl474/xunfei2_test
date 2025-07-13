@@ -91,36 +91,36 @@ int main(int argc, char *argv[]){
     //视觉识别开始，先传个-1把摄像头打开
     std::vector<int> a = {-1,-1,-1,-1,-1,-1};
     mecanumController.detect(a,-1);
-    go_destination(goal,1.25,3.75,0,q,ac);
-    ROS_INFO("第一个找板点是否找到板子%d",flag);
-    if(!flag){
-        board_name = mecanumController.turn_and_find(1,1,2,0.6);//请求视觉识别板子服务
-        if (poseget_client.call(pose_result)){
-            ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
-        }
-        else{
-            ROS_ERROR("获取位姿失败");
-        }
-        where_board.request.lidar_process_start = 1;//雷达获取前方障碍物距离
-        if (client_find_board.call(where_board)){
-            double target_x = (where_board.response.lidar_results[0]-0.6)*cos(pose_result.response.pose_at[2])+pose_result.response.pose_at[0];
-            double target_y = (where_board.response.lidar_results[0]-0.6)*sin(pose_result.response.pose_at[2])+pose_result.response.pose_at[1];
-            ROS_INFO("目的地%f,%f,%f",target_x,target_y,pose_result.response.pose_at[2]);
-            go_destination(goal,target_x,target_y,pose_result.response.pose_at[2],q,ac);
-        }
-        // waitForContinue();
-        // mecanumController.turn_and_find(1,1,2,0.3);
-        waitForContinue();
-        mecanumController.adjust(2,0.4);
-        waitForContinue();
-        if(mecanumController.forward(2,0.3)){//直接前进，直到目标检测框高超过230
-            flag = 1;
-        }
-        if (!flag){
-            ROS_INFO("找不到板子，直接走了");
-        }
-        mecanumController.cap_close();
-    }
+    // go_destination(goal,1.25,3.75,0,q,ac);
+    // ROS_INFO("第一个找板点是否找到板子%d",flag);
+    // if(!flag){
+    //     board_name = mecanumController.turn_and_find(1,1,2,0.6);//请求视觉识别板子服务
+    //     if (poseget_client.call(pose_result)){
+    //         ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
+    //     }
+    //     else{
+    //         ROS_ERROR("获取位姿失败");
+    //     }
+    //     where_board.request.lidar_process_start = 1;//雷达获取前方障碍物距离
+    //     if (client_find_board.call(where_board)){
+    //         double target_x = (where_board.response.lidar_results[0]-0.6)*cos(pose_result.response.pose_at[2])+pose_result.response.pose_at[0];
+    //         double target_y = (where_board.response.lidar_results[0]-0.6)*sin(pose_result.response.pose_at[2])+pose_result.response.pose_at[1];
+    //         ROS_INFO("目的地%f,%f,%f",target_x,target_y,pose_result.response.pose_at[2]);
+    //         go_destination(goal,target_x,target_y,pose_result.response.pose_at[2],q,ac);
+    //     }
+    //     // waitForContinue();
+    //     // mecanumController.turn_and_find(1,1,2,0.3);
+    //     waitForContinue();
+    mecanumController.adjust(3,0.4);
+    //     waitForContinue();
+    //     if(mecanumController.forward(2,0.3)){//直接前进，直到目标检测框高超过230
+    //         flag = 1;
+    //     }
+    //     if (!flag){
+    //         ROS_INFO("找不到板子，直接走了");
+    //     }
+    //     mecanumController.cap_close();
+    // }
 }
 
 
