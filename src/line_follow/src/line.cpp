@@ -352,10 +352,10 @@ bool find_left_line(Mat gray_img,vector<Point>& left_edge_points,int brightness_
 
 double error_calculater(vector<Point>& traced_points,int ystart,Mat& visualizeImg){
     double total_error;
-    size_t count = std::min(traced_points.size(),static_cast<size_t>(150));
+    size_t count = std::min(traced_points.size(),static_cast<size_t>(30));
     for (size_t i=0;i<count;i++){
         int y = ystart-i;
-        double mid_error = (traced_points[i].x - (280 - (424-y)*1.34)-320);
+        double mid_error = (traced_points[i].x - (280 - (424-y)*1.34)-320)*(1-i/60);
         total_error += mid_error;
     }
     double error_normalize = total_error/count*-1;
