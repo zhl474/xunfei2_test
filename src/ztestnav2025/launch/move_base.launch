@@ -13,6 +13,7 @@
     <rosparam file="$(find gazebo_nav)/config/dwa_local_planner_params.yaml" command="load" />-->
     <!-- <param name="base_local_planner" value="teb_local_planner/TebLocalPlannerROS" /> -->
     <param name="base_local_planner" value="my_planner/MyPlanner" />
+    <rosparam file="$(find my_planner)/config/my_planner_params.yaml" command="load" ns="move_base/MyPlanner" />
     <param name="controller_frequency" value="30.0" /><!--下面三行 -->
     <param name="controller_patience" value="10.0" />
     <param name="clearing_rotation_allowed" value="true" />
