@@ -108,40 +108,42 @@ std::pair<std::vector<double>, std::vector<int>> fitLineRANSAC(
     return {bestModel, bestInliers};
 }
 
-// 使用内点精确拟合直线
-cv::Vec4f refineLine(const std::vector<cv::Point>& points, 
-                    const std::vector<int>& inliers) 
-{
-    std::vector<cv::Point> inlierPoints;
-    for (int idx : inliers) inlierPoints.push_back(points[idx]);
-    
-    cv::Vec4f line;
-    cv::fitLine(inlierPoints, line, cv::DIST_L2, 0, 0.01, 0.01);
-    return line;  // 返回格式: (vx, vy, x0, y0)
+int brightness_threshold_calculator(Mat& gray_img){//寻找跳变最剧烈的那个点，这个点的左值就是图像二值化阈值
+    int max_brightness_change = 0;
+    int best_binary_brightness = 180;//给个默认值，别一会没找到
+    for (int y = 269; y > 69; y--) {
+        for (int x = 1; x < 638; x++) {
+            int current = (int)gray_img.at<uchar>(y, x);
+            int next = (int)gray_img.at<uchar>(y, x + 1);
+            if (next>=150&&current>70){   
+                if (next - current >= max_brightness_change) {
+                    max_brightness_change = next - current;
+                    best_binary_brightness = (current+next*3)/4;
+                }
+            }
+        }
+    }
+    return best_binary_brightness;
 }
 
 // 从图像底部向上搜索指定行数，分别独立寻找左右两侧的赛道边缘起始点
-void find_track_edge(Mat& gray_img, Point& right_point, int scan_rows = 200, int brightness_threshold = 20) {
+void find_track_edge(Mat& gray_img, Point& right_point, int scan_rows, int brightness_threshold) {
     int height = gray_img.rows;
     int width = gray_img.cols;
     int middle_x = width / 2;
     bool flag = 1;
     int last_scanned_y = height - scan_rows;
 
-    for (int y = height - 1; y >= last_scanned_y; y--) {
+    for (int y = height - 1; y >= last_scanned_y; y--) {//
         // 向右搜索边界
         if (right_point.x == -1) {
             for (int x = middle_x + 1; x < width - 2; x++) {
                 int current = (int)gray_img.at<uchar>(y, x);
                 int next = (int)gray_img.at<uchar>(y, x + 1);
-                if (next>=120){ 
-                    int brightness_change = next - current;    
-                    if (brightness_change >= brightness_threshold) {
-                        right_point = Point(x, y);
-                        break;
-                    }
+                if (next>=brightness_threshold){ 
+                    right_point = Point(x, y);
+                    break;
                 }
-                
             }
         }
         else break;
@@ -149,16 +151,14 @@ void find_track_edge(Mat& gray_img, Point& right_point, int scan_rows = 200, int
 }
 
 // 从起始点开始追踪赛道边线（添加断裂检测机制）
-void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, bool& right, int search_range = 20, 
-                int brightness_threshold = 20,Mat* visual_img = nullptr) {
+void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, bool& right, int search_range, 
+                int brightness_threshold,Mat* visual_img = nullptr) {
     int height = gray_img.rows;
     int width = gray_img.cols;
     
     traced_points.clear();
     traced_points.push_back(start_point);
     bool broken = false;
-    // int right_total = 0;//计算右线的平均坐标，用来判断正前方到底是右边线还是左边线
-    // int effective_point = 1;
     // 计数器：记录连续未找到点的行数
     int fail_count = 0;
     
@@ -167,7 +167,7 @@ void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, 
     int center_y = start_point.y - 1;  // 从起始点上方开始搜索
     int number = 1;//没必要找太多，60个点够了
 
-    while (center_y > 0) {  // 向上追踪直到图像顶部
+    while (center_y > start_point.y-100) {  // 只看往上130行
         bool found = false;
         Point best_point;
         int max_brightness_change = 0;
@@ -194,29 +194,25 @@ void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, 
                 int current = gray_img.at<uchar>(center_y, cand_x2);
                 int prev = gray_img.at<uchar>(center_y, cand_x2 - 1);
                 brightness_change = current - prev;
-            }
-            if (brightness_change >= brightness_threshold) {
-                if (brightness_change > max_brightness_change) {
-                    max_brightness_change = brightness_change;
-                    best_point = Point(cand_x2, center_y);
-                    // right_total += cand_x2;
-                    // effective_point++;
-                    found = true;
-                }
-            }
-            else{
-                if (right_check) {
-                    int current = gray_img.at<uchar>(center_y, cand_x);
-                    int next = gray_img.at<uchar>(center_y, cand_x + 1);
-                    brightness_change = next-current;
-                } 
-                if (brightness_change >= brightness_threshold) {
+                if (current >= brightness_threshold) {
                     if (brightness_change > max_brightness_change) {
                         max_brightness_change = brightness_change;
-                        best_point = Point(cand_x, center_y);
-                        // right_total += cand_x;
-                        // effective_point++;
+                        best_point = Point(cand_x2, center_y);
                         found = true;
+                    }
+                }
+                else{
+                    if (right_check) {
+                        int current = gray_img.at<uchar>(center_y, cand_x);
+                        int next = gray_img.at<uchar>(center_y, cand_x + 1);
+                        brightness_change = next-current;
+                    } 
+                    if (current >= brightness_threshold) {
+                        if (brightness_change > max_brightness_change) {
+                            max_brightness_change = brightness_change;
+                            best_point = Point(cand_x, center_y);
+                            found = true;
+                        }
                     }
                 }
             }
@@ -236,23 +232,22 @@ void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, 
             fail_count++;
             // 向上移动一行继续搜索
             center_y--;
-            // 如果连续2行找不到点，判定为赛道断裂
-            if (fail_count >= 7) {
+            // 如果连续40行找不到点，判定为赛道断裂
+            if (fail_count >= 20) {
                 broken = true;
                 break;
             }
         }
-
         // 如果已经到达图像顶部，结束追踪
-        if (number>80|| center_y <= 0) {
+        if (number>60|| center_y <= 0) {
             break;
         }
     }
     
     Vec4f lineParams; // 存放结果的 Vec4f
     fitLine(traced_points, lineParams, DIST_L2, 0, 0.01, 0.01);
-    ROS_INFO("右线斜率%f",lineParams[1]/lineParams[0]);
-    ROS_INFO("有效点数%d",traced_points.size());
+    // ROS_INFO("右线斜率%f",lineParams[1]/lineParams[0]);
+    // ROS_INFO("有效点数%zu",traced_points.size());
     if((lineParams[1]/lineParams[0]<-0.1&&lineParams[1]/lineParams[0]>-10 && start_point.x<320)||traced_points.size()<10){//不接受右线向右倾斜数量太少不要
         right = false;
     }
@@ -262,7 +257,13 @@ void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, 
         for (const auto& point : traced_points) {
             circle(*visual_img, point, 2, color, -1);
         }
-        circle(*visual_img, start_point, 5, color, -1);
+        circle(*visual_img, start_point, 2, Scalar(0, 0, 0), -1);
+        ostringstream displayStream1;
+        displayStream1 << fixed << setprecision(2);
+        displayStream1 << "line_slope:  " << lineParams[1]/lineParams[0];
+        string displayText1 = displayStream1.str();
+        putText(*visual_img, displayText1, Point(50, 100),
+        FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
         // imshow("test",*visual_img);
         // waitKey(1);
     }
@@ -272,15 +273,13 @@ bool find_left_edge(Mat gray_img,Point& left_edge_point,int brightness_threshold
     int height = gray_img.rows;
     int width = gray_img.cols;
     bool flag = false;
-    // ROS_INFO("进入左边巡线");
     left_edge_point = Point(-1,-1);
-    for (int y = height - 1; y >= 200; y--) {
+    Mat blurred = gray_img;
+    // GaussianBlur(gray_img, blurred, cv::Size(5,5), 0);//这个点很重要，务必不能找错
+    for (int y = height - 1; y >= 69; y--) {
         for (int x = width -1; x > 1; x--) {
-            int brightness_change = gray_img.at<uchar>(y, x - 1) - gray_img.at<uchar>(y, x);
-            if (brightness_change >= brightness_threshold && gray_img.at<uchar>(y, x - 1)>150 && gray_img.at<uchar>(y, x)>80) {
-                // left_edge_points.push_back(Point(x, height-y));
+            if (blurred.at<uchar>(y, x) >= brightness_threshold) {
                 left_edge_point=Point(x, y);
-                // ROS_INFO("左边界");
                 flag = true;
                 break;
             }
@@ -288,15 +287,12 @@ bool find_left_edge(Mat gray_img,Point& left_edge_point,int brightness_threshold
         if (flag) break;
     }
     if(left_edge_point.x == -1){
-        // ROS_INFO("没找到左线");
+        ROS_INFO("没找到左点");
         return false;
     } 
     else {
         if (!visualizeImg.empty()) {
-            circle(visualizeImg, left_edge_point, 3, Scalar(0, 0, 255), -1);
-            // imshow("visualize",visualizeImg);
-            // waitKey(1);
-            
+            circle(visualizeImg, left_edge_point, 7, Scalar(0, 0, 255), -1);
         }
         return false;
     }
@@ -307,11 +303,9 @@ bool find_left_line(Mat gray_img,vector<Point>& left_edge_points,int brightness_
     int width = gray_img.cols;
     bool flag = 1;
     // ROS_INFO("进入左边巡线");
-    for (int y = height - 1; y >= 200; y--) {
+    for (int y = height - 1; y >= 69; y--) {
         for (int x = width -1; x > 1; x--) {
-            int brightness_change = gray_img.at<uchar>(y, x - 1) - gray_img.at<uchar>(y, x);
-            if (brightness_change >= brightness_threshold && gray_img.at<uchar>(y, x - 1)>150 && gray_img.at<uchar>(y, x)>80) {
-                // left_edge_points.push_back(Point(x, height-y));
+            if (gray_img.at<uchar>(y, x) >= brightness_threshold) {
                 left_edge_points.push_back(Point(x, y));
                 break;
             }
@@ -324,24 +318,12 @@ bool find_left_line(Mat gray_img,vector<Point>& left_edge_points,int brightness_
     else {
         std::pair<std::vector<double>, std::vector<int>> result;
         result = fitLineRANSAC(left_edge_points,7,1000);
-        if (!visualizeImg.empty()) {
-            drawLineFromEquation(visualizeImg,result.first[0],result.first[1],result.first[2],cv::Scalar(0, 0, 255),2);
-            // imshow("visualize",visualizeImg);
-            // waitKey(1);
+        drawLineFromEquation(visualizeImg,result.first[0],result.first[1],result.first[2],cv::Scalar(0, 0, 255),2);
+        for (int i=0;i<left_edge_points.size();i++) {
+            circle(visualizeImg, left_edge_points[i], 3, Scalar(255, 0, 0), -1);
         }
-        if (!visualizeImg.empty()) {
-            // ROS_INFO("左赛道可视化");
-            // 可视化代码（例如在图像上绘制轨迹）
-            for (int i=0;i<left_edge_points.size();i++) {
-                circle(visualizeImg, left_edge_points[i], 3, Scalar(255, 0, 0), -1);
-            }
-            // imshow("visualize",visualizeImg);
-            // waitKey(1);
-            out.write(visualizeImg);
-        }
-        // ROS_INFO("直线方程abc%f,%f,%f",result.first[0],result.first[1],result.first[2]);
-        // ROS_INFO("直线与图像底部交点%f",(-1*result.first[2]-(480.0*result.first[1]))/result.first[0]);
-        if((-1*result.first[2]-(480*result.first[1]))/result.first[0]>320){//直线和图像底部的交点
+        out.write(visualizeImg);
+        if((-1*result.first[2]-(270*result.first[1]))/result.first[0]>320){//直线和图像底部的交点
             return true;
         }else{
             return false;
@@ -356,11 +338,11 @@ double error_calculater(vector<Point>& traced_points,int ystart,Mat& visualizeIm
     for (size_t i=0;i<traced_points.size();i++){
         int y = ystart-i;
         if (i <= 30.0) {
-            double mid_error = (traced_points[i].x - (280 - (424-y)*1.34)-320)*(1-i/100);
+            double mid_error = (traced_points[i].x - (280 - (214-y)*1.34)-320)*(1-i/100);
             total_error += mid_error;
         }
         else {
-            double mid_error = (traced_points[i].x - (280 - (424-y)*1.34)-320)*0.7 * exp(-0.064 * (i - 30.0));
+            double mid_error = (traced_points[i].x - (280 - (214-y)*1.34)-320)*0.7 * exp(-0.064 * (i - 30.0));
             total_error += mid_error;
         }
     }
@@ -368,7 +350,7 @@ double error_calculater(vector<Point>& traced_points,int ystart,Mat& visualizeIm
     // 可视化代码（例如在图像上绘制轨迹）
     for (int i=0;i<traced_points.size();i++) {
         int y = ystart-i;
-        Point pt = Point(traced_points[i].x - (320 - (424-y)*1.34),ystart-i);
+        Point pt = Point(traced_points[i].x - (320 - (214-y)*1.34),ystart-i);
         circle(visualizeImg, pt, 3, Scalar(0, 255, 0), -1);
     }
     // imshow("visualize",visualizeImg);
@@ -419,9 +401,9 @@ int main(int argc, char **argv) {
     Mat image,undistorted;
 
     double p,i,d,integration,pre_error;
-    p = 0.004;
-    i = 0.1;
-    d = 0.1;
+    p = 0.018;
+    i = 0.015;
+    d = 0.0;
     integration = 0;
     pre_error = 0;
     double pointx_integration = 0;
@@ -433,9 +415,10 @@ int main(int argc, char **argv) {
     bool left_forward = true;
     bool point_forward = true;
 
-    out.open(output_file, fourcc, 10, Size(640, 480));
+    out.open(output_file, fourcc, 7, Size(640, 270));
     displayStream << fixed << setprecision(2);
     while(ros::ok()){
+        ros::Time start_time = ros::Time::now();
         displayStream.str("");
         cap.read(image);
         if (image.empty()) continue;
@@ -448,49 +431,46 @@ int main(int argc, char **argv) {
             BORDER_CONSTANT, 
             Scalar(0, 0, 0) // 黑边填充
         );
-        flip(undistorted, undistorted, 1);
+        Rect roi(0, 210, undistorted.cols, 270);
+        Mat cropped = undistorted(roi);
+        flip(cropped, cropped, 1);
         Mat gray_img;
-        // cvtColor(undistorted, gray_img, COLOR_BGR2GRAY);
-        Mat red_channel;
         vector<Mat> channels;
-        split(undistorted, channels);
+        split(cropped, channels);
         gray_img = channels[2];//红色通道代替灰度图
         
         int height = gray_img.rows;
         int width = gray_img.cols;
-        
-        // 创建可视化图像
-        Mat result_image = undistorted.clone();
 
         // 2. 搜索赛道边缘点
-        int scan_rows = 200;  // 向上搜索的行数
-        int brightness_threshold = 30;  // 亮度变化阈值
+        int scan_rows = 180;  // 向上搜索的行数
+        int brightness_threshold = brightness_threshold_calculator(gray_img);  // 亮度变化阈值就是跳变最剧烈点的左值
+        ROS_INFO("%d",brightness_threshold);
         Point right_edge_point = Point(-1, -1);//
         int last_scanned_y;
         
         find_track_edge(gray_img,right_edge_point, scan_rows, brightness_threshold);
-        // ROS_INFO("上帧起点位置%d,现在起点位置%d",first_point_x_last,right_edge_point.x);
         if (right && (first_point_x_last - right_edge_point.x>90 || (right_edge_point.x < 380&&right_edge_point.y<360))){//如果右边线丢了或者右边界首个点发生剧烈左移动
             right = false;
-            ROS_INFO("进入左巡线逻辑");
+            // ROS_INFO("进入左巡线逻辑");
         }
-        if(!right && (right_edge_point.x-first_point_x_last>50||right_edge_point.x>480)){//左线发生剧烈偏移说明又看到右线了
+        else if(!right && (right_edge_point.x-first_point_x_last>150||right_edge_point.x>480)){//左线发生剧烈偏移说明又看到右线了左跳右的幅度一般很剧烈
             right = true;
-            ROS_INFO("进入右巡线逻辑");
+            // ROS_INFO("进入右巡线逻辑");
         }
         vector<Point> traced_right,left_edge_points;
         Point left_edge_point;
         // 追踪右侧边线
         bool right_checker = true;//右线不一定真的是右线，可能是太偏的左线，不接受右线向右倾斜，不满足条件切换逻辑
         if (right) {
-            trace_edge(right_edge_point, gray_img, traced_right, right_checker,40, brightness_threshold, &result_image);
-            double error = error_calculater(traced_right,right_edge_point.y,undistorted);//有调试图片输出
+            trace_edge(right_edge_point, gray_img, traced_right, right_checker,60, brightness_threshold, &cropped);
+            double error = error_calculater(traced_right,right_edge_point.y,cropped);//有调试图片输出
             // imshow("Track Edge Detection", result_image);
             // double error = error_calculater(traced_right,right_edge_point.y);
-            // ROS_INFO("误差%f",error);
+            // ROS_INFO("右线");
             twist.linear.x = 0.5 / exp(abs(error) / 100.0);
-            integration += error*0.02;
-            integration = std::max(std::min(integration,1.0),-1.0);
+            integration += error*0.03;
+            integration = std::max(std::min(integration,10.0),-10.0);
             if (abs(error*p)>1.5 ){
                 integration = 0;
             }
@@ -498,50 +478,53 @@ int main(int argc, char **argv) {
             diff = std::max(std::min(diff,1.0),-1.0);
             twist.angular.z = std::max(std::min(error*p+integration*i+diff*d,1.0),-1.0);
 
-            displayStream << "error:  " << error << "x:  " << twist.linear.x <<"z:  "<< twist.angular.z;
+            displayStream << "error:  " << error << "x:  " << twist.linear.x <<"z:  "<< twist.angular.z<<"point_diff:  "<<first_point_x_last - right_edge_point.x;
             string displayText = displayStream.str();
-            putText(undistorted, displayText, Point(50, 50),
+            putText(cropped, displayText, Point(50, 50),
             FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
-            out.write(undistorted);
+            out.write(cropped);
             // ROS_INFO("积分项%f",integration);
 
             if(!right_checker){
                 ROS_INFO("右线斜率出错，舍弃");
-                twist.linear.x = 0;
-                twist.angular.z = -0.3;
+                // twist.linear.x = 0;
+                // twist.angular.z = -0.3;
+                continue;
+            }
+            else{
                 left_forward = true;
                 point_forward = true;
             }
         } else {
             if(left_forward){
                 if(point_forward){
-                    // ROS_INFO("前进");
-                    find_left_edge(gray_img, left_edge_point,brightness_threshold,result_image);
+                    // ROS_INFO("左点");
+                    find_left_edge(gray_img, left_edge_point,brightness_threshold,cropped);
                     // find_left_edge(gray_img, left_edge_point,brightness_threshold);
-                    double error_x = 320-left_edge_point.x;double error_y = 370-left_edge_point.y;
+                    double error_x = 320-left_edge_point.x;double error_y = 160-left_edge_point.y;
                     if(error_x>100) pointx_integration = 0;if(error_y>100) pointy_integration = 0;
                     pointx_integration += error_x*0.02;pointy_integration += error_y*0.02;
                     // ROS_INFO("转折点坐标x%d,y%d",left_edge_point.x,left_edge_point.y);
-                    if(abs(left_edge_point.x-320) < 20 && abs(left_edge_point.y -370)<20){
+                    if(abs(left_edge_point.x-320) < 20 && abs(left_edge_point.y -160)<20){
                         pointx_integration = 0;
                         pointy_integration = 0;
                         point_forward = false;
                     }
                     pointx_integration = std::max(std::min(pointx_integration,1.0),-1.0);pointy_integration = std::max(std::min(pointy_integration,1.0),-1.0);
                     // ROS_INFO("P%f,I%f",error_y/400,pointy_integration/400);
-                    twist.linear.x = std::max(std::min(error_y/400+pointy_integration/400,0.3),-0.3);
-                    twist.angular.z = std::max(std::min(error_x/400+pointx_integration/400,0.5),-0.5);
+                    twist.linear.x = std::max(std::min(error_y*0.01,0.3),-0.3);
+                    twist.angular.z = std::max(std::min(error_x*0.01,0.5),-0.5);
                     pointx_pre_error = error_x;pointy_pre_error = error_y;
-                    displayStream << "error:  " << error_x << "x:  " << twist.linear.x <<"z:  "<< twist.angular.z;
+                    displayStream << "errory:  " << error_y << "x:  " << twist.linear.x <<"z:  "<< twist.angular.z<<"errorx:  "<<error_x;
                     string displayText = displayStream.str();
-                    putText(result_image, displayText, Point(50, 50),
+                    putText(cropped, displayText, Point(50, 50),
                     FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
-                    out.write(result_image);
+                    out.write(cropped);
                 }
                 else{
-                    ROS_INFO("出圆环");
+                    // ROS_INFO("左线");
                     ros::Time start_time = ros::Time::now();
-                    if(find_left_line(gray_img,left_edge_points,brightness_threshold,result_image)){
+                    if(find_left_line(gray_img,left_edge_points,brightness_threshold,cropped)){
                         left_forward = false;
                     }
                     // if(find_left_line(gray_img,left_edge_points,brightness_threshold)){
@@ -551,20 +534,19 @@ int main(int argc, char **argv) {
                         twist.linear.x = 0.1;
                         twist.angular.z = -0.05;
                     }
-                    ROS_INFO("耗时%f",(ros::Time::now()-start_time).toSec());
                 }
             }
             else{
                 twist.linear.x = 0;
                 twist.angular.z = -0.6;
-                out.write(result_image);
+                out.write(cropped);
             }
         }
         first_point_x_last = right_edge_point.x;//更新起点位置
-
+        // ROS_INFO("耗时%f",(ros::Time::now()-start_time).toSec());
         cmd_pub.publish(twist);
         // imshow("gray",gray_img);
-        waitKey(1);
+        // waitKey(1);
         // if (waitKey(20) == 32) {
         //     imwrite("/home/ucar/ucar_car/src/line_follow/image/test.jpg", gray_img);
         // }
