@@ -105,14 +105,14 @@ def detect_start(req):
                     best_bbox = bbox
                     target = label
                     # print("检测到目标")
-                    # print(target)
+                    print(target)
     x0, y0, x1, y1, conf = [int(coord) for coord in best_bbox]
     response.x0 = x0
     response.y0 = y0
     response.x1 = x1
     response.y1 = y1
     response.class_name = target
-    print((x0+x1)/2)
+    # print((x0+x1)/2)
     if best_bbox[0] != -1:
         visualize(frame,x0, y0, x1, y1,target,conf)
     out.write(frame)

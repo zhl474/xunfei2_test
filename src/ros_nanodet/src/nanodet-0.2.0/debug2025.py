@@ -26,16 +26,17 @@ save_count = 76
 
 while True:
     rec, frame = cap.read()
-    print(rec)
+    # print(rec)
     if not rec:
         print("Failed to read frame from video capture device.")
         continue
+    copy = frame.copy()
     res = detect(frame, predictor)
     for label in res:
         for bbox in res[label]:
             score = bbox[-1]
-            if score>0.7:
-                print("find object")
+            if score>0.5:
+                # print("find object")
                 x0, y0, x1, y1 = [int(i) for i in bbox[:4]]
                 color = COLOR_MAP.get(label, (0, 255, 255))  # 默认黄色
                 cv2.rectangle(frame, 
@@ -57,11 +58,11 @@ while True:
 
     if key in (ord('0'), 0x1000000 + ord('0')) or key in (96, 0x1000000 + 96):
         # 确保保存前已调整分辨率
-        if frame.shape[1] != 640 or frame.shape[0] != 480:
-            frame = cv2.resize(frame, (640, 480))
+        if copy.shape[1] != 640 or copy.shape[0] != 480:
+            copy = cv2.resize(copy, (640, 480))
             
-        filename = f"capture_{save_count}.jpg"
-        cv2.imwrite(filename, frame)
+        filename = f"/home/ucar/ucar_car/missing_{save_count}.jpg"
+        cv2.imwrite(filename, copy)
         print(f"已保存640x480截图：{filename}")
         save_count += 1
     elif key == ord('q'):

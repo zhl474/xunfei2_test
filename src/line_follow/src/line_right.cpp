@@ -12,7 +12,7 @@
 using namespace cv;
 using namespace std;
 
-string output_file = "/home/ucar/ucar_car/src/line_follow/image/line.avi";//录制视频避免网络传输卡顿
+string output_file = "/home/ucar/ucar_car/src/line_follow/image/line_right.avi";//录制视频避免网络传输卡顿
 VideoWriter out;
 int fourcc = VideoWriter::fourcc('X', 'V', 'I', 'D'); // MP4V编码
 ostringstream displayStream;

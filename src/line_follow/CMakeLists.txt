@@ -161,7 +161,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 
-add_executable(line src/line.cpp)
+add_executable(line_right src/line_right.cpp)
 # add_executable(line_server src/line_func.cpp)
 # add_executable(line_test src/line_test.cpp)
 
@@ -184,7 +184,7 @@ add_executable(line src/line.cpp)
 
 ## Specify libraries to link a library or executable target against
 
-target_link_libraries(line
+target_link_libraries(line_right
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
 )

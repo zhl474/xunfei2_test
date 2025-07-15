@@ -34,9 +34,8 @@ namespace my_planner
         tf_listener_ = new tf::TransformListener();
         costmap_ros_ = costmap_ros;
         // 为此插件创建一个私有的节点句柄，用于访问其私有命名空间下的参数
-        // 例如，如果 move_base 加载此插件并命名为 "MyPlanner", 
-        // 那么私有命名空间就是 /move_base/MyPlanner
-        ros::NodeHandle private_nh("~/move_base/MyPlanner" );
+        //私有命名空间是 /move_base/MyPlanner
+        ros::NodeHandle private_nh("/move_base/MyPlanner" );
 
         ROS_INFO("为 %s 加载参数...", name.c_str());
 
@@ -53,9 +52,9 @@ namespace my_planner
 
         private_nh.param("collision_check_lookahead_points", collision_check_lookahead_points_, 10);
         private_nh.param("visualization_scale_factor", visualization_scale_factor_, 5);
-        private_nh.param("visualize_costmap", visualize_costmap_, true);
-        ROS_INFO("加载参数path_linear_x_gain_=%f",path_linear_x_gain_);
-        ROS_INFO("加载参数path_linear_y_gain_=%f",path_linear_y_gain_);
+        private_nh.param("visualize_costmap", visualize_costmap_, false);
+        // ROS_INFO("加载参数path_linear_x_gain_=%f",path_linear_x_gain_);
+        // ROS_INFO("加载参数path_linear_y_gain_=%f",path_linear_y_gain_);
     }
 
     std::vector<geometry_msgs::PoseStamped> global_plan_;
@@ -68,11 +67,14 @@ namespace my_planner
         global_plan_ = plan;
         pose_adjusting_ = false;
         goal_reached_ = false;
+        //每次设置新路径时，都将“初始旋转”标志重置为 false,确保下一次导航会执行初始旋转调整朝向
+        initial_rotation_done_ = false;
         return true;
     }
 
     bool MyPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
     {
+
         // 获取代价地图的数据
         costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
         unsigned char* map_data = costmap->getCharMap();
@@ -81,35 +83,35 @@ namespace my_planner
 
         // 使用 OpenCV 绘制代价地图
         cv::Mat map_image;
-        if (visualize_costmap_)
+        
+        map_image.create(size_y, size_x, CV_8UC3);
+        for (unsigned int y = 0; y < size_y; y++)
         {
-            map_image.create(size_y, size_x, CV_8UC3);
-            for (unsigned int y = 0; y < size_y; y++)
+            for (unsigned int x = 0; x < size_x; x++)
             {
-                for (unsigned int x = 0; x < size_x; x++)
+                int map_index = y * size_x + x;
+                unsigned char cost = map_data[map_index];               // 从代价地图数据取值
+                cv::Vec3b& pixel = map_image.at<cv::Vec3b>(map_index);  // 获取彩图对应像素地址
+            
+                if (cost == 0)          // 可通行区域
+                    pixel = cv::Vec3b(128, 128, 128); // 灰色
+                else if (cost == 254)   // 障碍物
+                    pixel = cv::Vec3b(0, 0, 0);       // 黑色
+                else if (cost == 253)   // 禁行区域 
+                    pixel = cv::Vec3b(255, 255, 0);   // 浅蓝色
+                else
                 {
-                    int map_index = y * size_x + x;
-                    unsigned char cost = map_data[map_index];               // 从代价地图数据取值
-                    cv::Vec3b& pixel = map_image.at<cv::Vec3b>(map_index);  // 获取彩图对应像素地址
-                
-                    if (cost == 0)          // 可通行区域
-                        pixel = cv::Vec3b(128, 128, 128); // 灰色
-                    else if (cost == 254)   // 障碍物
-                        pixel = cv::Vec3b(0, 0, 0);       // 黑色
-                    else if (cost == 253)   // 禁行区域 
-                        pixel = cv::Vec3b(255, 255, 0);   // 浅蓝色
-                    else
-                    {
-                        // 根据灰度值显示从红色到蓝色的渐变
-                        unsigned char blue = 255 - cost;
-                        unsigned char red = cost;
-                        pixel = cv::Vec3b(blue, 0, red);
-                    }
+                    // 根据灰度值显示从红色到蓝色的渐变
+                    unsigned char blue = 255 - cost;
+                    unsigned char red = cost;
+                    pixel = cv::Vec3b(blue, 0, red);
                 }
             }
         }
+        
 
         // 在代价地图上遍历导航路径点
+        cv::Mat flipped_image(size_x, size_y, CV_8UC3, cv::Scalar(128, 128, 128));
         for(int i=0;i<global_plan_.size();i++)
         {
             geometry_msgs::PoseStamped pose_in_map;
@@ -128,46 +130,79 @@ namespace my_planner
 
             // 检测前方路径点是否在禁行区域或者障碍物里
             if(i >= target_index_ && i < target_index_ + collision_check_lookahead_points_)
-            {
+            {ROS_INFO("1false");
                 cv::circle(map_image, cv::Point(x,y), 0, cv::Scalar(0,255,255));// 检测路径点
                 int map_index = y * size_x + x;
                 unsigned char cost = map_data[map_index];
                 if(cost >= 253)
-                    return false;
+                    return false;//重新规划全局路径，实现动态避障的效果
             }
         }
 
         map_image.at<cv::Vec3b>(size_y/2, size_x/2) = cv::Vec3b(0, 255, 0); // 机器人位置
-
+        
+        
+        
         // 翻转地图
-        cv::Mat flipped_image(size_x, size_y, CV_8UC3, cv::Scalar(128, 128, 128));
-
+        flipped_image = cv::Mat(size_x, size_y, CV_8UC3, cv::Scalar(128, 128, 128));
         cv::flip(map_image, map_image, 0);//使用cvflip代替原本的for循环，运行速度更快
-
-        // 显示代价地图
-        // cv::namedWindow("Map");
-        // cv::resize(map_image, map_image, cv::Size(size_y*5, size_x*5), 0, 0, cv::INTER_NEAREST);
-        // cv::resizeWindow("Map", size_y*5, size_x*5);
-        // cv::imshow("Map", map_image);
-
-        int final_index = global_plan_.size()-1;
-        geometry_msgs::PoseStamped pose_final;
-        global_plan_[final_index].header.stamp = ros::Time(0);
-        tf_listener_->transformPose("base_link",global_plan_[final_index],pose_final);
-        if(pose_adjusting_ == false)//如果未进入姿态调整状态
+        if(visualize_costmap_)
         {
-            double dx = pose_final.pose.position.x;
-            double dy = pose_final.pose.position.y;
-            double dist = std::sqrt(dx*dx + dy*dy);
-            if(dist < goal_dist_threshold_)//判定是否到达目标点附近的距离阈值
-                pose_adjusting_ = true;
+            // 显示代价地图
+            cv::namedWindow("Map");
+            cv::resize(map_image, map_image, cv::Size(size_y*5, size_x*5), 0, 0, cv::INTER_NEAREST);
+            cv::resizeWindow("Map", size_y*5, size_x*5);
+            cv::imshow("Map", map_image);
         }
-        if(pose_adjusting_ == true)
+        
+        //--------------------------加入了初始位姿调整的导航代码-------------------------
+        // 检查路径是否为空，防止后续访问越界
+        if(global_plan_.empty()) {
+            ROS_WARN("全局路径为空，无法计算速度指令。");
+            return false;
+        }
+
+        
+        if (!initial_rotation_done_)//如果没有进行过初始位姿调整
         {
+            // 初始位姿调整
+            ROS_INFO("开始初始位姿调整");
+            geometry_msgs::PoseStamped first_point;
+            try {
+                global_plan_[0].header.stamp = ros::Time(0);
+                tf_listener_->transformPose("base_link", global_plan_[0], first_point);
+            } catch(tf::TransformException& ex) {
+                ROS_ERROR("初始旋转TF变换失败: %s", ex.what());
+                return false;
+            }
+
+            double angle_to_first_point = atan2(first_point.pose.position.y, first_point.pose.position.x);
+
+            // 使用与最终姿态调整相同的参数
+            if (std::abs(angle_to_first_point) < goal_yaw_tolerance_) {
+                ROS_INFO("初始旋转完成。");
+                initial_rotation_done_ = true; // 旋转完成，设置标志位
+                cmd_vel.linear.x = 0.0;
+                cmd_vel.angular.z = 0.0;
+            } else {
+                cmd_vel.linear.x = 0.0;
+                cmd_vel.linear.y = 0.0;
+                // 使用与最终姿态调整相同的参数
+                cmd_vel.angular.z = angle_to_first_point * final_pose_angular_gain_;
+            }
+        }
+        else if (pose_adjusting_)
+        {
+            // 阶段3: 末端位姿调整 (您原有的代码)
+            geometry_msgs::PoseStamped pose_final;
+            global_plan_.back().header.stamp = ros::Time(0);
+            tf_listener_->transformPose("base_link", global_plan_.back(), pose_final);
+
             double final_yaw = tf::getYaw(pose_final.pose.orientation);
-            ROS_WARN("调整最终姿态，final_yaw = %.2f",final_yaw);
-            cmd_vel.linear.x = pose_final.pose.position.x * final_pose_linear_gain_;//到达目标点附近后调整位姿的速度比例系数
+            ROS_WARN_THROTTLE(1.0, "调整最终姿态，final_yaw = %.2f", final_yaw);
+            cmd_vel.linear.x = pose_final.pose.position.x * final_pose_linear_gain_;
             cmd_vel.angular.z = final_yaw * final_pose_angular_gain_;
+
             if(abs(final_yaw) < goal_yaw_tolerance_)
             {
                 goal_reached_ = true;
@@ -175,51 +210,151 @@ namespace my_planner
                 cmd_vel.linear.x = 0;
                 cmd_vel.angular.z = 0;
             }
-            return true;
         }
-
-        geometry_msgs::PoseStamped target_pose;
-        for(int i=target_index_;i<global_plan_.size();i++)
+        else
         {
-            geometry_msgs::PoseStamped pose_base;
-            global_plan_[i].header.stamp = ros::Time(0);
-            tf_listener_->transformPose("base_link",global_plan_[i],pose_base);
-            double dx = pose_base.pose.position.x;
-            double dy = pose_base.pose.position.y;
+            // 正常路径跟踪
+            
+            // 首先，检查是否应该进入“末端位姿调整”状态
+            geometry_msgs::PoseStamped pose_final;
+            global_plan_.back().header.stamp = ros::Time(0);
+            tf_listener_->transformPose("base_link", global_plan_.back(), pose_final);
+            double dx = pose_final.pose.position.x;
+            double dy = pose_final.pose.position.y;
             double dist = std::sqrt(dx*dx + dy*dy);
-
-            if (dist > lookahead_dist_) //选取的临时目标点的距离阈值
+            if(dist < goal_dist_threshold_)
             {
-                target_pose = pose_base;
-                target_index_ = i;
-                // ROS_WARN("选择第 %d 个路径点作为临时目标，距离=%.2f",target_index_,dist);
-                break;
+                pose_adjusting_ = true; // 条件满足，设置标志位，下一个循环将进入上面的 if 分支
             }
 
-            if(i == global_plan_.size()-1)
-                target_pose = pose_base; 
-        }
-        cmd_vel.linear.x = target_pose.pose.position.x * path_linear_x_gain_;//小车运动速度比例系数
-        cmd_vel.linear.y = target_pose.pose.position.y * path_linear_y_gain_;
-        cmd_vel.angular.z = target_pose.pose.position.y * path_angular_gain_;   
+            // 其次，执行路径跟踪
+            geometry_msgs::PoseStamped target_pose;
+            for(int i=target_index_; i < global_plan_.size(); i++)
+            {
+                geometry_msgs::PoseStamped pose_base;
+                global_plan_[i].header.stamp = ros::Time(0);
+                tf_listener_->transformPose("base_link", global_plan_[i], pose_base);
+                double dx_t = pose_base.pose.position.x;
+                double dy_t = pose_base.pose.position.y;
+                double dist_t = std::sqrt(dx_t*dx_t + dy_t*dy_t);
+                if (dist_t > lookahead_dist_)
+                {
+                    target_pose = pose_base;
+                    target_index_ = i;
+                    break;
+                }
+                if(i == global_plan_.size()-1)
+                    target_pose = pose_base;
+            }
 
-        cv::Mat plan_image(600, 600, CV_8UC3, cv::Scalar(0, 0, 0));        
-        for(int i=0;i<global_plan_.size();i++)
-        {
-            geometry_msgs::PoseStamped pose_base;
-            global_plan_[i].header.stamp = ros::Time(0);
-            tf_listener_->transformPose("base_link",global_plan_[i],pose_base);
-            int cv_x = 300 - pose_base.pose.position.y*100;
-            int cv_y = 300 - pose_base.pose.position.x*100;
-            cv::circle(plan_image, cv::Point(cv_x,cv_y), 1, cv::Scalar(255,0,255)); 
+            cmd_vel.linear.x = target_pose.pose.position.x * path_linear_x_gain_;
+            cmd_vel.linear.y = target_pose.pose.position.y * path_linear_y_gain_;
+            cmd_vel.angular.z = atan2(target_pose.pose.position.y, target_pose.pose.position.x) * path_angular_gain_;
         }
-        cv::circle(plan_image, cv::Point(300, 300), 15, cv::Scalar(0, 255, 0));
-        cv::line(plan_image, cv::Point(65, 300), cv::Point(510, 300), cv::Scalar(0, 255, 0), 1);
-        cv::line(plan_image, cv::Point(300, 45), cv::Point(300, 555), cv::Scalar(0, 255, 0), 1);
 
-        // cv::namedWindow("Plan");
-        // cv::imshow("Plan", plan_image);
-        cv::waitKey(1);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        //-----------------------原有导航代码，修改太麻烦直接注释-----------------------------
+        // int final_index = global_plan_.size()-1;
+        // geometry_msgs::PoseStamped pose_final;
+        // global_plan_[final_index].header.stamp = ros::Time(0);
+        // tf_listener_->transformPose("base_link",global_plan_[final_index],pose_final);
+        // if(pose_adjusting_ == false)//如果未进入姿态调整状态
+        // {
+        //     double dx = pose_final.pose.position.x;
+        //     double dy = pose_final.pose.position.y;
+        //     double dist = std::sqrt(dx*dx + dy*dy);
+        //     if(dist < goal_dist_threshold_)//判定是否到达目标点附近的距离阈值
+        //         pose_adjusting_ = true;
+        // }
+        // if(pose_adjusting_ == true)
+        // {
+        //     double final_yaw = tf::getYaw(pose_final.pose.orientation);
+        //     ROS_WARN("调整最终姿态，final_yaw = %.2f",final_yaw);
+        //     cmd_vel.linear.x = pose_final.pose.position.x * final_pose_linear_gain_;//到达目标点附近后调整位姿的速度比例系数
+        //     cmd_vel.angular.z = final_yaw * final_pose_angular_gain_;
+        //     if(abs(final_yaw) < goal_yaw_tolerance_)
+        //     {
+        //         goal_reached_ = true;
+        //         ROS_WARN("到达终点！");
+        //         cmd_vel.linear.x = 0;
+        //         cmd_vel.angular.z = 0;
+        //     }
+        //     return true;
+        // }
+
+        // geometry_msgs::PoseStamped target_pose;
+        // for(int i=target_index_;i<global_plan_.size();i++)
+        // {
+        //     geometry_msgs::PoseStamped pose_base;
+        //     global_plan_[i].header.stamp = ros::Time(0);
+        //     tf_listener_->transformPose("base_link",global_plan_[i],pose_base);
+        //     double dx = pose_base.pose.position.x;
+        //     double dy = pose_base.pose.position.y;
+        //     double dist = std::sqrt(dx*dx + dy*dy);
+
+        //     if (dist > lookahead_dist_) //选取的临时目标点的距离阈值
+        //     {
+        //         target_pose = pose_base;
+        //         target_index_ = i;
+        //         // ROS_WARN("选择第 %d 个路径点作为临时目标，距离=%.2f",target_index_,dist);
+        //         break;
+        //     }
+
+        //     if(i == global_plan_.size()-1)
+        //         target_pose = pose_base; 
+        // }
+        // cmd_vel.linear.x = target_pose.pose.position.x * path_linear_x_gain_;//小车运动速度比例系数
+        // cmd_vel.linear.y = target_pose.pose.position.y * path_linear_y_gain_;
+        // cmd_vel.angular.z = target_pose.pose.position.y * path_angular_gain_;   
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+        //--------------------------全局路径显示，省去节省算力---------------------------------------------
+        // cv::Mat plan_image(600, 600, CV_8UC3, cv::Scalar(0, 0, 0));        
+        // for(int i=0;i<global_plan_.size();i++)
+        // {
+        //     geometry_msgs::PoseStamped pose_base;
+        //     global_plan_[i].header.stamp = ros::Time(0);
+        //     tf_listener_->transformPose("base_link",global_plan_[i],pose_base);
+        //     int cv_x = 300 - pose_base.pose.position.y*100;
+        //     int cv_y = 300 - pose_base.pose.position.x*100;
+        //     cv::circle(plan_image, cv::Point(cv_x,cv_y), 1, cv::Scalar(255,0,255)); 
+        // }
+        // cv::circle(plan_image, cv::Point(300, 300), 15, cv::Scalar(0, 255, 0));
+        // cv::line(plan_image, cv::Point(65, 300), cv::Point(510, 300), cv::Scalar(0, 255, 0), 1);
+        // cv::line(plan_image, cv::Point(300, 45), cv::Point(300, 555), cv::Scalar(0, 255, 0), 1);
+
+        // // cv::namedWindow("Plan");
+        // // cv::imshow("Plan", plan_image);
+        // cv::waitKey(1);
         
         return true;
     }

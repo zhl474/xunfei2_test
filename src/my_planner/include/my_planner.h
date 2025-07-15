@@ -33,6 +33,7 @@ namespace my_planner
             int target_index_;
             bool pose_adjusting_;
             bool goal_reached_;
+            bool initial_rotation_done_;//用于判断初始旋转是否完成的标志
             // 新增：用于存储从参数服务器读取的值的成员变量
             double path_linear_x_gain_, path_linear_y_gain_, path_angular_gain_, lookahead_dist_;
             double goal_dist_threshold_, final_pose_linear_gain_, final_pose_angular_gain_, goal_yaw_tolerance_;
