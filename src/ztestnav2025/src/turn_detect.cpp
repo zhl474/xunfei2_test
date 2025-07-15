@@ -73,12 +73,13 @@ void MecanumController::rotateCircle(double rotate,int direction, double angular
 
         // 计算旋转控制量（参考网页2的PWM控制原理）
         double yaw = now_yaw[2];
-        if (fabs(yaw - target) <= angle_error_) {
+        double yaw_error = fabs(yaw - target);
+        if (yaw_error <= angle_error_) {
             break;
         }
 
         // 发送运动指令（参考网页1的速度发布逻辑）
-        twist.angular.z = angular_speed * direction;
+        twist.angular.z = std::min(std::max(angular_speed * direction*yaw_error,0.3),2.0);
         cmd_pub_.publish(twist);
         rate.sleep();
     }

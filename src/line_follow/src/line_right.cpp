@@ -7,6 +7,7 @@
 #include <geometry_msgs/Twist.h>
 #include <cmath>
 #include <sstream>
+#include "line_follow/line_follow.h"
 
 
 using namespace cv;
@@ -436,9 +437,7 @@ double error_calculater(vector<Point>& traced_points,int ystart,Mat& visualizeIm
     }
 }
 
-int main(int argc, char **argv) {
-    setlocale(LC_ALL,"");
-    ros::init(argc, argv, "line");
+bool line_server_callback(line_follow::line_follow::Request& req,line_follow::line_follow::Response& resp){
     FileStorage fs("/home/ucar/ucar_car/src/line_follow/camera_info/pinhole.yaml", FileStorage::READ);
     if (!fs.isOpened()) {
         cerr << "无法打开标定文件" << endl;
@@ -624,5 +623,13 @@ int main(int argc, char **argv) {
     }
     cap.release();
     out.release();
+    return true;
+}
+int main(int argc, char **argv) {
+    setlocale(LC_ALL,"");
+    ros::init(argc, argv, "line");
+    ros::NodeHandle nh_;
+    ros::ServiceServer line_server = nh_.advertiseService("line_server", line_server_callback);
+    ROS_INFO("视觉巡线初始化");
     return 0;
 }

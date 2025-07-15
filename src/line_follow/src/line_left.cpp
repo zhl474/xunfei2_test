@@ -1,319 +1,457 @@
 #include <opencv2/opencv.hpp>
-#include <opencv2/xphoto.hpp>
 #include <iostream>
 #include <vector>
 #include<ros/ros.h>
+#include <random>
+#include <string>
 #include <geometry_msgs/Twist.h>
+#include <cmath>
+#include <sstream>
 
-typedef struct {
-    float Kp;           // 比例系数（响应速度）
-    float Ki;           // 积分系数（消除静差）
-    float Kd;           // 微分系数（抑制振荡）
-    int last_error;     // 上次偏差 e(k-1)
-    int prev_error;     // 上上次偏差 e(k-2)
-    float integral;     // 积分累计项
-    int integral_limit; // 积分限幅（防饱和）
-} PID_Controller;
 
-// 完美反射白平衡算法（基于OpenCV实现）
-cv::Mat applyPerfectReflectionWB(cv::Mat src) {
-    cv::Mat dst = src.clone();
-    int row = src.rows;
-    int col = src.cols;
-    int HistRGB[767] = {0};  // 存储像素和直方图（RGB三通道最大和为765）
-    int maxVal = 0;
+using namespace cv;
+using namespace std;
 
-    // 1. 计算各通道最大值及像素和直方图
-    for (int i = 0; i < row; ++i) {
-        for (int j = 0; j < col; ++j) {
-            cv::Vec3b pixel = src.at<cv::Vec3b>(i, j);
-            maxVal = std::max({maxVal, static_cast<int>(pixel[0]), static_cast<int>(pixel[1]), static_cast<int>(pixel[2])});
-            int sum = pixel[0] + pixel[1] + pixel[2];
-            HistRGB[sum]++;
-        }
+string output_file = "/home/ucar/ucar_car/src/line_follow/image/line_right.avi";//录制视频避免网络传输卡顿
+VideoWriter out;
+int fourcc = VideoWriter::fourcc('X', 'V', 'I', 'D'); // MP4V编码
+ostringstream displayStream;
+
+
+void drawLineFromEquation(cv::Mat& img, double a, double b, double c, const cv::Scalar& color, int thickness) {
+    int width = img.cols;
+    int height = img.rows;
+    
+    // 特殊情况处理
+    if (fabs(a) < 1e-6 && fabs(b) < 1e-6) {
+        return; // 无效直线
     }
-
-    // 2. 确定前10%亮度的阈值T
-    int threshold = 0;
-    int pixelCount = 0;
-    int targetCount = static_cast<int>(row * col * 0.1);  // 取前10%最亮像素
-    for (int i = 766; i >= 0; --i) {
-        pixelCount += HistRGB[i];
-        if (pixelCount > targetCount) {
-            threshold = i;
-            break;
-        }
+    
+    cv::Point pt1, pt2;
+    
+    if (fabs(b) > fabs(a)) {
+        // 更接近水平线，使用左右边界
+        pt1.x = 0;
+        pt1.y = static_cast<int>(-c / b); // x=0 时的 y 值
+        
+        pt2.x = width - 1;
+        pt2.y = static_cast<int>((-a * (width - 1) - c) / b); // x=width-1 时的 y 值
+    } else {
+        // 更接近垂直线，使用上下边界
+        pt1.y = 0;
+        pt1.x = static_cast<int>(-c / a); // y=0 时的 x 值
+        
+        pt2.y = height - 1;
+        pt2.x = static_cast<int>((-b * (height - 1) - c) / a); // y=height-1 时的 x 值
     }
-
-    // 3. 计算亮区通道均值
-    double avgB = 0, avgG = 0, avgR = 0;
-    int validPixels = 0;
-    for (int i = 0; i < row; ++i) {
-        for (int j = 0; j < col; ++j) {
-            cv::Vec3b pixel = src.at<cv::Vec3b>(i, j);
-            int sum = pixel[0] + pixel[1] + pixel[2];
-            if (sum > threshold) {
-                avgB += pixel[0];
-                avgG += pixel[1];
-                avgR += pixel[2];
-                validPixels++;
-            }
-        }
+    
+    // 裁剪直线到图像边界
+    cv::Rect rect(0, 0, width, height);
+    if (cv::clipLine(rect, pt1, pt2)) {
+        cv::line(img, pt1, pt2, color, thickness);
     }
-    avgB /= validPixels;
-    avgG /= validPixels;
-    avgR /= validPixels;
-
-    // 4. 调整通道增益
-    for (int i = 0; i < row; ++i) {
-        for (int j = 0; j < col; ++j) {
-            cv::Vec3b& pixel = dst.at<cv::Vec3b>(i, j);
-            pixel[0] = cv::saturate_cast<uchar>(pixel[0] * maxVal / avgB);  // 蓝通道
-            pixel[1] = cv::saturate_cast<uchar>(pixel[1] * maxVal / avgG);  // 绿通道
-            pixel[2] = cv::saturate_cast<uchar>(pixel[2] * maxVal / avgR);  // 红通道
-        }
-    }
-    return dst;
 }
 
+// RANSAC直线拟合函数
+// 输入：点集 points，距离阈值 distThreshold，最大迭代次数 maxIterations
+// 输出：直线参数 (a, b, c) 满足 ax+by+c=0，以及内点索引
+std::pair<std::vector<double>, std::vector<int>> fitLineRANSAC(
+    std::vector<cv::Point>& points, 
+    float distThreshold, 
+    int maxIterations) 
+{
+    // 随机数生成器初始化
+    std::random_device rd;
+    std::mt19937 rng(rd());
+    std::uniform_int_distribution<int> uni(0, points.size()-1);
 
-float CalculateSteering(PID_Controller* pid, int center_error) {
-    // === 增量计算 ===
-    float delta_p = pid->Kp * (center_error - pid->last_error);  // P项：偏差变化量
-    float delta_i = pid->Ki * center_error;                       // I项：当前偏差（离散积分近似）
-    float delta_d = pid->Kd * (center_error - 2*pid->last_error + pid->prev_error); // D项：加速度
+    // 最佳模型和内点
+    std::vector<double> bestModel(3);
+    std::vector<int> bestInliers;
+    int bestInlierCount = 0;
 
-    // 合并增量
-    float delta_pwm = delta_p + delta_i + delta_d;
-
-    // === 积分抗饱和处理 ===
-    pid->integral += center_error;
-    // 积分限幅（避免长时间偏差导致积分项过大）
-    if (pid->integral > pid->integral_limit) {
-        pid->integral = pid->integral_limit;
-    } else if (pid->integral < -pid->integral_limit) {
-        pid->integral = -pid->integral_limit;
-    }
-
-    // === 更新历史误差 ===
-    pid->prev_error = pid->last_error;
-    pid->last_error = center_error;
-
-    return delta_pwm;
-}
-
-void FindTrackCenter(const cv::Mat& binaryImg,
-                     std::vector<int>& leftBoundary,
-                     std::vector<int>& rightBoundary,
-                     std::vector<int>& centerLine) {
-
-    const int height = binaryImg.rows;
-    const int width = binaryImg.cols;
-    const int centerX = width / 2;  // 图像水平中心
-
-    // 初始化输出向量
-    leftBoundary.resize(height);
-    rightBoundary.resize(height);
-    centerLine.resize(height);
-    std::vector<int> y;
-    for (int i = 0; i <= 279; ++i) {
-        y.push_back(i);
-    }
-
-    int rightBoundary_conut = 0;
-
-    // 从最底层（height-1）向上扫描
-    for (int row = height - 1; row >= 0; --row) {
-        const uchar* pixelRow = binaryImg.ptr<uchar>(row);
-        bool leftFound = false, rightFound = false;
-
-        // --- 向左搜索左边界（白->黑跳变） ---
-        for (int col = centerX; col >= 1; --col) {
-            // 抗噪声：连续2个黑点确认边界[2,5](@ref)
-            if (pixelRow[col] == 255 && 
-                pixelRow[col - 1] == 0 && 
-                (col < 2 || pixelRow[col - 2] == 0)) {
-                leftBoundary[row] = col;
-                leftFound = true;
-                break;
-            }
+    // RANSAC主循环
+    for (int i = 0; i < maxIterations; ++i) {
+        // 1. 随机选两个点
+        int idx1 = uni(rng);
+        int idx2 = uni(rng);
+        while (idx2 == idx1) idx2 = uni(rng);  // 确保不同点
+        
+        const auto& p1 = points[idx1];
+        const auto& p2 = points[idx2];
+        
+        // 2. 计算直线参数 (a, b, c)
+        double a = p2.y - p1.y;
+        double b = p1.x - p2.x;
+        double c = p2.x * p1.y - p1.x * p2.y;
+        
+        // 处理重合点 (分母接近0)
+        double denom = std::sqrt(a*a + b*b);
+        if (denom < 1e-5) continue;  // 跳过无效直线
+        
+        // 3. 计算内点
+        std::vector<int> inliers;
+        for (int j = 0; j < points.size(); ++j) {
+            const auto& pt = points[j];
+            double dist = std::abs(a*pt.x + b*pt.y + c) / denom;
+            if (dist < distThreshold) inliers.push_back(j);
         }
-        if (!leftFound) leftBoundary[row] = 0;  // 未找到则用图像左边界[1](@ref)
-
-        // --- 向右搜索右边界（黑->白跳变） ---
-        for (int col = centerX; col < width - 2; ++col) {
-            // 抗噪声：连续2个白点确认边界
-            if (pixelRow[col] == 0 && 
-                pixelRow[col + 1] == 255 && 
-                pixelRow[col + 2] == 255) {
-                rightBoundary[row] = col;
-                rightFound = true;
-                break;
-            }
+        
+        // 4. 更新最佳模型
+        if (inliers.size() > bestInlierCount) {
+            bestInlierCount = inliers.size();
+            bestModel = {a, b, c};
+            bestInliers = std::move(inliers);
         }
-        if (!rightFound) {rightBoundary[row] = width - 1;rightBoundary_conut++;}  // 未找到则用图像右边界
-
-        // --- 计算中线 ---
-        centerLine[row] = (leftBoundary[row] + rightBoundary[row]) / 2;
     }
-    std::vector<float> result;
-    result.reserve(rightBoundary.size());
-
-    // 使用迭代器遍历
-    auto it_rb = rightBoundary.begin();
-    auto it_y = y.begin();
-    while (it_rb != rightBoundary.end() && it_y != y.end()) {
-        float value = *it_rb - 320 + (*it_y * 1.2);
-        result.push_back(value);
-        ++it_rb;
-        ++it_y;
-    }
-    float weighted_error = 0;
-    float total_weight = 0;
-    for (int row = height - 1; row >= 0; row--) {
-        float weight = 0.3 - 0.01 * (height - 1 - row); // 线性递减权重
-        weighted_error += (centerLine[row]-centerX) * weight;
-        total_weight += weight;
-    }
-    double error = weighted_error / total_weight;
+    
+    return {bestModel, bestInliers};
 }
 
-void drawGrayHistogram(cv::Mat &grayImage, cv::Mat &histogramOutput, int histSize = 256) {
-    // 初始化直方图参数
-    float range[] = {0, 256};
-    const float* histRange = {range};
-    bool uniform = true, accumulate = false;
-
-    // 计算直方图
-    cv::Mat hist;
-    cv::calcHist(&grayImage, 1, 0, cv::Mat(), hist, 1, &histSize, &histRange, uniform, accumulate);
-
-    // 归一化直方图（高度400像素）
-    cv::normalize(hist, hist, 0, 400, cv::NORM_MINMAX);
-
-    // 创建直方图画布
-    int histWidth = 512, histHeight = 400;
-    histogramOutput = cv::Mat::zeros(histHeight, histWidth, CV_8UC3);
-    histogramOutput.setTo(cv::Scalar(255, 255, 255)); // 白色背景
-
-    // 绘制直方图
-    int binWidth = cvRound((double)histWidth / histSize);
-    for (int i = 1; i < histSize; i++) {
-        cv::line(
-            histogramOutput,
-            cv::Point(binWidth * (i - 1), histHeight - cvRound(hist.at<float>(i - 1))),
-            cv::Point(binWidth * i, histHeight - cvRound(hist.at<float>(i))),
-            cv::Scalar(0, 0, 255), 2, 8, 0  // 红色折线
-        );
-    }
-
-    // 添加坐标轴
-    cv::line(histogramOutput, cv::Point(0, histHeight - 1), cv::Point(histWidth, histHeight - 1), cv::Scalar(0, 0, 0), 2); // X轴
-    cv::line(histogramOutput, cv::Point(0, 0), cv::Point(0, histHeight), cv::Scalar(0, 0, 0), 2); // Y轴
-
-    // 添加刻度标签
-    cv::putText(histogramOutput, "0", cv::Point(5, histHeight - 10), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,0,0));
-    cv::putText(histogramOutput, "255", cv::Point(histWidth - 25, histHeight - 10), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,0,0));
-}
-
-cv::Mat twoPassLabeling(const cv::Mat& binaryImg, int minArea) {
-    std::vector<int> areas;
-    if (binaryImg.empty() || binaryImg.type() != CV_8UC1) {
-        std::cout << "Input must be a binary image (CV_8UC1)." << std::endl;
-        return cv::Mat();
-    }
-
-    int rows = binaryImg.rows;
-    int cols = binaryImg.cols;
-    cv::Mat labelImg = cv::Mat::zeros(rows, cols, CV_32SC1); // 标签矩阵（整数类型）
-    int currentLabel = 1; // 起始标签值
-
-    // 第一遍扫描：临时标签分配
-    std::vector<int> parent(rows * cols / 2, 0); // 等价关系映射表（动态数组）
-    std::vector<int> neighborLabels; // 存储邻域标签
-
-    for (int y = 0; y < rows; ++y) {
-        for (int x = 0; x < cols; ++x) {
-            if (binaryImg.at<uchar>(y, x) == 0) continue; // 跳过背景
-
-            neighborLabels.clear();
-            // 检查8邻域（左上、上、右上、左）
-            if (y > 0 && x > 0 && labelImg.at<int>(y-1, x-1) > 0) 
-                neighborLabels.push_back(labelImg.at<int>(y-1, x-1));
-            if (y > 0 && labelImg.at<int>(y-1, x) > 0) 
-                neighborLabels.push_back(labelImg.at<int>(y-1, x));
-            if (y > 0 && x < cols-1 && labelImg.at<int>(y-1, x+1) > 0) 
-                neighborLabels.push_back(labelImg.at<int>(y-1, x+1));
-            if (x > 0 && labelImg.at<int>(y, x-1) > 0) 
-                neighborLabels.push_back(labelImg.at<int>(y, x-1));
-
-            if (neighborLabels.empty()) {
-                // 无邻域标签：分配新标签
-                labelImg.at<int>(y, x) = currentLabel;
-                parent[currentLabel] = currentLabel; // 初始化等价关系
-                currentLabel++;
-            } else {
-                // 取最小邻域标签，并合并等价关系
-                int minLabel = *min_element(neighborLabels.begin(), neighborLabels.end());
-                labelImg.at<int>(y, x) = minLabel;
-                for (int label : neighborLabels) {
-                    while (parent[label] != label) label = parent[label]; // 追溯根标签
-                    if (label != minLabel) parent[label] = minLabel; // 合并等价关系
+int brightness_threshold_calculator(Mat& gray_img){//寻找跳变最剧烈的那个点，这个点的左值就是图像二值化阈值
+    int max_brightness_change = 0;
+    int best_binary_brightness = 180;//给个默认值，别一会没找到
+    for (int y = 269; y > 69; y--) {
+        for (int x = 1; x < 638; x++) {
+            int current = (int)gray_img.at<uchar>(y, x);
+            int next = (int)gray_img.at<uchar>(y, x + 1);
+            if (next>=150&&current>70){   
+                if (next - current >= max_brightness_change) {
+                    max_brightness_change = next - current;
+                    best_binary_brightness = next-20;
                 }
             }
         }
     }
+    return best_binary_brightness;
+}
 
-    // 标签合并：统一等价关系的根标签
-    std::vector<int> rootMap(parent.size(), 0);
-    int validLabelCount = 1;
-    for (int i = 1; i < currentLabel; ++i) {
-        int root = i;
-        while (parent[root] != root) root = parent[root]; // 找到根标签
-        if (rootMap[root] == 0) {
-            rootMap[root] = validLabelCount++; // 分配新标签
-        }
-        rootMap[i] = rootMap[root];
-    }
-
-    // 第二遍扫描：应用最终标签 + 计算面积
-    areas.resize(validLabelCount, 0);
-    for (int y = 0; y < rows; ++y) {
-        for (int x = 0; x < cols; ++x) {
-            int label = labelImg.at<int>(y, x);
-            if (label == 0) continue;
-            label = rootMap[label]; // 映射到最终标签
-            labelImg.at<int>(y, x) = label;
-            areas[label]++;
-        }
-    }
-
-    // 生成结果：仅保留面积大于阈值的连通域
-    cv::Mat result = cv::Mat::zeros(rows, cols, CV_8UC1);
-    for (int y = 0; y < rows; ++y) {
-        for (int x = 0; x < cols; ++x) {
-            int label = labelImg.at<int>(y, x);
-            if (label > 0 && areas[label] >= minArea) {
-                result.at<uchar>(y, x) = 255; // 保留前景
+bool stop_car(Mat& gray,int brightness_threshold,int& point){
+    int white_count = 0;
+    for (int y = 227; y >= 200; y--) {//
+        for (int x = 1; x < 639; x++) {
+            if (gray.at<uchar>(y, x)>=brightness_threshold){ 
+                white_count++;
             }
         }
     }
-    return result;
+    point = white_count;
+    if (white_count>6058){
+        return true;
+    }
+    return false;
 }
 
-// double error_calculate(cv::Mat binary,int height){
-//     for (int i=height;i>0;i--){
-//         for (int j=320;)
-//     }
-// }
+// 从图像底部向上搜索指定行数，分别独立寻找左右两侧的赛道边缘起始点
+void find_track_edge(Mat& gray_img, Point& right_point, int scan_rows, int brightness_threshold) {
+    int height = gray_img.rows;
+    int width = gray_img.cols;
+    int middle_x = width / 2;
+    bool flag = 1;
+    int last_scanned_y = height - scan_rows;
+
+    for (int y = height - 1; y >= last_scanned_y; y--) {//
+        // 向右搜索边界
+        if (right_point.x == -1) {
+            for (int x = middle_x + 1; x < width - 2; x++) {
+                int current = (int)gray_img.at<uchar>(y, x);
+                int next = (int)gray_img.at<uchar>(y, x + 1);
+                if (next>=brightness_threshold){ 
+                    right_point = Point(x, y);
+                    break;
+                }
+            }
+        }
+        else break;
+    }
+}
+
+// 从起始点开始追踪赛道边线（添加断裂检测机制）
+void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, bool& right, int search_range, 
+                int brightness_threshold,Mat* visual_img = nullptr) {
+    int height = gray_img.rows;
+    int width = gray_img.cols;
+    
+    traced_points.clear();
+    traced_points.push_back(start_point);
+    bool broken = false;
+    // 计数器：记录连续未找到点的行数
+    int fail_count = 0;
+    
+    // 初始化搜索中心
+    int center_x = start_point.x;
+    int center_y = start_point.y - 1;  // 从起始点上方开始搜索
+    int number = 1;//没必要找太多，60个点够了
+
+    while (center_y > start_point.y-100) {  // 只看往上130行
+        bool found = false;
+        Point best_point;
+        int max_brightness_change = 0;
+
+        // 在当前行搜索范围内检查所有可能点
+        for (int dx = 0; dx <= search_range/2; dx++) {
+            // 计算候选点位置
+            int cand_x = center_x + dx;
+            int cand_x2 = center_x - dx;
+            bool left_check = 1;
+            bool right_check = 1;
+            // 边界检查
+            if (cand_x >= width - 1) {
+                right_check = 0;
+            }
+            if (cand_x2 < 1) {
+                left_check = 0;
+            }
+
+            // 计算亮度变化（根据边界类型确定方向）
+            int brightness_change;
+            //右减左
+            if (left_check){
+                int current = gray_img.at<uchar>(center_y, cand_x2);
+                int prev = gray_img.at<uchar>(center_y, cand_x2 - 1);
+                brightness_change = current - prev;
+                if (current >= brightness_threshold) {
+                    if (brightness_change > max_brightness_change) {
+                        max_brightness_change = brightness_change;
+                        best_point = Point(cand_x2, center_y);
+                        found = true;
+                    }
+                }
+                else{
+                    if (right_check) {
+                        int current = gray_img.at<uchar>(center_y, cand_x);
+                        int next = gray_img.at<uchar>(center_y, cand_x + 1);
+                        brightness_change = next-current;
+                    } 
+                    if (current >= brightness_threshold) {
+                        if (brightness_change > max_brightness_change) {
+                            max_brightness_change = brightness_change;
+                            best_point = Point(cand_x, center_y);
+                            found = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (found) {
+            traced_points.push_back(best_point);
+            // 重置失败计数器
+            fail_count = 0;
+            number++;
+            // 更新搜索中心（继续向上移动）
+            center_x = best_point.x;
+            center_y = best_point.y - 1;
+
+        } else {
+            // 没有找到符合条件的点
+            fail_count++;
+            // 向上移动一行继续搜索
+            center_y--;
+            // 如果连续40行找不到点，判定为赛道断裂
+            if (fail_count >= 20) {
+                broken = true;
+                break;
+            }
+        }
+        // 如果已经到达图像顶部，结束追踪
+        if (number>60|| center_y <= 0) {
+            break;
+        }
+    }
+    
+    Vec4f lineParams; // 存放结果的 Vec4f
+    fitLine(traced_points, lineParams, DIST_L2, 0, 0.01, 0.01);
+    // ROS_INFO("右线斜率%f",lineParams[1]/lineParams[0]);
+    // ROS_INFO("有效点数%zu",traced_points.size());
+    if((lineParams[1]/lineParams[0]<-0.1&&lineParams[1]/lineParams[0]>-10 && start_point.x<320)||traced_points.size()<10){//不接受右线向右倾斜数量太少不要
+        right = false;
+    }
+    // 可视化追踪过程
+    if (visual_img != nullptr) {
+        Scalar color = Scalar(0, 255, 0);  // 红色:左, 绿色:右
+        for (const auto& point : traced_points) {
+            circle(*visual_img, point, 2, color, -1);
+        }
+        circle(*visual_img, start_point, 2, Scalar(0, 0, 0), -1);
+        ostringstream displayStream1;
+        displayStream1 << fixed << setprecision(2);
+        displayStream1 << "line_slope:  " << lineParams[1]/lineParams[0];
+        string displayText1 = displayStream1.str();
+        putText(*visual_img, displayText1, Point(50, 100),
+        FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
+        // imshow("test",*visual_img);
+        // waitKey(1);
+    }
+}
+//如果右边丢线，就只看左边，因为右边丢线了，所以直接从最右边开始找，找到就是左线，然后把左线拟合成直线，如果左线碰到图片底端，就开始旋转，通过定位来判断是否到达终点，到达终点前不启用停车逻辑
+bool find_left_edge(Mat gray_img,Point& left_edge_point,int brightness_threshold,Mat& visualizeImg){
+    int height = gray_img.rows;
+    int width = gray_img.cols;
+    bool flag = false;
+    left_edge_point = Point(-1,-1);
+    Mat blurred = gray_img;
+    // GaussianBlur(gray_img, blurred, cv::Size(5,5), 0);//这个点很重要，务必不能找错
+    for (int y = height - 1; y >= 69; y--) {
+        for (int x = width -1; x > 50; x--) {
+            if (blurred.at<uchar>(y, x) >= brightness_threshold) {
+                left_edge_point=Point(x, y);
+                flag = true;
+                break;
+            }
+        }
+        if (flag) break;
+    }
+    if(left_edge_point.x == -1){
+        ROS_INFO("没找到左点");
+        return false;
+    } 
+    else {
+        if (!visualizeImg.empty()) {
+            circle(visualizeImg, left_edge_point, 7, Scalar(0, 0, 255), -1);
+        }
+        return false;
+    }
+}
+
+bool find_left_line(Mat gray_img,vector<Point>& left_edge_points,int brightness_threshold,Mat visualizeImg = Mat()){
+    int height = gray_img.rows;
+    int width = gray_img.cols;
+    bool flag = 1;
+    // ROS_INFO("进入左边巡线");
+    for (int y = height - 1; y >= 69; y--) {
+        for (int x = width -1; x > 1; x--) {
+            if (gray_img.at<uchar>(y, x) >= brightness_threshold) {
+                left_edge_points.push_back(Point(x, y));
+                break;
+            }
+        }
+    }
+    if(left_edge_points.empty()){
+        ROS_INFO("没找到左线");
+        return false;
+    } 
+    else {
+        std::pair<std::vector<double>, std::vector<int>> result;
+        result = fitLineRANSAC(left_edge_points,7,1000);
+        drawLineFromEquation(visualizeImg,result.first[0],result.first[1],result.first[2],cv::Scalar(0, 0, 255),2);
+        for (int i=0;i<left_edge_points.size();i++) {
+            circle(visualizeImg, left_edge_points[i], 3, Scalar(255, 0, 0), -1);
+        }
+        out.write(visualizeImg);
+        if((-1*result.first[2]-(270*result.first[1]))/result.first[0]>320){//直线和图像底部的交点
+            return true;
+        }else{
+            return false;
+        }
+    }
+}
+
+double double_find(Mat gray_img,int brightness_threshold)//最后阶段采用双边巡线，避免单边巡线导致的偏离从而无法停车
+{
+    vector<int> left_total;
+    vector<int> right_total;
+    double error = 0.0;
+
+    bool falg = false;//赛道先有后无，就是没线了
+    int failed = 0;//连续几行都没找到才算丢线
+    for (int y = 269; y >= 50; y--) {//计算每一行的误差
+        int left = 0;
+        bool find = false;
+        for (int x = 319; x > 1; x--) {
+            if (gray_img.at<uchar>(y, x) >= brightness_threshold) {
+                left = x;
+                find = true;
+                falg = true;
+                failed = 0;
+                break;
+            }
+        }
+        if (falg && !find){
+            failed++;
+            if (failed>10){
+                break;
+            }
+        }
+        left_total.push_back(left);
+    }
+    falg = false;//赛道先有后无，就是没线了
+    failed = 0;//连续几行都没找到才算丢线
+    for (int y = 269; y >= 50; y--) {//计算每一行的误差
+        int right = 639;
+        bool find = false;
+        for (int x = 319; x < 639; x++) {
+            if ((int)gray_img.at<uchar>(y, x) >= brightness_threshold) {
+                right = x;
+                find = true;
+                falg = true;
+                failed = 0;
+                break;
+            }
+        }
+        if (falg && !find){
+            failed++;
+            if (failed>10){
+                break;
+            }
+        }
+        right_total.push_back(right);
+    }
+    float row = min(left_total.size(),right_total.size())/1.0;
+    for(int i=0;i<row;i++){
+        error += (640-(left_total[i]+right_total[i]))*(1-i/row);//error += (left_total+right_total-640)/2.0*(1-i/row) error = error/(row/2)归一化的除以2整理到前面
+    }
+    return error/row;
+}
+
+
+double error_calculater(vector<Point>& traced_points,int ystart,Mat& visualizeImg){
+    double total_error = 0;
+    // size_t count = std::min(traced_points.size(),static_cast<size_t>(60));//注意了这里number最大就到80记得把前面对number的限制也改了
+    for (size_t i=0;i<traced_points.size();i++){
+        int y = ystart-i;
+        if (i <= 30.0) {
+            double mid_error = (traced_points[i].x - (280 - (214-y)*1.34)-320)*(1-i/100);
+            total_error += mid_error;
+        }
+        else {
+            double mid_error = (traced_points[i].x - (280 - (214-y)*1.34)-320)*0.7 * exp(-0.064 * (i - 30.0));
+            total_error += mid_error;
+        }
+    }
+
+    // 可视化代码（例如在图像上绘制轨迹）
+    for (int i=0;i<traced_points.size();i++) {
+        int y = ystart-i;
+        Point pt = Point(traced_points[i].x - (320 - (214-y)*1.34),ystart-i);
+        circle(visualizeImg, pt, 3, Scalar(0, 255, 0), -1);
+    }
+    // imshow("visualize",visualizeImg);
+    // waitKey(1);
+    if (traced_points.size()==0){
+        return 100.0;
+    }
+    else{
+        return total_error/traced_points.size()*-1;
+    }
+}
 
 int main(int argc, char **argv) {
     setlocale(LC_ALL,"");
-    ROS_INFO("111");
-    ros::init(argc, argv, "line_test");
+    ros::init(argc, argv, "line");
+    FileStorage fs("/home/ucar/ucar_car/src/line_follow/camera_info/pinhole.yaml", FileStorage::READ);
+    if (!fs.isOpened()) {
+        cerr << "无法打开标定文件" << endl;
+        return -1;
+    }
     ros::NodeHandle nh;
     ros::Publisher cmd_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
-    ros::Rate rate(20);
+    geometry_msgs::Twist twist;
+    Mat cameraMatrix, distCoeffs;
+    fs["camera_matrix"] >> cameraMatrix;
+    fs["distortion_coefficients"] >> distCoeffs;
+    fs.release();
+    // 1. 读取图像并转换为灰度图
     cv::VideoCapture cap("/dev/video0", cv::CAP_V4L2);
     if (!cap.isOpened()) {
         ROS_ERROR("Failed to open camera!");
@@ -321,117 +459,170 @@ int main(int argc, char **argv) {
     }
     cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
+    Mat map1, map2;
+    Mat optimalMatrix = getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, Size(640, 480), 1,Size(640, 480));
+    initUndistortRectifyMap(
+        cameraMatrix, 
+        distCoeffs, 
+        Mat(), // 无旋转
+        optimalMatrix, 
+        Size(640, 480), 
+        CV_32FC1, // 32位浮点类型（速度优化）
+        map1, 
+        map2
+    );
+    Mat image,undistorted;
+    Rect roi(0, 210, 640, 270);
 
-    cv::Rect roi(0, 200, 640, 280);  // (x, y, width, height)
-    cv::Mat gray;
-    cv::Mat src;
-    cv::Mat binary;
-    cv::Mat cropped;
-    cv::Mat blurred;
-    cv::Mat balancedFrame;
+    double p,i,d,integration,pre_error;
+    p = 0.007;
+    i = 0.05;
+    d = 0.0015;
+    integration = 0;
+    pre_error = 0;
+    double pointx_integration = 0;
+    double pointx_pre_error = 0;
+    double pointy_integration = 0;
+    double pointy_pre_error = 0;
+    bool right = true;//判断现在是右边线还是左边线
+    int first_point_x_last = 320;//上一帧的赛道起点，发生突变就说明右赛道变成左赛道了
+    bool left_forward = true;
+    bool point_forward = true;
 
-    PID_Controller steering_pid;
-    steering_pid.Kp = 0.8f;
-    steering_pid.Ki = 0.05f;
-    steering_pid.Kd = 0.3f;
-    steering_pid.integral_limit = 100; // 积分限幅值
-    steering_pid.last_error = 0;
-    steering_pid.prev_error = 0;
-    steering_pid.integral = 0;
-    
-    while (ros::ok())
-    {
-        cap.read(src);
-        if (src.empty()) continue;
-        cropped = src(roi);
-        cv::flip(cropped, cropped, 1);
-        cvtColor(cropped, gray, cv::COLOR_BGR2GRAY);
-        cv::GaussianBlur(gray, blurred, cv::Size(5, 5), 1.5);
-        cv::threshold(gray,binary,200, 255,cv::THRESH_BINARY);
+    out.open(output_file, fourcc, 7, Size(640, 270));
+    displayStream << fixed << setprecision(2);
+
+    ros::Time start_time = ros::Time::now();
+    bool double_line = false;//最后进入两边巡线逻辑
+
+            
+    int height = 270;
+    int width = 640;
+    int scan_rows = 180;  // 向上搜索的行数
+    while(ros::ok()){
+        displayStream.str("");
+        cap.read(image);
+        if (image.empty()) continue;
+        remap(image, undistorted, map1, map2, INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+        Mat cropped = undistorted(roi);
+        flip(cropped, cropped, 1);
+        Mat gray_img;
+        vector<Mat> channels;
+        split(cropped, channels);
+        gray_img = channels[2];//红色通道代替灰度图
+        int brightness_threshold = brightness_threshold_calculator(gray_img);  // 亮度变化阈值就是跳变最剧烈点的左值
+        // ROS_INFO("%d",brightness_threshold);
+        Point right_edge_point = Point(-1, -1);//
+        int last_scanned_y;
+        find_track_edge(gray_img,right_edge_point, scan_rows, brightness_threshold);
+        if (right && (first_point_x_last - right_edge_point.x>90 || (right_edge_point.x < 380&&right_edge_point.y<360))){//如果右边线丢了或者右边界首个点发生剧烈左移动
+            right = false;
+            // ROS_INFO("进入左巡线逻辑");
+        }
+        else if(!right && (right_edge_point.x-first_point_x_last>150||right_edge_point.x>480)){//左线发生剧烈偏移说明又看到右线了左跳右的幅度一般很剧烈
+            right = true;
+            // ROS_INFO("进入右巡线逻辑");
+        }
+        vector<Point> traced_right,left_edge_points;
+        Point left_edge_point;
+        // 追踪右侧边线
+        bool right_checker = true;//右线不一定真的是右线，可能是太偏的左线，不接受右线向右倾斜，不满足条件切换逻辑
+        if (right) {
+            double line_error = 0;
+            if(!double_line){
+                trace_edge(right_edge_point, gray_img, traced_right, right_checker,60, brightness_threshold, &cropped);
+                line_error = error_calculater(traced_right,right_edge_point.y,cropped);//有调试图片输出
+            }
+            else{
+                line_error = double_find(gray_img,brightness_threshold);
+            }
+
+            twist.linear.x = 0.5 / exp(abs(line_error) / 100.0);
+            integration += line_error*0.03;
+            integration = std::max(std::min(integration,1.0),-1.0);
+            double diff = line_error - pre_error;
+            diff = std::max(std::min(diff,100.0),-100.0);
+            twist.angular.z = std::max(std::min(line_error*p+integration*i+diff*d,1.0),-1.0);
+            int test1;
+            stop_car(gray_img,brightness_threshold,test1);
+            displayStream << "error:  " << line_error << "x:  " << twist.linear.x <<"z:  "<< twist.angular.z<<"stop:  "<<test1;
+            string displayText = displayStream.str();
+            putText(cropped, displayText, Point(50, 50),
+            FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
+            out.write(cropped);
+            // ROS_INFO("积分项%f",integration);
+
+            if(!right_checker){
+                ROS_INFO("右线斜率出错，舍弃");
+                continue;
+            }
+            else{
+                if (!left_forward && !point_forward && (ros::Time::now()-start_time).toSec()>1.0){
+                    double_line = true;
+                    p = 0.007;
+                    i = 0.0;
+                    d = 0.0;
+                    ROS_INFO("双边巡线");
+                }
+                left_forward = true;
+                point_forward = true;
+            }
+        } else {
+            if(left_forward){
+                if(point_forward){
+                    // ROS_INFO("左点");
+                    start_time = ros::Time::now();
+                    find_left_edge(gray_img, left_edge_point,brightness_threshold,cropped);
+                    // find_left_edge(gray_img, left_edge_point,brightness_threshold);
+                    double error_x = 320-left_edge_point.x;double error_y = 160-left_edge_point.y;
+                    if(error_x>100) pointx_integration = 0;if(error_y>100) pointy_integration = 0;
+                    pointx_integration += error_x*0.02;pointy_integration += error_y*0.02;
+                    // ROS_INFO("转折点坐标x%d,y%d",left_edge_point.x,left_edge_point.y);
+                    if(abs(left_edge_point.x-320) < 20 && abs(left_edge_point.y -160)<20){
+                        pointx_integration = 0;
+                        pointy_integration = 0;
+                        point_forward = false;
+                    }
+                    pointx_integration = std::max(std::min(pointx_integration,1.0),-1.0);pointy_integration = std::max(std::min(pointy_integration,1.0),-1.0);
+                    // ROS_INFO("P%f,I%f",error_y/400,pointy_integration/400);
+                    twist.linear.x = std::max(std::min(error_y*0.002,0.3),-0.3);
+                    twist.angular.z = std::max(std::min(error_x*0.004,0.5),-0.5);
+                    pointx_pre_error = error_x;pointy_pre_error = error_y;
+                    displayStream << "errory:  " << error_y << "x:  " << twist.linear.x <<"z:  "<< twist.angular.z<<"errorx:  "<<error_x;
+                    string displayText = displayStream.str();
+                    putText(cropped, displayText, Point(50, 50),
+                    FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
+                    out.write(cropped);
+                }
+                else{
+                    // ROS_INFO("左线");
+                    if(find_left_line(gray_img,left_edge_points,brightness_threshold,cropped)){
+                        left_forward = false;
+                    }
+                    else{
+                        twist.linear.x = 0.1;
+                        twist.angular.z = -0.05;
+                    }
+                }
+            }
+            else{
+                twist.linear.x = 0;
+                twist.angular.z = -1.3;
+                out.write(cropped);
+            }
+        }
+        first_point_x_last = right_edge_point.x;//更新起点位置
+        int test;
+        if(stop_car(gray_img,brightness_threshold,test)){
+            ROS_INFO("巡线结束");
+            twist.linear.x = 0;
+            twist.angular.z = 0;
+            cmd_pub.publish(twist);
+            break;
+        }
+        cmd_pub.publish(twist);
     }
-    
-
-
-
-
-
-
-
-
-    // while(ros::ok()) {
-    //     cap.read(src);
-    //     if (src.empty()) continue;
-    //     // ros::Time ros_start = ros::Time::now();
-    //     // balancedFrame = applyPerfectReflectionWB(src);
-    //     // double ros_duration = (ros::Time::now() - ros_start).toSec();
-    //     // ROS_INFO("[ROS时间] 耗时: %.6f 秒", ros_duration);
-    //     // cv::imshow("原始画面", src);
-    //     // cv::imshow("白平衡后", balancedFrame);
-    //     cropped = src(roi);
-    //     cv::cvtColor(cropped, gray, cv::COLOR_BGR2GRAY); // BGR转灰度
-    //     cv::GaussianBlur(gray, blurred, cv::Size(5, 5), 1.5);  // 5×5核，标准差1.5
-    //     // double otsu_threshold = cv::threshold(gray, binary, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
-    //     // cv::adaptiveThreshold(
-    //     //     gray,                          // 输入图像（单通道灰度图）
-    //     //     binary,                          // 输出二值图像
-    //     //     255,                          // 二值化最大值（满足条件时赋予的像素值）
-    //     //     cv::ADAPTIVE_THRESH_GAUSSIAN_C, // 自适应方法：高斯加权均值
-    //     //     cv::THRESH_BINARY,            // 二值化类型：大于阈值设为255，否则0
-    //     //     11,                           // 邻域块大小（奇数）
-    //     //     -15                             // 调整常数C
-    //     // );
-    //     // binary = twoPassLabeling(binary,70);
-    //     // // std::cout << "Otsu自动计算的阈值: " << otsu_threshold << std::endl;
-    //     // cv::imshow("原始图像", src);
-    //     // // cv::imshow("灰度图", gray);
-    //     cv::imshow("二值化结果", binary);
-    //     // cv::Mat histImage;
-    //     // drawGrayHistogram(gray, histImage); 
-    //     // cv::imshow("灰度直方图", histImage);
-    //     cv::waitKey(1);
-    //     rate.sleep();
-    // }
+    cap.release();
+    out.release();
     return 0;
 }
-
-// #include <opencv2/opencv.hpp>
-// #include <opencv2/xphoto.hpp>  // 白平衡模块
-
-
-// int main() {
-//     // 初始化摄像头
-//     cv::VideoCapture cap("/dev/video0", cv::CAP_V4L2);
-//     if (!cap.isOpened()) {
-//         std::cerr << "摄像头打开失败！检查设备连接或索引号" << std::endl;
-//         return -1;
-//     }
-
-//     // 设置分辨率（可选）
-//     cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
-//     cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
-
-//     // 创建显示窗口
-//     cv::namedWindow("原始画面", cv::WINDOW_AUTOSIZE);
-//     cv::namedWindow("白平衡后", cv::WINDOW_AUTOSIZE);
-
-//     while (true) {
-//         cv::Mat frame;
-//         cap >> frame;  // 捕获一帧
-//         if (frame.empty()) break;
-
-//         // 应用白平衡
-//         cv::Mat balancedFrame = applyPerfectReflectionWB(frame);
-
-//         // 显示结果
-//         cv::imshow("原始画面", frame);
-//         cv::imshow("白平衡后", balancedFrame);
-
-//         // 按ESC退出
-//         if (cv::waitKey(300) == 27) break;
-//     }
-
-//     // 释放资源
-//     cap.release();
-//     cv::destroyAllWindows();
-//     return 0;
-// }

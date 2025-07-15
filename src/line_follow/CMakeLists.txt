@@ -8,26 +8,26 @@ project(line_follow)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 
-# find_package(catkin REQUIRED COMPONENTS
-#   geometry_msgs
-#   roscpp
-#   rospy
-#   std_msgs
-#   # cv_bridge
-#   sensor_msgs
-#   # image_transport
-#   message_generation
-# )
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   roscpp
   rospy
   std_msgs
   # cv_bridge
-  # sensor_msgs
+  sensor_msgs
   # image_transport
-  # message_generation
-)#调试用
+  message_generation
+)
+# find_package(catkin REQUIRED COMPONENTS
+#   geometry_msgs
+#   roscpp
+#   rospy
+#   std_msgs
+#   # cv_bridge
+#   # sensor_msgs
+#   # image_transport
+#   # message_generation
+# )#调试用
 
 # 查找 OpenCV 并指定必要组件
 find_package(OpenCV REQUIRED COMPONENTS
@@ -79,10 +79,10 @@ find_package(OpenCV REQUIRED COMPONENTS
 
 ## Generate services in the 'srv' folder
 
-# add_service_files(//方便调试，后续需要启用
-#   FILES
-#   line_follow.srv
-# )
+add_service_files(
+  FILES
+  line_follow.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -93,11 +93,11 @@ find_package(OpenCV REQUIRED COMPONENTS
 
 ## Generate added messages and services with any dependencies listed here
 
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs
-#   geometry_msgs#   sensor_msgs
-# )//调试用，后续放开注释
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs#   sensor_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -206,11 +206,11 @@ target_link_libraries(line_right
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-catkin_install_python(PROGRAMS
-  scripts/line.py
-  scripts/line_ros.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+# catkin_install_python(PROGRAMS
+#   scripts/line.py
+#   scripts/line_ros.py
+#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+# )
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html

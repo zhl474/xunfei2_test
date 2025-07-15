@@ -5,6 +5,9 @@
     <arg name="initial_pose_x" default="0.3"/>
     <arg name="initial_pose_y" default="0.253"/>
     <arg name="initial_pose_a" default="0.0"/>
+    <param name="initial_cov_xx" value="0.01"/>  <!-- x方向方差=0.25² -->
+    <param name="initial_cov_yy" value="0.01"/>  <!-- y方向方差=0.25² -->
+    <param name="initial_cov_aa" value="0.01"/>   <!-- 角度方差=(π/2)²/3≈0.822 -->
     <!-- <arg name="initial_pose_x" default="3.01"/>
     <arg name="initial_pose_y" default="2.56"/>
     <arg name="initial_pose_a" default="-0.78"/> -->

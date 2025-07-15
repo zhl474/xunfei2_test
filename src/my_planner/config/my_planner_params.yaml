@@ -8,8 +8,8 @@ lookahead_dist: 0.2        # [米] 选取前方临时目标点的距离阈值
 
 # 目标点姿态调整阶段的参数
 goal_dist_threshold: 0.10  # [米] 判断已到达目标点附近并开始调整姿态的距离阈值
-final_pose_linear__x_gain: 2.5 # [比例系数] 最终姿态调整时的线速度比例增益
-final_pose_angular_gain: 1.5 # [比例系数] 最终姿态调整时的角速度比例增益
+final_pose_linear__x_gain: 1.5 # [比例系数] 最终姿态调整时的线速度比例增益
+final_pose_angular_gain: 1.0 # [比例系数] 最终姿态调整时的角速度比例增益
 goal_yaw_tolerance: 0.1    # [弧度] 到达目标点时允许的最终朝向误差
 
 # 安全性与可视化参数

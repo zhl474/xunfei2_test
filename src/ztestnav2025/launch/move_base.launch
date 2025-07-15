@@ -18,7 +18,7 @@
     <param name="controller_patience" value="10.0" />
     <param name="clearing_rotation_allowed" value="true" />
     <!-- <rosparam file="$(find ucar_nav)/launch/config/move_base/1/teb_local_planner_params_final.yaml" command="load" />race_navigation)/config/teb/ -->
-    <!-- <rosparam file="$(find ztestnav2025)/movebase_config/move_base_params.yaml" command="load" />race_navigation)/config/teb/ -->
+    <rosparam file="$(find ztestnav2025)/movebase_config/move_base_params.yaml" command="load" /><!-- race_navigation)/config/teb/ -->
     <rosparam file="$(find ztestnav2025)/movebase_config/costmap_common_params.yaml" command="load" ns = "global_costmap" /><!-- 其它参数 -->
     <rosparam file="$(find ztestnav2025)/movebase_config/costmap_common_params.yaml" command="load" ns = "local_costmap" /><!-- 其它参数 -->
     <!-- <rosparam file="$(find ucar_nav)/launch/config/move_base/2/global_planner_params.yaml" command="load" /> -->
