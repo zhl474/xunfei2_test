@@ -194,6 +194,7 @@
                         ROS_DEBUG("曲率过大,不予理会");
                     }
                 }
+                ux = vx;uy = vy;
                 if(dist>0.4){
                     break;//计算前方40cm曲率
                 }

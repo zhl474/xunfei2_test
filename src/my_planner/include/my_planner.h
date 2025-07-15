@@ -34,7 +34,7 @@ namespace my_planner
             bool pose_adjusting_;
             bool goal_reached_;
             // 新增：用于存储从参数服务器读取的值的成员变量
-            double path_linear_gain_, path_angular_gain_, lookahead_dist_;
+            double path_linear_x_gain_, path_linear_y_gain_, path_angular_gain_, lookahead_dist_;
             double goal_dist_threshold_, final_pose_linear_gain_, final_pose_angular_gain_, goal_yaw_tolerance_;
             int collision_check_lookahead_points_;
             int visualization_scale_factor_;

@@ -1,13 +1,14 @@
 # MyPlanner 局部规划器的参数配置
 
 # 路径跟随阶段的参数
-path_linear_gain: 2.0      # [比例系数] 路径跟随时的线速度比例增益
+path_linear_x_gain: 4.0      # [比例系数] 路径跟随时的x方向线速度比例增益
+path_linear_y_gain: 2      # [比例系数] 路径跟随时的y方向线速度比例增益
 path_angular_gain: 6.8     # [比例系数] 路径跟随时的角速度比例增益
 lookahead_dist: 0.2        # [米] 选取前方临时目标点的距离阈值
 
 # 目标点姿态调整阶段的参数
 goal_dist_threshold: 0.10  # [米] 判断已到达目标点附近并开始调整姿态的距离阈值
-final_pose_linear_gain: 2.5 # [比例系数] 最终姿态调整时的线速度比例增益
+final_pose_linear__x_gain: 2.5 # [比例系数] 最终姿态调整时的线速度比例增益
 final_pose_angular_gain: 1.5 # [比例系数] 最终姿态调整时的角速度比例增益
 goal_yaw_tolerance: 0.1    # [弧度] 到达目标点时允许的最终朝向误差
 
@@ -15,4 +16,4 @@ goal_yaw_tolerance: 0.1    # [弧度] 到达目标点时允许的最终朝向误
 collision_check_lookahead_points: 10 # [个] 向前检测路径点是否存在碰撞的点数
 visualization_scale_factor: 5        # [整数] 代价地图可视化时的放大倍数
 
-visualize_costmap: true  # 是否显示绘制的代价地图，设为 true 开启显示, 设为 false 关闭显示
+visualize_costmap: false  # 是否显示绘制的代价地图，设为 true 开启显示, 设为 false 关闭显示

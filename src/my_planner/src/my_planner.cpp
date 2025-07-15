@@ -36,12 +36,13 @@ namespace my_planner
         // 为此插件创建一个私有的节点句柄，用于访问其私有命名空间下的参数
         // 例如，如果 move_base 加载此插件并命名为 "MyPlanner", 
         // 那么私有命名空间就是 /move_base/MyPlanner
-        ros::NodeHandle private_nh("~/" + name);
+        ros::NodeHandle private_nh("~/move_base/MyPlanner" );
 
         ROS_INFO("为 %s 加载参数...", name.c_str());
 
         // 使用 .param() 方法读取参数。如果参数服务器上没有该参数，则使用第三个参数作为默认值。
-        private_nh.param("path_linear_gain", path_linear_gain_, 2.0);
+        private_nh.param("path_linear_x_gain", path_linear_x_gain_, 2.0);
+        private_nh.param("path_linear_y_gain", path_linear_y_gain_, 0.5);
         private_nh.param("path_angular_gain", path_angular_gain_, 6.8);
         private_nh.param("lookahead_dist", lookahead_dist_, 0.2);
         
@@ -53,6 +54,8 @@ namespace my_planner
         private_nh.param("collision_check_lookahead_points", collision_check_lookahead_points_, 10);
         private_nh.param("visualization_scale_factor", visualization_scale_factor_, 5);
         private_nh.param("visualize_costmap", visualize_costmap_, true);
+        ROS_INFO("加载参数path_linear_x_gain_=%f",path_linear_x_gain_);
+        ROS_INFO("加载参数path_linear_y_gain_=%f",path_linear_y_gain_);
     }
 
     std::vector<geometry_msgs::PoseStamped> global_plan_;
@@ -70,17 +73,17 @@ namespace my_planner
 
     bool MyPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
     {
+        // 获取代价地图的数据
+        costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
+        unsigned char* map_data = costmap->getCharMap();
+        unsigned int size_x = costmap->getSizeInCellsX();
+        unsigned int size_y = costmap->getSizeInCellsY();
+
+        // 使用 OpenCV 绘制代价地图
+        cv::Mat map_image;
         if (visualize_costmap_)
         {
-            // 只有当 visualize_costmap_ 为 true 时，才执行下面的绘图和显示代码
-            // 获取代价地图的数据
-            costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
-            unsigned char* map_data = costmap->getCharMap();
-            unsigned int size_x = costmap->getSizeInCellsX();
-            unsigned int size_y = costmap->getSizeInCellsY();
-
-            // 使用 OpenCV 绘制代价地图
-            cv::Mat map_image(size_y, size_x, CV_8UC3, cv::Scalar(128, 128, 128));
+            map_image.create(size_y, size_x, CV_8UC3);
             for (unsigned int y = 0; y < size_y; y++)
             {
                 for (unsigned int x = 0; x < size_x; x++)
@@ -142,10 +145,10 @@ namespace my_planner
         cv::flip(map_image, map_image, 0);//使用cvflip代替原本的for循环，运行速度更快
 
         // 显示代价地图
-        cv::namedWindow("Map");
-        cv::resize(map_image, map_image, cv::Size(size_y*5, size_x*5), 0, 0, cv::INTER_NEAREST);
-        cv::resizeWindow("Map", size_y*5, size_x*5);
-        cv::imshow("Map", map_image);
+        // cv::namedWindow("Map");
+        // cv::resize(map_image, map_image, cv::Size(size_y*5, size_x*5), 0, 0, cv::INTER_NEAREST);
+        // cv::resizeWindow("Map", size_y*5, size_x*5);
+        // cv::imshow("Map", map_image);
 
         int final_index = global_plan_.size()-1;
         geometry_msgs::PoseStamped pose_final;
@@ -189,15 +192,16 @@ namespace my_planner
             {
                 target_pose = pose_base;
                 target_index_ = i;
-                ROS_WARN("选择第 %d 个路径点作为临时目标，距离=%.2f",target_index_,dist);
+                // ROS_WARN("选择第 %d 个路径点作为临时目标，距离=%.2f",target_index_,dist);
                 break;
             }
 
             if(i == global_plan_.size()-1)
                 target_pose = pose_base; 
         }
-        cmd_vel.linear.x = target_pose.pose.position.x * path_linear_gain_;//小车运动速度比例系数
-        cmd_vel.angular.z = target_pose.pose.position.y * path_angular_gain_;
+        cmd_vel.linear.x = target_pose.pose.position.x * path_linear_x_gain_;//小车运动速度比例系数
+        cmd_vel.linear.y = target_pose.pose.position.y * path_linear_y_gain_;
+        cmd_vel.angular.z = target_pose.pose.position.y * path_angular_gain_;   
 
         cv::Mat plan_image(600, 600, CV_8UC3, cv::Scalar(0, 0, 0));        
         for(int i=0;i<global_plan_.size();i++)

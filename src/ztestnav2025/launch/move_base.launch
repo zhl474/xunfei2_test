@@ -13,19 +13,20 @@
     <rosparam file="$(find gazebo_nav)/config/dwa_local_planner_params.yaml" command="load" />-->
     <!-- <param name="base_local_planner" value="teb_local_planner/TebLocalPlannerROS" /> -->
     <param name="base_local_planner" value="my_planner/MyPlanner" />
-    <rosparam file="$(find my_planner)/config/my_planner_params.yaml" command="load" ns="move_base/MyPlanner" />
+
     <param name="controller_frequency" value="30.0" /><!--下面三行 -->
     <param name="controller_patience" value="10.0" />
     <param name="clearing_rotation_allowed" value="true" />
     <!-- <rosparam file="$(find ucar_nav)/launch/config/move_base/1/teb_local_planner_params_final.yaml" command="load" />race_navigation)/config/teb/ -->
-    <rosparam file="$(find ztestnav2025)/movebase_config/move_base_params.yaml" command="load" /><!-- race_navigation)/config/teb/ -->
+    <!-- <rosparam file="$(find ztestnav2025)/movebase_config/move_base_params.yaml" command="load" />race_navigation)/config/teb/ -->
     <rosparam file="$(find ztestnav2025)/movebase_config/costmap_common_params.yaml" command="load" ns = "global_costmap" /><!-- 其它参数 -->
     <rosparam file="$(find ztestnav2025)/movebase_config/costmap_common_params.yaml" command="load" ns = "local_costmap" /><!-- 其它参数 -->
     <!-- <rosparam file="$(find ucar_nav)/launch/config/move_base/2/global_planner_params.yaml" command="load" /> -->
     <rosparam file="$(find ztestnav2025)/movebase_config/base_global_planner_params1.yaml" command="load" />
     <rosparam file="$(find ztestnav2025)/movebase_config/local_costmap_params.yaml" command="load" />
     <rosparam file="$(find ztestnav2025)/movebase_config/global_costmap_params.yaml" command="load" />
-    <rosparam file="$(find ztestnav2025)/movebase_config/costmap_converter_params.yaml" command="load" />
+    <!-- <rosparam file="$(find ztestnav2025)/movebase_config/costmap_converter_params.yaml" command="load" /> -->
+    <rosparam file="$(find my_planner)/config/my_planner_params.yaml" command="load" ns="MyPlanner" />
   </node>
   <node pkg="line_follow" type="line_ros.py" name="line_ros" output="screen"/>
 </launch>
