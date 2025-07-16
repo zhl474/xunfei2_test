@@ -40,6 +40,10 @@ namespace my_planner
             int collision_check_lookahead_points_;
             int visualization_scale_factor_;
             bool visualize_costmap_;
+            // ================= 曲率动态速度控制的成员变量 =================
+            
+            double curvature_damping_factor_;   // 曲率影响的阻尼因子
+            double curvature_penalty_gain_;     // 新增：曲率惩罚增益，用于调节最大曲率对速度的影响
     };
 } // namespace my_planner
  

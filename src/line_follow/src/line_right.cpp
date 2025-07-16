@@ -8,6 +8,9 @@
 #include <cmath>
 #include <sstream>
 #include "line_follow/line_follow.h"
+#include "ztestnav2025/getpose_server.h"
+#include "ztestnav2025/lidar_process.h"
+#include "ztestnav2025/set_speed.h"
 
 
 using namespace cv;
@@ -437,6 +440,10 @@ double error_calculater(vector<Point>& traced_points,int ystart,Mat& visualizeIm
     }
 }
 
+void avoid(){
+    int a;
+}
+
 bool line_server_callback(line_follow::line_follow::Request& req,line_follow::line_follow::Response& resp){
     FileStorage fs("/home/ucar/ucar_car/src/line_follow/camera_info/pinhole.yaml", FileStorage::READ);
     if (!fs.isOpened()) {
@@ -446,6 +453,23 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
     ros::NodeHandle nh;
     ros::Publisher cmd_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
     geometry_msgs::Twist twist;
+    ROS_INFO("等待lidar_process服务中---");
+    ros::ServiceClient client_line_board = nh.serviceClient<ztestnav2025::lidar_process>("/lidar_process/lidar_process");
+    ztestnav2025::lidar_process board;
+    board.request.lidar_process_start = -2;
+    client_line_board.waitForExistence();
+    ROS_INFO("等待坐标获取服务中---");
+    ros::ServiceClient pose_client = nh.serviceClient<ztestnav2025::getpose_server>("getpose_server");
+    ztestnav2025::getpose_server pose;
+    pose.request.getpose_start = 1;
+    pose_client.waitForExistence();
+    ROS_INFO("等待movebase服务中---");
+    ros::ServiceClient client_movebase = nh.serviceClient<ztestnav2025::set_speed>("set_speed");
+    ztestnav2025::set_speed target_info;
+    target_info.request.movebase_flag = true;
+    client_movebase.waitForExistence();
+
+
     Mat cameraMatrix, distCoeffs;
     fs["camera_matrix"] >> cameraMatrix;
     fs["distortion_coefficients"] >> distCoeffs;
@@ -499,6 +523,15 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
     int width = 640;
     int scan_rows = 180;  // 向上搜索的行数
     while(ros::ok()){
+        //----------------------------------避障逻辑----------------------------//
+        client_line_board.call(board);
+        pose_client.call(pose);
+        if(board.response.lidar_results[0] != -1){
+            avoid();
+        }
+
+
+        //----------------------------------巡线逻辑----------------------------//
         displayStream.str("");
         cap.read(image);
         if (image.empty()) continue;

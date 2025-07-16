@@ -177,7 +177,7 @@ int main() {
     cout << "Traffic Light Status: " << status << endl;
 
     // 可视化结果（可选）
-    imshow("Detection Result", image);
+    imshow("Detection Result", image);//
     waitKey(0);
 
     return 0;

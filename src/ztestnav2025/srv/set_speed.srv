@@ -1,4 +1,8 @@
 geometry_msgs/Twist target_twist
 bool work
+float32 target_x
+float32 target_y
+float32 target_yaw
+bool movebase_flag
 ---
 bool success

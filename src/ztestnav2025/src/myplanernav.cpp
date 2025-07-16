@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
     MoveBaseClient ac("move_base", true); 
     tf2::Quaternion q;  
     //等待action回应
-    while(!ac.waitForServer(ros::Duration(5.0))){
+    while(!ac.waitForServer()){//这里之前只有等待五秒,
         ROS_INFO("等待movebase服务中---");
     } 
     move_base_msgs::MoveBaseGoal goal;
@@ -180,8 +180,8 @@ int main(int argc, char *argv[])
 
     //--------------------------------------走廊环境导航，发布目标点--------------------------------//
     ROS_INFO("走廊环境导航开始");
-    mecanumController.rotateCircle(3.14,0.5);
-    mecanumController.rotateCircle(3.14,0.5);//
+    // mecanumController.rotateCircle(3.14,0.5);
+    // mecanumController.rotateCircle(3.14,0.5);
     // ros::Time start_time = ros::Time::now();
     // geometry_msgs::Twist twist;
     // twist.angular.z = 2;
