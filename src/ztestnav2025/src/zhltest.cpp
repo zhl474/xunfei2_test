@@ -79,7 +79,7 @@ int main(int argc, char *argv[]){
     pose_result.request.getpose_start = 1;
     poseget_client.waitForExistence();
 
-    ROS_INFO("走廊环境导航开始");
+    // ROS_INFO("走廊环境导航开始");
     // mecanumController.rotateCircle(3.14,1,0.6);
     // mecanumController.rotateCircle(3.14,1,0.6);
 
@@ -111,7 +111,7 @@ int main(int argc, char *argv[]){
     //     // waitForContinue();
     //     // mecanumController.turn_and_find(1,1,2,0.3);
     //     waitForContinue();
-    mecanumController.adjust(3,0.4);
+    mecanumController.adjust(1,0.4);
     //     waitForContinue();
     //     if(mecanumController.forward(2,0.3)){//直接前进，直到目标检测框高超过230
     //         flag = 1;

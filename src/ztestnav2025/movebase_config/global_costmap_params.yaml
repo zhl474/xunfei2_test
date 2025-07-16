@@ -10,7 +10,7 @@ global_costmap:
   publish_frequency: 10.0
 
   cost_scaling_factor: 16.0     #22.0
-  inflation_radius: 0.25         #0.7 注：这里的参数和common_params里面的参数重复了，这里的会把前者的参数覆盖掉
+  inflation_radius: 0.22         #0.7 注：这里的参数和common_params里面的参数重复了，这里的会把前者的参数覆盖掉
 
   
   static_map: true

@@ -64,7 +64,7 @@ namespace my_planner
     bool goal_reached_; 
     bool MyPlanner::setPlan(const std::vector<geometry_msgs::PoseStamped>& plan)
     {
-        
+        ROS_INFO("SETPLAN");
         target_index_ = 0;
         global_plan_ = plan;
         pose_adjusting_ = false;
@@ -162,118 +162,26 @@ namespace my_planner
             cv::imshow("Map", map_image);
         }
         
-        //--------------------------加入了初始位姿调整的导航代码-------------------------
-        // // 检查路径是否为空，防止后续访问越界initial_rotation_done_
-        // if(global_plan_.empty()) {
-        //     ROS_WARN("全局路径为空，无法计算速度指令。initial_rotation_done_ = false;");
-        //     return false;
-        // }
+        
+
+
+
+
+
 
         
-        // if (!initial_rotation_done_)//如果没有进行过初始位姿调整
-        // {
-        //     // 初始位姿调整
-        //     ROS_INFO("开始初始位姿调整");
-        //     geometry_msgs::PoseStamped first_point;
-        //     try {
-        //         global_plan_[5].header.stamp = ros::Time(0);
-        //         tf_listener_->transformPose("base_link", global_plan_[5], first_point);
-        //     } catch(tf::TransformException& ex) {
-        //         ROS_ERROR("初始旋转TF变换失败: %s", ex.what());
-        //         return false;
-        //     }
-
-        //     double angle_to_first_point = atan2(first_point.pose.position.y, first_point.pose.position.x);
-
-        //     // 使用与最终姿态调整相同的参数
-        //     if (std::abs(angle_to_first_point) < goal_yaw_tolerance_) {
-        //         ROS_INFO("初始旋转完成。");
-        //         initial_rotation_done_ = true; // 旋转完成，设置标志位
-        //         cmd_vel.linear.x = 0.0;
-        //         cmd_vel.angular.z = 0.0;
-        //     } else {
-        //         cmd_vel.linear.x = 0.0;
-        //         cmd_vel.linear.y = 0.0;
-        //         // 使用与最终姿态调整相同的参数
-        //         cmd_vel.angular.z = angle_to_first_point * final_pose_angular_gain_;
-        //     }
-        // }
-        // else if (pose_adjusting_)
-        // {   if(initial_rotation_done_ == true)
-        //     // 阶段3: 末端位姿调整 (您原有的代码)
-        //     geometry_msgs::PoseStamped pose_final;
-        //     global_plan_.back().header.stamp = ros::Time(0);
-        //     tf_listener_->transformPose("base_link", global_plan_.back(), pose_final);
-
-        //     double final_yaw = tf::getYaw(pose_final.pose.orientation);
-        //     ROS_WARN_THROTTLE(1.0, "调整最终姿态，final_yaw = %.2f", final_yaw);
-        //     cmd_vel.linear.x = pose_final.pose.position.x * final_pose_linear_gain_;
-        //     cmd_vel.angular.z = final_yaw * final_pose_angular_gain_;
-
-        //     if(abs(final_yaw) < goal_yaw_tolerance_)
-        //     {
-        //         goal_reached_ = true;
-        //         ROS_WARN("到达终点！");
-        //         cmd_vel.linear.x = 0;
-        //         cmd_vel.angular.z = 0;
-        //     }
-        // }
-        // else
-        // {
-        //     // 正常路径跟踪
-            
-        //     // 首先，检查是否应该进入“末端位姿调整”状态
-        //     geometry_msgs::PoseStamped pose_final;
-        //     global_plan_.back().header.stamp = ros::Time(0);
-        //     tf_listener_->transformPose("base_link", global_plan_.back(), pose_final);
-        //     double dx = pose_final.pose.position.x;
-        //     double dy = pose_final.pose.position.y;
-        //     double dist = std::sqrt(dx*dx + dy*dy);
-        //     if(dist < goal_dist_threshold_)
-        //     {
-        //         pose_adjusting_ = true; // 条件满足，设置标志位，下一个循环将进入上面的 if 分支
-        //     }
-
-        //     // 其次，执行路径跟踪
-        //     geometry_msgs::PoseStamped target_pose;
-        //     for(int i=target_index_; i < global_plan_.size(); i++)
-        //     {
-        //         geometry_msgs::PoseStamped pose_base;
-        //         global_plan_[i].header.stamp = ros::Time(0);
-        //         tf_listener_->transformPose("base_link", global_plan_[i], pose_base);
-        //         double dx_t = pose_base.pose.position.x;
-        //         double dy_t = pose_base.pose.position.y;
-        //         double dist_t = std::sqrt(dx_t*dx_t + dy_t*dy_t);
-        //         if (dist_t > lookahead_dist_)
-        //         {
-        //             target_pose = pose_base;
-        //             target_index_ = i;
-        //             break;
-        //         }
-        //         if(i == global_plan_.size()-1)
-        //             target_pose = pose_base;
-        //     }
-
-        //     cmd_vel.linear.x = target_pose.pose.position.x * path_linear_x_gain_;
-        //     cmd_vel.linear.y = target_pose.pose.position.path_linear_x_gain_y * path_linear_y_gain_;
-        //     cmd_vel.angular.z = atan2(target_pose.pose.position.y, target_pose.pose.position.x) * path_angular_gain_;
-        // }
-
-
-
-
-
-
-
-
-
-
-
-        //-----------------------原有导航代码，修改太麻烦直接注释-----------------------------
         int final_index = global_plan_.size()-1;
         geometry_msgs::PoseStamped pose_final;
         global_plan_[final_index].header.stamp = ros::Time(0);
         tf_listener_->transformPose("base_link",global_plan_[final_index],pose_final);
+        // try {
+        //     global_plan_[final_index].header.stamp = ros::Time(0);
+        //     tf_listener_->transformPose("base_link", global_plan_[final_index], pose_final);
+        // } catch (const tf::TransformException& ex) {
+        //     ROS_ERROR("[MyPlanner-FinalPose] TF变换失败!!!! 原因: %s", ex.what());
+        //     cmd_vel.linear.x = 0; cmd_vel.angular.z = 0;
+        //     return true;
+        // }
         if(pose_adjusting_ == false)//如果未进入姿态调整状态
         {
             double dx = pose_final.pose.position.x;
@@ -285,9 +193,10 @@ namespace my_planner
         if(pose_adjusting_ == true)
         {
             double final_yaw = tf::getYaw(pose_final.pose.orientation);
-            ROS_WARN("调整最终姿态，final_yaw = %.2f",final_yaw);
+            // ROS_WARN("调整最终姿态，final_yaw = %.2f",final_yaw);
             cmd_vel.linear.x = pose_final.pose.position.x * final_pose_linear_gain_;//到达目标点附近后调整位姿的速度比例系数
-            cmd_vel.angular.z = std::min(final_yaw * final_pose_angular_gain_,0.5);
+            if(final_yaw>0) cmd_vel.angular.z = std::max(std::min(final_yaw * final_pose_angular_gain_,2.5),0.6);
+            else cmd_vel.angular.z = std::min(std::max(final_yaw * final_pose_angular_gain_,-2.5),-0.6);
             if(abs(final_yaw) < goal_yaw_tolerance_)
             {
                 goal_reached_ = true;
@@ -305,6 +214,14 @@ namespace my_planner
             geometry_msgs::PoseStamped pose_base;
             global_plan_[i].header.stamp = ros::Time(0);
             tf_listener_->transformPose("base_link",global_plan_[i],pose_base);
+            // try {
+            //     global_plan_[i].header.stamp = ros::Time(0);
+            //     tf_listener_->transformPose("base_link", global_plan_[i], pose_base);
+            // } catch (const tf::TransformException& ex) {
+            //     ROS_ERROR("[MyPlanner-TargetSearch] TF变换失败!!!! 原因: %s", ex.what());
+            //     cmd_vel.linear.x = 0; cmd_vel.angular.z = 0;
+            //     return true;
+            // }
             double dx = pose_base.pose.position.x;
             double dy = pose_base.pose.position.y;
             double dist = std::sqrt(dx*dx + dy*dy);
@@ -317,13 +234,13 @@ namespace my_planner
                 break;
             }
 
-            if(i == global_plan_.size()-1)
+            if(i == global_plan_.size()-1)//  如果最远的点也没超出阈值，就取最远的点
                 target_pose = pose_base; 
         }
         if (!initial_rotation_done_) //如果还未进行过初始姿态调整，说明是第一个目标点
         {
             double angle_to_target = atan2(target_pose.pose.position.y, target_pose.pose.position.x);
-            ROS_INFO("开始进行初始姿态调整");
+            // ROS_INFO("开始进行初始姿态调整");
             if (std::abs(angle_to_target) < goal_yaw_tolerance_) {
                 ROS_INFO("初始姿态已对准，设置标志位并开始正常行驶。");
                 initial_rotation_done_ = true;
@@ -333,8 +250,8 @@ namespace my_planner
                 
                 cmd_vel.linear.x = 0.0;
                 cmd_vel.linear.y = 0.0;
-                
-                cmd_vel.angular.z = std::max(std::min(angle_to_target * final_pose_angular_gain_,0.5),2.0); // 与最终姿态调整共用参数
+                if(angle_to_target>0) cmd_vel.angular.z = std::min(std::max(angle_to_target * final_pose_angular_gain_,0.6),2.5); // 与最终姿态调整共用参数
+                else cmd_vel.angular.z = std::max(std::min(angle_to_target * final_pose_angular_gain_,-0.6),-2.5);
                 
                 return true; 
             }

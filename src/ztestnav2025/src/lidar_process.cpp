@@ -63,7 +63,7 @@ private:
                     slope.push_back((result[i+1][0]-result[i][0])/(result[i+1][1]-result[i][1])*-1);//这里是x/y，免得斜率变成无穷大了
                 }
                 std::sort(slope.begin(), slope.end());
-                ROS_INFO("板子斜率%f",slope[effective_point/2]);
+                // ROS_INFO("板子斜率%f",slope[effective_point/2]);
                 resp.lidar_results.push_back(slope[effective_point/2]);
                 return true;
             }

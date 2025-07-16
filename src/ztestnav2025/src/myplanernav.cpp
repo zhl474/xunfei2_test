@@ -180,8 +180,8 @@ int main(int argc, char *argv[])
 
     //--------------------------------------走廊环境导航，发布目标点--------------------------------//
     ROS_INFO("走廊环境导航开始");
-    mecanumController.rotateCircle(3.14,1,0.6);
-    mecanumController.rotateCircle(3.14,1,0.6);
+    mecanumController.rotateCircle(3.14,0.5);
+    mecanumController.rotateCircle(3.14,0.5);//
     // ros::Time start_time = ros::Time::now();
     // geometry_msgs::Twist twist;
     // twist.angular.z = 2;
@@ -236,7 +236,8 @@ int main(int argc, char *argv[])
         }
         where_board.request.lidar_process_start = 1;//雷达获取前方障碍物距离
         client_find_board.call(where_board);
-        if(where_board.response.lidar_results[0] <2.2){
+        ROS_INFO("查看雷达距离%f",where_board.response.lidar_results[0]);
+        if(where_board.response.lidar_results[0] <3.0){
             double target_x = (where_board.response.lidar_results[0]-0.6)*cos(pose_result.response.pose_at[2])+pose_result.response.pose_at[0];
             double target_y = (where_board.response.lidar_results[0]-0.6)*sin(pose_result.response.pose_at[2])+pose_result.response.pose_at[1];
             ROS_INFO("目的地%f,%f,%f",target_x,target_y,pose_result.response.pose_at[2]);
@@ -245,6 +246,9 @@ int main(int argc, char *argv[])
             if(mecanumController.forward(board_class,0.3)){//直接前进，直到目标检测框高超过230
                 flag = 1;
             }
+        }
+        else{
+            ROS_INFO("第一点找板板子，但是距离太远不予理会");
         }
     }
     ROS_INFO("第一个找板点是否找到板子%d",flag);
@@ -288,7 +292,7 @@ int main(int argc, char *argv[])
             }
             where_board.request.lidar_process_start = 1;//雷达获取前方障碍物距离
             client_find_board.call(where_board);
-            if(where_board.response.lidar_results[0] <2.3){
+            if(where_board.response.lidar_results[0] <3.0){
                 double target_x = (where_board.response.lidar_results[0]-0.6)*cos(pose_result.response.pose_at[2])+pose_result.response.pose_at[0];
                 double target_y = (where_board.response.lidar_results[0]-0.6)*sin(pose_result.response.pose_at[2])+pose_result.response.pose_at[1];
                 ROS_INFO("目的地%f,%f,%f",target_x,target_y,pose_result.response.pose_at[2]);

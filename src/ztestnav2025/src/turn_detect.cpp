@@ -32,7 +32,11 @@ MecanumController::MecanumController(ros::NodeHandle& nh) :
 
 void MecanumController::detect(std::vector<int>& result, int object_num){//封装目标检测功能
     start_detect_.request.detect_start = object_num;//要先传个-1把摄像头打开
+    // ros::Time test = ros::Time::now();
     bool flag = detect_client_.call(start_detect_);
+    // if ((ros::Time::now()-test).toSec()>0.1){
+    //     ROS_WARN("目标检测超时%f",(ros::Time::now()-test).toSec());
+    // }
     if (flag){
         result[0] = start_detect_.response.x0;result[1] = start_detect_.response.y0;result[2] = start_detect_.response.x1;result[3] = start_detect_.response.y1;result[4] = start_detect_.response.class_name;
         // ROS_INFO("结果：%d,%d,%d,%d,%d",start_detect_.response.class_name,start_detect_.response.x0,start_detect_.response.y0,start_detect_.response.x1,start_detect_.response.y1);
@@ -55,7 +59,7 @@ void MecanumController::cap_close(){
     }
 }
 
-void MecanumController::rotateCircle(double rotate,int direction, double angular_speed) {//控制小车运动，rotate是弧度,direction逆时针是正向
+void MecanumController::rotateCircle(double rotate, double angular_speed) {//控制小车运动，rotate是弧度
     geometry_msgs::Twist twist;
     ros::Rate rate(20);     // 控制频率20Hz
 
@@ -79,7 +83,9 @@ void MecanumController::rotateCircle(double rotate,int direction, double angular
         }
 
         // 发送运动指令（参考网页1的速度发布逻辑）
-        twist.angular.z = std::min(std::max(angular_speed * direction*yaw_error,0.3),2.0);
+        if(angular_speed>0) twist.angular.z = std::min(std::max(angular_speed * (yaw_error+0.2),0.5),2.0);
+        else twist.angular.z = std::max(std::min(angular_speed * (yaw_error+0.2),-0.5),-2.0);
+        ROS_INFO("误差%f速度%f",yaw_error,twist.angular.z);
         cmd_pub_.publish(twist);
         rate.sleep();
     }
@@ -193,7 +199,7 @@ bool MecanumController::forward(int z,double forward_speed){
 }
 
 bool MecanumController::adjust(int z,double adjust_speed){
-    result = {-1,-1,-1,-1,-1,-1};
+    result = {-1,-1,-1,-1,-1,-1};//
     double integral = 0, prev_error = 0;
     double lidar_integral = 0, lidar_prev_error = 0;
     set_speed_.request.target_twist.linear.x = 0;
@@ -205,37 +211,31 @@ bool MecanumController::adjust(int z,double adjust_speed){
     double limit_change = 1.0;
     while(ros::ok()){
         detect(result, z);     // 持续检测目标
-        // ROS_INFO("%d",result[4]);
         if(result[4] < (z-1)*3 || result[4] >= z*3){
             continue;
         }  // 目标丢失则退出
         int center_x = (result[0]+result[2])/2;
-        ROS_INFO("目标中心:%d",center_x);
         if(std::abs(center_x - img_width/2) < 20){
             integral = 0;
             ROS_INFO("在视野中心");
             set_speed_.request.target_twist.linear.y = 0;
             set_speed_client_.call(set_speed_);
         } 
-        if(std::abs(center_x - img_width/2) > 50){
-            integral = 0;//差距过大调节靠p
-        }
         double error = (img_width/2.0 - center_x)/100; 
-        
+        ROS_INFO("error:%f",error);
         // 离散PID计算
-        integral += error;       // dt=1/100≈0.1加快积分，并且限制积分幅度
-        integral = clamp(integral, -5.0, 5.0);
-        ROS_INFO("积分数值:%f",integral);
+        integral += error*0.2;      
+        integral = clamp(integral, -1.0, 1.0);
         double derivative = (error - prev_error)/0.2;
-        double output = Kp_*error + Ki_*integral + Kd_*derivative;
-        ROS_INFO("P:%f",Kp_*error);
-        ROS_INFO("I:%f",Ki_*integral);
-        ROS_INFO("D:%f",Kd_*derivative);
-        output = clamp(output, -1.0, 1.0)*limit_change;
-        ROS_INFO("速度发布:%f",output*0.1);
+        double output = 0.027*error + 0.05*integral + 0.007*derivative;
+        ROS_INFO("P:%f",0.027*error);
+        ROS_INFO("I:%f",0.05*integral);
+        ROS_INFO("D:%f",0.007*derivative);
+        output = clamp(output, -0.15, 0.15);
         prev_error = error;
+        ROS_INFO("速度发布:%f",output);
         // 执行（限制输出范围）
-        set_speed_.request.target_twist.linear.y = 0.1*output;
+        set_speed_.request.target_twist.linear.y = output;
 
         double lidar_output;
         if(adjust_client_.call(board_slope)){
@@ -248,10 +248,8 @@ bool MecanumController::adjust(int z,double adjust_speed){
                 set_speed_client_.call(set_speed_);
             } 
             lidar_integral += board_slope.response.lidar_results[0] * 0.15;
-            double lidar_derivative = (board_slope.response.lidar_results[0] - lidar_prev_error)/0.15;
-            lidar_output = Kp_*board_slope.response.lidar_results[0] + Ki_*lidar_integral + Kd_*lidar_derivative;
+            lidar_output = Kp_*board_slope.response.lidar_results[0] + Ki_*lidar_integral;
             lidar_output = clamp(lidar_output, -1.0, 1.0);
-            lidar_prev_error = board_slope.response.lidar_results[0];
         }
         if(std::abs(center_x - img_width/2) < 20 && std::abs(board_slope.response.lidar_results[0]) < 0.05){
             count++;
