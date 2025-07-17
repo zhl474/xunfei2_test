@@ -790,6 +790,13 @@ void baseBringup::processIMU(uint8_t head_type)
         Eigen::AngleAxisd( 3.14159, Eigen::Vector3d::UnitX());
       
     Eigen::Quaterniond q_out =  q_r * q_ahrs * q_rr;
+
+
+    //四元数归一化，防止base_start启动时报错
+    q_out.normalize();
+    // ROS_INFO("w=%f,x=%f,y=%f,z=%f",q_out.w(),q_out.x(),q_out.y(),q_out.z());
+    
+
     imu_data.orientation.w = q_out.w();
     imu_data.orientation.x = q_out.x();
     imu_data.orientation.y = q_out.y();
@@ -1054,11 +1061,18 @@ void baseBringup::processOdometry(){
   //th_ += delta_th;
   double yaw1=tf::getYaw(imu_data1.orientation);
   double yaw2=tf::getYaw(imu_data.orientation);
+
+  //这里角度处理有误，把弧度当角度处理了
   double yaw=yaw2 - yaw1;
-  if(yaw > 180){
-    yaw = yaw - 360;
-  }else if(yaw < -180){
-    yaw = yaw + 360;
+  // if(yaw > 180){
+  //   yaw = yaw - 360;
+  // }else if(yaw < -180){
+  //   yaw = yaw + 360;
+  // }
+  if(yaw > 3.1416){
+    yaw = yaw - 6.28318;
+  }else if(yaw < -3.1416){
+    yaw = yaw + 6.28318;
   }
   th_ = yaw;
   lock.unlock();

@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  tf
   # cv_bridge
   sensor_msgs
   # image_transport
@@ -162,7 +163,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 
 add_executable(line_right src/line_right.cpp)
-# add_executable(line_server src/line_func.cpp)
+add_executable(dynamic_awb src/dynamic_awb.cpp)
 # add_executable(line_test src/line_test.cpp)
 
 # 在add_executable之后添加以下内容调试用
@@ -188,10 +189,10 @@ target_link_libraries(line_right
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
 )
-# target_link_libraries(line_server
-#   ${catkin_LIBRARIES}
-#   ${OpenCV_LIBS}
-# )
+target_link_libraries(dynamic_awb
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
 # target_link_libraries(line_test
 #   ${catkin_LIBRARIES}
 #   ${OpenCV_LIBS}

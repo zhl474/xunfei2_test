@@ -12,6 +12,9 @@
 #include "ztestnav2025/lidar_process.h"
 #include "ztestnav2025/set_speed.h"
 
+#include <tf/tf.h>
+#include <tf/transform_listener.h>
+#include <tf/transform_datatypes.h>
 
 using namespace cv;
 using namespace std;
@@ -297,7 +300,7 @@ bool find_left_edge(Mat gray_img,Point& left_edge_point,int brightness_threshold
     Mat blurred = gray_img;
     // GaussianBlur(gray_img, blurred, cv::Size(5,5), 0);//这个点很重要，务必不能找错
     for (int y = height - 1; y >= 69; y--) {
-        for (int x = width -1; x > 50; x--) {
+        for (int x = width -1; x > 150; x--) {
             if (blurred.at<uchar>(y, x) >= brightness_threshold) {
                 left_edge_point=Point(x, y);
                 flag = true;
@@ -440,10 +443,6 @@ double error_calculater(vector<Point>& traced_points,int ystart,Mat& visualizeIm
     }
 }
 
-void avoid(){
-    int a;
-}
-
 bool line_server_callback(line_follow::line_follow::Request& req,line_follow::line_follow::Response& resp){
     FileStorage fs("/home/ucar/ucar_car/src/line_follow/camera_info/pinhole.yaml", FileStorage::READ);
     if (!fs.isOpened()) {
@@ -468,6 +467,9 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
     ztestnav2025::set_speed target_info;
     target_info.request.movebase_flag = true;
     client_movebase.waitForExistence();
+    ROS_INFO("tf变换");
+    tf::TransformListener* tf_listener_;
+    tf_listener_ = new tf::TransformListener();
 
 
     Mat cameraMatrix, distCoeffs;
@@ -527,7 +529,23 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
         client_line_board.call(board);
         pose_client.call(pose);
         if(board.response.lidar_results[0] != -1){
-            avoid();
+            double d = std::sqrt(1 + board.response.lidar_results[3]*board.response.lidar_results[3]);
+            geometry_msgs::PointStamped lidar_point;
+            lidar_point.header.frame_id = "laser_frame";
+            lidar_point.point.x = board.response.lidar_results[1] + 0.1*board.response.lidar_results[3]/d;
+            lidar_point.point.y = board.response.lidar_results[2] - 0.1/d;
+            lidar_point.point.z = std::atan(1/board.response.lidar_results[3]);
+            geometry_msgs::PointStamped point_base;
+            tf_listener_->transformPoint("map", lidar_point, point_base);
+            ROS_INFO("坐标变换结果: (%.2f, %.2f, %.2f)",
+                    point_base.point.x, 
+                    point_base.point.y, 
+                    point_base.point.z);
+            
+            target_info.request.target_x = board.response.lidar_results[1]+ 0.1*board.response.lidar_results[3]/d + pose.response.pose_at[0];
+            target_info.request.target_y = board.response.lidar_results[2]- 0.1/d + pose.response.pose_at[1];
+            target_info.request.target_yaw = std::atan(1/board.response.lidar_results[3])-1.57+pose.response.pose_at[2];
+            client_movebase.call(target_info);
         }
 
 
@@ -547,7 +565,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
         Point right_edge_point = Point(-1, -1);//
         int last_scanned_y;
         find_track_edge(gray_img,right_edge_point, scan_rows, brightness_threshold);
-        if (right && (first_point_x_last - right_edge_point.x>90 || (right_edge_point.x < 380&&right_edge_point.y<360))){//如果右边线丢了或者右边界首个点发生剧烈左移动
+        if (right && (first_point_x_last - right_edge_point.x>90 || (right_edge_point.x < 380&&right_edge_point.y<360))&&pose.response.pose_at[0]>3.0){//如果右边线丢了或者右边界首个点发生剧烈左移动
             right = false;
             // ROS_INFO("进入左巡线逻辑");
         }
@@ -660,9 +678,10 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
 }
 int main(int argc, char **argv) {
     setlocale(LC_ALL,"");
-    ros::init(argc, argv, "line");
+    ros::init(argc, argv, "line_right");
     ros::NodeHandle nh_;
     ros::ServiceServer line_server = nh_.advertiseService("line_server", line_server_callback);
     ROS_INFO("视觉巡线初始化");
+    ros::spin();
     return 0;
 }

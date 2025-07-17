@@ -28,5 +28,5 @@
     <!-- <rosparam file="$(find ztestnav2025)/movebase_config/costmap_converter_params.yaml" command="load" /> -->
     <rosparam file="$(find my_planner)/config/my_planner_params.yaml" command="load" ns="MyPlanner" />
   </node>
-  <node pkg="line_follow" type="line_ros.py" name="line_ros" output="screen"/>
+  <node pkg="line_follow" type="line_right" name="line_right" output="screen"/>
 </launch>

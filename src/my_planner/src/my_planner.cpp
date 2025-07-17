@@ -305,7 +305,7 @@ namespace my_planner
         dynamic_x_gain = path_linear_x_gain_  * exp((avrage_curvature-a_)/k_);
 
         // 对动态增益进行限幅，保证安全和稳定
-        dynamic_x_gain = std::max(1.5, dynamic_x_gain); // 最小增益，防止失速
+        dynamic_x_gain = std::max(2.0, dynamic_x_gain); // 最小增益，防止失速
         // dynamic_x_gain = std::min(dynamic_x_gain, path_linear_x_gain_); // 最大增益，防止飙车不需要了，指数本来就限幅
         // ROS_INFO("当前dynamic_x_gain=%f",dynamic_x_gain);
         ROS_INFO("当前平均curvature=%f",avrage_curvature);

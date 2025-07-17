@@ -29,44 +29,41 @@ private:
         num_points_ = ranges_.size();
         std::vector<std::vector<float>> result;
         float theta = 0;
-        if (req.lidar_process_start!=-1 && req.lidar_process_start!=0){//这部分是找板用的雷达处理代码，后面是巡线避障的雷达处理代码
-            if(req.lidar_process_start==1){//视觉发现板子，雷达查看正前方数据
-                int effective_point = 0;
-                std::vector<float> disdance;
-                for(int i=158;i<=178;i++){//只看正前方的点
-                    if(std::isinf(ranges_[i]) || ranges_[i] == 0.0f) continue;
-                    effective_point++;
-                    disdance.push_back(ranges_[i]);
-                }
-                ROS_INFO("有效点数%d",effective_point);
-                std::sort(disdance.begin(), disdance.end());
-                ROS_INFO("距离%f",disdance[effective_point/2]);//中位数
-                resp.lidar_results.push_back(disdance[effective_point/2]);
-                return true;
+        if(req.lidar_process_start==1){//视觉发现板子，雷达查看正前方数据
+            int effective_point = 0;
+            std::vector<float> disdance;
+            for(int i=158;i<=178;i++){//只看正前方的点
+                if(std::isinf(ranges_[i]) || ranges_[i] == 0.0f) continue;
+                effective_point++;
+                disdance.push_back(ranges_[i]);
             }
+            ROS_INFO("有效点数%d",effective_point);
+            std::sort(disdance.begin(), disdance.end());
+            ROS_INFO("距离%f",disdance[effective_point/2]);//中位数
+            resp.lidar_results.push_back(disdance[effective_point/2]);
+            return true;
+        }
 
-            if(req.lidar_process_start==2){//到达板前，雷达对准
-                int effective_point = 0;
-                for (int i=158;i<=178;i++) {// 将雷达数据转化为xy坐标系
-                    if (std::isinf(ranges_[i]) || ranges_[i] == 0.0f) {
-                        continue;
-                    }
-                    theta = i * angle_step;
-                    effective_point++;
-                    result.push_back({
-                        ranges_[i] * cos(theta) * -1, // x坐标与小车同向
-                        ranges_[i] * sin(theta) * -1  // y坐标朝左
-                    });
+        if(req.lidar_process_start==2){//到达板前，雷达对准
+            int effective_point = 0;
+            for (int i=158;i<=178;i++) {// 将雷达数据转化为xy坐标系
+                if (std::isinf(ranges_[i]) || ranges_[i] == 0.0f) {
+                    continue;
                 }
-                std::vector<double> slope;
-                for (int i=0;i<effective_point-1;i++){
-                    slope.push_back((result[i+1][0]-result[i][0])/(result[i+1][1]-result[i][1])*-1);//这里是x/y，免得斜率变成无穷大了
-                }
-                std::sort(slope.begin(), slope.end());
-                ROS_INFO("板子斜率%f",slope[effective_point/2]);
-                resp.lidar_results.push_back(slope[effective_point/2]);
-                return true;
+                theta = i * angle_step;
+                effective_point++;
+                result.push_back({
+                    ranges_[i] * cos(theta) * -1, // x坐标与小车同向
+                    ranges_[i] * sin(theta) * -1  // y坐标朝左
+                });
             }
+            std::vector<double> slope;
+            for (int i=0;i<effective_point-1;i++){
+                slope.push_back((result[i+1][0]-result[i][0])/(result[i+1][1]-result[i][1])*-1);//这里是x/y，免得斜率变成无穷大了
+            }
+            std::sort(slope.begin(), slope.end());
+            ROS_INFO("板子斜率%f",slope[effective_point/2]);
+            resp.lidar_results.push_back(slope[effective_point/2]);
             return true;
         }
     //---------------------------新增的模式：为避障获取精确前方距离和角度---------------------
@@ -176,7 +173,8 @@ private:
         //         return true;
         //     }
         // }
-        else if(req.lidar_process_start==-2){//视觉巡线区的雷达处理代码第二版，考虑到雷达丢数据
+        if(req.lidar_process_start==-2){//视觉巡线区的雷达处理代码第二版，考虑到雷达丢数据
+            ROS_INFO("雷达参数-2");
             int effective_point = 0;
             double average_x = 0;
             double average_y = 0;
@@ -185,45 +183,61 @@ private:
             bool flag = 1;
             int count = 168;
             int failed_count = 0;
+
             while(flag){
                 count++;
-                if (count>332) break;
+                if (count>332 || failed_count > 6) break;
                 if(std::isinf(ranges_[count]) || ranges_[count] == 0.0f) {
+                    failed_count++;
                     continue;
                 }
-                if (fabs(ranges_[count+1]-ranges_[count])>0.2) failed_count++;
-                if (failed_count > 6) break;
+                if ((fabs(ranges_[count]-ranges_[count-failed_count-1])>0.2) || ranges_[count]>0.8) {
+                    failed_count++;
+                    continue;
+                }
+                failed_count = 0;
                 theta = count * angle_step;
                 cv::Point2f pt(ranges_[count] * cos(theta) * -1, ranges_[count] * sin(theta) * -1);//因为180度才是正前方，差了一个π所以*-1
                 points.push_back(pt);
                 effective_point++;
                 average_x += ranges_[count] * cos(theta)*-1;
                 average_y += ranges_[count] * sin(theta)*-1;
+                // ROS_INFO("左x:%f,y:%f",ranges_[count] * cos(theta)*-1,ranges_[count] * sin(theta)*-1);
+                // ROS_INFO("距离%f",ranges_[count]);
                 distance.push_back(ranges_[count]);
             }
             if (effective_point==0){
                 resp.lidar_results.push_back(-1);
+                ROS_INFO("没有点");
                 return true;
             }
             failed_count = 0;
             count = 168;
+            flag = true;
+
             while(flag){
                 count--;
-                if (count==3) break;
+                if (count==3 || failed_count > 6) break;
                 if(std::isinf(ranges_[count]) || ranges_[count] == 0.0f) {
+                    failed_count++;
                     continue;
                 }
-                if (fabs(ranges_[count+1]-ranges_[count])>0.2) failed_count++;
-                if (failed_count > 6) break;
+                if (fabs(ranges_[count]-ranges_[count+failed_count-1])>0.2|| ranges_[count]>0.8) {
+                    failed_count++;
+                    continue;
+                }
+                failed_count = 0;
                 theta = count * angle_step;
                 cv::Point2f pt(ranges_[count] * cos(theta) * -1, ranges_[count] * sin(theta) * -1);//因为180度才是正前方，差了一个π所以*-1
                 points.push_back(pt);
                 effective_point++;
                 average_x += ranges_[count] * cos(theta)*-1;
                 average_y += ranges_[count] * sin(theta)*-1;
+                // ROS_INFO("右x:%f,y:%f",ranges_[count] * cos(theta)*-1,ranges_[count] * sin(theta)*-1);
+                // ROS_INFO("距离%f",ranges_[count]);
                 distance.push_back(ranges_[count]);
             }
-            std::sort(distance.begin(), distance.end());//
+            std::sort(distance.begin(), distance.end());
             ROS_INFO("最小距离%f",distance[0]);
             ROS_INFO("有效点数%d",effective_point);
             if (effective_point > 5 && distance[0] < 0.45){ //满足条件就说明前方有障碍物
@@ -234,7 +248,6 @@ private:
                 resp.lidar_results.push_back(average_x/effective_point);//中点x坐标
                 resp.lidar_results.push_back(average_y/effective_point);//中点y坐标
                 resp.lidar_results.push_back(lineParams[0]/lineParams[1]);//板子斜率
-                ROS_INFO("已返回障碍物斜率%f",lineParams[0]/lineParams[1]);
                 return true;
             }
             else {//从else回来的第一项=-1就是没有障碍物
