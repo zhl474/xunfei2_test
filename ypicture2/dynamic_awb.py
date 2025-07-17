@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+import os
 
 def dynamic_awb(im):
     # 获取图像尺寸 (高度, 宽度, 通道数)
@@ -101,19 +102,31 @@ def dynamic_awb(im):
 
     return im
 
-# 测试代码
 if __name__ == "__main__":
-    # 读取图像并归一化到[0,1]
-    I = cv2.imread('t.png') / 255.0  
-    
-    if I is None:
-        print("Error: Image not found")
+    # 替换为你的图片路径（注意转义或使用原始字符串）
+    input_path = r"C:\Users\10850\Desktop\picture_77.jpg"  # 使用原始字符串避免转义
+    # 或
+    # input_path = "C:\\Users\\10850\\Desktop\\picture_77.jpg"  # 双反斜杠转义
+
+    # 读取图像（确保路径存在）
+    if not os.path.exists(input_path):
+        print(f"错误：图片路径不存在 - {input_path}")
     else:
-        # 执行白平衡处理
-        ImageOutput = dynamic_awb(I.copy())
-        
-        # 显示结果
-        cv2.imshow('Original', I)
-        cv2.imshow('AWB Result', ImageOutput)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        I = cv2.imread(input_path)
+        if I is None:
+            print(f"错误:图片加载失败,请检查格式(支持JPEG/PNG/BMP等)")
+        else:
+            # 归一化并处理
+            I_normalized = I.astype(np.float32) / 255.0
+            result = dynamic_awb(I_normalized.copy())
+            
+            # 显示结果（Windows需确保OpenCV GUI支持）
+            cv2.imshow("Original Image", I)
+            cv2.imshow("AWB Result", (result * 255).astype(np.uint8))
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+            
+            # 保存结果到桌面
+            output_path = os.path.join(os.path.expanduser("~"), "Desktop", "awb_result.jpg")
+            cv2.imwrite(output_path, (result * 255).astype(np.uint8))
+            print(f"白平衡结果已保存至：{output_path}")

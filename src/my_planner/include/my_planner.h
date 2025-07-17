@@ -44,6 +44,10 @@ namespace my_planner
             
             double curvature_damping_factor_;   // 曲率影响的阻尼因子
             double curvature_penalty_gain_;     // 新增：曲率惩罚增益，用于调节最大曲率对速度的影响
+
+            double P_,I_,D_;
+            double intergration = 0.0;
+            double pre_error = 0.0;
     };
 } // namespace my_planner
  
