@@ -6,16 +6,12 @@
 #include <costmap_2d/costmap_2d_ros.h>
 #include <vector>
 #include <string>
-
 #include <pluginlib/class_list_macros.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
-#include <cmath>
-
-#include <sstream>
 
 // 向前声明 tf2_ros::Buffer，因为 initialize 函数签名需要它
 namespace tf2_ros {
@@ -50,18 +46,9 @@ namespace my_planner
             int visualization_scale_factor_;
             bool visualize_costmap_;
             // ================= 曲率动态速度控制的成员变量 =================
-            
-            double curvature_damping_factor_;   // 曲率影响的阻尼因子
-            double curvature_penalty_gain_;     // 新增：曲率惩罚增益，用于调节最大曲率对速度的影响
 
-            double P_,I_,D_;
-            int point_;
-            double intergration = 0.0;
-            double pre_error = 0.0;
-            std::string output_file = "/home/ucar/ucar_car/src/my_planner/debug/globalplan.avi";//录制视频避免网络传输卡顿
-            cv::VideoWriter out;
-            int fourcc = cv::VideoWriter::fourcc('X', 'V', 'I', 'D'); // MP4V编码
-            std::ostringstream displayStream;
+            double a_;
+            double k_;
     };
 } // namespace my_planner
  

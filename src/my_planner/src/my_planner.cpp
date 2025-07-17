@@ -9,8 +9,6 @@ namespace my_planner
     MyPlanner::MyPlanner() : tf_listener_(nullptr), costmap_ros_(nullptr)
     {
         setlocale(LC_ALL,"");
-        out.open(output_file, fourcc, 7, cv::Size(640, 270));
-        displayStream << std::fixed << std::setprecision(2);
     }
     MyPlanner::~MyPlanner()
     {
@@ -51,16 +49,10 @@ namespace my_planner
         private_nh.param("visualization_scale_factor", visualization_scale_factor_, 5);
         private_nh.param("visualize_costmap", visualize_costmap_, false);
         //------------------------------------用于动态速度控制的参数-----------------------------
-        
-        private_nh.param("curvature_damping_factor", curvature_damping_factor_, 0.5);
-        private_nh.param("curvature_penalty_gain", curvature_penalty_gain_, 15.0); // 新增参数，需要调试一个合适的值
-        ROS_INFO("curvature_penalty_gain_=%f",curvature_penalty_gain_);
-        initial_rotation_done_ = false;
 
-        private_nh.param("P", P_, 0.5);
-        private_nh.param("I", I_, 0.5);
-        private_nh.param("D", D_, 0.0);
-        private_nh.param("point", point_,15);
+        private_nh.param("a", a_, 7.0);
+        private_nh.param("k", k_, -25.0); 
+        initial_rotation_done_ = false;
         // ROS_INFO("加载参数path_linear_x_gain_=%f",path_linear_x_gain_);
         // ROS_INFO("加载参数path_linear_y_gain_=%f",path_linear_y_gain_);
     }
@@ -83,11 +75,112 @@ namespace my_planner
     }
 
     bool MyPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
-    {   
+    {
+        //可以通过planner_frequency定期重新全局规划实现动态避障，这部分就不需要了
+        // // 获取代价地图的数据
+        // costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
+        // unsigned char* map_data = costmap->getCharMap();
+        // unsigned int size_x = costmap->getSizeInCellsX();
+        // unsigned int size_y = costmap->getSizeInCellsY();
+
+        // // 使用 OpenCV 绘制代价地图
+        // cv::Mat map_image;
+        
+        // map_image.create(size_y, size_x, CV_8UC3);
+        // for (unsigned int y = 0; y < size_y; y++)
+        // {
+        //     for (unsigned int x = 0; x < size_x; x++)
+        //     {
+        //         int map_index = y * size_x + x;
+        //         unsigned char cost = map_data[map_index];               // 从代价地图数据取值
+        //         cv::Vec3b& pixel = map_image.at<cv::Vec3b>(map_index);  // 获取彩图对应像素地址
+            
+        //         if (cost == 0)          // 可通行区域
+        //             pixel = cv::Vec3b(128, 128, 128); // 灰色
+        //         else if (cost == 254)   // 障碍物
+        //             pixel = cv::Vec3b(0, 0, 0);       // 黑色
+        //         else if (cost == 253)   // 禁行区域 
+        //             pixel = cv::Vec3b(255, 255, 0);   // 浅蓝色
+        //         else
+        //         {
+        //             // 根据灰度值显示从红色到蓝色的渐变
+        //             unsigned char blue = 255 - cost;
+        //             unsigned char red = cost;
+        //             pixel = cv::Vec3b(blue, 0, red);
+        //         }
+        //     }
+        // }
+        
+
+        // // 在代价地图上遍历导航路径点
+        // cv::Mat flipped_image(size_x, size_y, CV_8UC3, cv::Scalar(128, 128, 128));
+        // for(int i=0;i<global_plan_.size();i++)
+        // {
+        //     geometry_msgs::PoseStamped pose_in_map;
+        //     global_plan_[i].header.stamp = ros::Time(0);
+        //     tf_listener_->transformPose("map",global_plan_[i],pose_in_map);
+        //     double map_x = pose_in_map.pose.position.x;
+        //     double map_y = pose_in_map.pose.position.y;
+
+        //     double origin_x = costmap->getOriginX();
+        //     double origin_y = costmap->getOriginY();
+        //     double local_x = map_x - origin_x;
+        //     double local_y = map_y - origin_y;
+        //     int x = local_x / costmap->getResolution();
+        //     int y = local_y / costmap->getResolution();
+        //     cv::circle(map_image, cv::Point(x,y), 0, cv::Scalar(255,0,255));    // 导航路径点
+
+        //     // 检测前方路径点是否在禁行区域或者障碍物里
+        //     if(i >= target_index_ && i < target_index_ + collision_check_lookahead_points_)
+        //     {
+        //         cv::circle(map_image, cv::Point(x,y), 0, cv::Scalar(0,255,255));// 检测路径点
+        //         int map_index = y * size_x + x;
+        //         unsigned char cost = map_data[map_index];
+        //         if(cost >= 253)
+        //         {
+        //             ROS_INFO("重新规划路径");
+        //             initial_rotation_done_ = false;//路径结束判断：遇到障碍物或者完成最终姿态调整
+        //             return false;//重新规划全局路径，实现动态避障的效果
+        //         }
+        //     }
+        // }
+
+        // map_image.at<cv::Vec3b>(size_y/2, size_x/2) = cv::Vec3b(0, 255, 0); // 机器人位置
+        
+        
+        
+        // // 翻转地图
+        // flipped_image = cv::Mat(size_x, size_y, CV_8UC3, cv::Scalar(128, 128, 128));
+        // cv::flip(map_image, map_image, 0);//使用cvflip代替原本的for循环，运行速度更快
+        // if(visualize_costmap_)
+        // {
+        //     // 显示代价地图
+        //     cv::namedWindow("Map");
+        //     cv::resize(map_image, map_image, cv::Size(size_y*5, size_x*5), 0, 0, cv::INTER_NEAREST);
+        //     cv::resizeWindow("Map", size_y*5, size_x*5);
+        //     cv::imshow("Map", map_image);
+        // }
+        
+        
+
+
+
+
+
+
+        
         int final_index = global_plan_.size()-1;
         geometry_msgs::PoseStamped pose_final;
         global_plan_[final_index].header.stamp = ros::Time(0);
         tf_listener_->transformPose("base_link",global_plan_[final_index],pose_final);
+        // try {
+        //     global_plan_[final_index].header.stamp = ros::Time(0);
+        //     tf_listener_->transformPose("base_link", global_plan_[final_index], pose_final);
+        // } catch (const tf::TransformException& ex) {
+        //     ROS_ERROR("[MyPlanner-FinalPose] TF变换失败!!!! 原因: %s", ex.what());
+        //     cmd_vel.linear.x = 0; cmd_vel.angular.z = 0;
+        //     return true;
+        // }
         if(pose_adjusting_ == false)//如果未进入姿态调整状态
         {
             double dx = pose_final.pose.position.x;
@@ -115,25 +208,24 @@ namespace my_planner
         }
 
         geometry_msgs::PoseStamped target_pose;
-        //-------------
-        double error = 0.0;
-        int count = 0;
-        //----------------
-
         for(int i=target_index_;i<global_plan_.size();i++)
         {
             geometry_msgs::PoseStamped pose_base;
             global_plan_[i].header.stamp = ros::Time(0);
             tf_listener_->transformPose("base_link",global_plan_[i],pose_base);
+            // try {
+            //     global_plan_[i].header.stamp = ros::Time(0);
+            //     tf_listener_->transformPose("base_link", global_plan_[i], pose_base);
+            // } catch (const tf::TransformException& ex) {
+            //     ROS_ERROR("[MyPlanner-TargetSearch] TF变换失败!!!! 原因: %s", ex.what());
+            //     cmd_vel.linear.x = 0; cmd_vel.angular.z = 0;
+            //     return true;
+            // }
             double dx = pose_base.pose.position.x;
             double dy = pose_base.pose.position.y;
-            // double dist = std::sqrt(dx*dx + dy*dy);
+            double dist = std::sqrt(dx*dx + dy*dy);
 
-            //-------------
-            error += dy*exp(count/-30);
-            //-------------
-            count ++;
-            if (count > point_) //选取的临时目标点的距离阈值
+            if (dist > lookahead_dist_) //选取的临时目标点的距离阈值
             {
                 target_pose = pose_base;
                 target_index_ = i;
@@ -144,9 +236,6 @@ namespace my_planner
             if(i == global_plan_.size()-1)//  如果最远的点也没超出阈值，就取最远的点
                 target_pose = pose_base; 
         }
-        error = error * (1 - exp(-1.0/30.0)) / (1 - exp(-(count+1.0)/30.0));
-        ROS_INFO("归一化误差%f",error);
-
         if (!initial_rotation_done_) //如果还未进行过初始姿态调整，说明是第一个目标点
         {
             double angle_to_target = atan2(target_pose.pose.position.y, target_pose.pose.position.x);
@@ -169,89 +258,95 @@ namespace my_planner
 
         //-----------------新增通过计算当前全局路径到target_index的最大曲率控制转弯速度--------------------
         
-        // // double max_curvature = 0.0;//最大曲率
-        // double total_curvature = 0.0;
-        // double dynamic_x_gain = path_linear_x_gain_; // 默认使用参数文件中的基础x增益
+        double avrage_curvature = 0.0;//平均曲率
+        double dynamic_x_gain = path_linear_x_gain_; // 默认使用参数文件中的基础x增益
 
-        // // 在 [0, target_index_] 区间内计算最大曲率
-        // // 需要至少3个点(i-1, i, i+1)来计算曲率，所以 target_index_ 必须至少为2
-        // if (target_index_ >= 2) 
-        // {
-        //     // 循环遍历从路径起点到 target_index 的前一个点
-        //     // 计算点 i 处的曲率，需要 p_i-1, p_i, p_i+1
-        //     for (size_t i = 1; i < target_index_; ++i)
-        //     {
-        //         const auto& p0 = global_plan_[i-1].pose.position;
-        //         const auto& p1 = global_plan_[i].pose.position;
-        //         const auto& p2 = global_plan_[i+1].pose.position;
-                
-        //         // 计算向量 u (p0->p1) 和 v (p1->p2)
-        //         double ux = p1.x - p0.x, uy = p1.y - p0.y;
-        //         double vx = p2.x - p1.x, vy = p2.y - p1.y;
-
-        //         double norm_u = std::sqrt(ux*ux + uy*uy);
-        //         double norm_v = std::sqrt(vx*vx + vy*vy);
-        //         double w_norm = std::sqrt(std::pow(p2.x - p0.x, 2) + std::pow(p2.y - p0.y, 2));
-
-        //         // 使用Menger曲率公式: K = 2 * |cross(u, v)| / (|u| * |v| * |u+v|)
-        //         double cross_product_mag = std::abs(ux * vy - uy * vx);
-
-        //         if (norm_u > 1e-6 && norm_v > 1e-6 && w_norm > 1e-6) {
-        //             double curvature = (2.0 * cross_product_mag) / (norm_u * norm_v * w_norm);
-        //             // if (curvature > max_curvature) {最大曲率
-        //             //     max_curvature = curvature;
-        //             // }
-        //             total_curvature += curvature;
-        //         }
-        //     }
-        // }
-
-        // // 根据最大曲率调整速度增益
-        // // if (max_curvature > 10.0) // 设置一个阈值，避免在近似直线上过度反应，曲率超过阈值才会减速
-        // // {
-        // //     //速度增益只与该路径段的最大曲率有关
-        // //     double penalty_term = max_curvature * curvature_penalty_gain_;
-        // //     dynamic_x_gain = path_linear_x_gain_ / (curvature_damping_factor_ + penalty_term);
-        // // }
-
-        // // 对动态增益进行限幅，保证安全和稳定
-        // // dynamic_x_gain = std::max(1.5, dynamic_x_gain); // 最小增益，防止失速
-        // // dynamic_x_gain = std::min(dynamic_x_gain, path_linear_x_gain_); // 最大增益，防止飙车
-
-        // dynamic_x_gain = dynamic_x_gain*std::min(std::max(exp((total_curvature/target_index_-4)/-25),0.5),2.0);
-
-        // ROS_INFO("当前dynamic_x_gain=%f",dynamic_x_gain);
-        // ROS_INFO("当前max_curvature=%f",max_curvature);
-        
-        intergration += error*0.03;
-        intergration = std::min(std::max(intergration,-1.0),1.0);
-        cmd_vel.linear.x = path_linear_x_gain_;
-        cmd_vel.angular.z = error*P_;
-        ROS_INFO("P:%f",error*P_);
-        ROS_INFO("I:%f",intergration*I_);
-        // ROS_INFO("P:%f",error*path_angular_gain_);
-
-
-        //--------------------------全局路径显示，省去节省算力---------------------------------------------
-        cv::Mat plan_image(600, 600, CV_8UC3, cv::Scalar(0, 0, 0));        
-        for(int i=target_index_;i<global_plan_.size();i++)
+        // 在 [0, target_index_] 区间内计算最大曲率
+        // 需要至少3个点(i-1, i, i+1)来计算曲率，所以 target_index_ 必须至少为2
+        if (target_index_ >= 2) 
         {
-            geometry_msgs::PoseStamped pose_base;
-            global_plan_[i].header.stamp = ros::Time(0);
-            tf_listener_->transformPose("base_link",global_plan_[i],pose_base);
-            int cv_x = 300 - pose_base.pose.position.y*100;
-            int cv_y = 300 - pose_base.pose.position.x*100;
-            cv::circle(plan_image, cv::Point(cv_x,cv_y), 1, cv::Scalar(255,0,255)); 
-            if(i-target_index_>point_) break;
-        }
-        cv::circle(plan_image, cv::Point(300, 300), 15, cv::Scalar(0, 255, 0));
-        cv::line(plan_image, cv::Point(65, 300), cv::Point(510, 300), cv::Scalar(0, 255, 0), 1);
-        cv::line(plan_image, cv::Point(300, 45), cv::Point(300, 555), cv::Scalar(0, 255, 0), 1);
+            // 循环遍历从路径起点到 target_index 的前一个点
+            // 计算点 i 处的曲率，需要 p_i-1, p_i, p_i+1
+            for (size_t i = 1; i < target_index_; ++i)
+            {
+                const auto& p0 = global_plan_[i-1].pose.position;
+                const auto& p1 = global_plan_[i].pose.position;
+                const auto& p2 = global_plan_[i+1].pose.position;
+                
+                // 计算向量 u (p0->p1) 和 v (p1->p2)
+                double ux = p1.x - p0.x, uy = p1.y - p0.y;
+                double vx = p2.x - p1.x, vy = p2.y - p1.y;
 
-        cv::namedWindow("Plan");
-        cv::imshow("Plan", plan_image);
-        cv::waitKey(1);
-        // out.write(plan_image);
+                double norm_u = std::sqrt(ux*ux + uy*uy);
+                double norm_v = std::sqrt(vx*vx + vy*vy);
+                double w_norm = std::sqrt(std::pow(p2.x - p0.x, 2) + std::pow(p2.y - p0.y, 2));
+
+                // 使用Menger曲率公式: K = 2 * |cross(u, v)| / (|u| * |v| * |u+v|)
+                double cross_product_mag = std::abs(ux * vy - uy * vx);
+
+                if (norm_u > 1e-6 && norm_v > 1e-6 && w_norm > 1e-6) {
+                    double curvature = (2.0 * cross_product_mag) / (norm_u * norm_v * w_norm);
+                    // if (curvature > max_curvature) {
+                    //     max_curvature = curvature;
+                    // }
+                    avrage_curvature += curvature;
+                }
+            }
+        }
+        avrage_curvature = avrage_curvature/target_index_;
+        // 根据最大曲率调整速度增益
+        // if (max_curvature > 10.0) // 设置一个阈值，避免在近似直线上过度反应，曲率超过阈值才会减速
+        // {
+        //     //速度增益只与该路径段的最大曲率有关
+        //     double penalty_term = max_curvature * curvature_penalty_gain_;
+        //     dynamic_x_gain = path_linear_x_gain_ / (curvature_damping_factor_ + penalty_term);
+        // }
+        // ROS_INFO("基础速度%f",path_linear_x_gain_);
+        dynamic_x_gain = path_linear_x_gain_  * exp((avrage_curvature-a_)/k_);
+
+        // 对动态增益进行限幅，保证安全和稳定
+        dynamic_x_gain = std::max(1.5, dynamic_x_gain); // 最小增益，防止失速
+        // dynamic_x_gain = std::min(dynamic_x_gain, path_linear_x_gain_); // 最大增益，防止飙车不需要了，指数本来就限幅
+        // ROS_INFO("当前dynamic_x_gain=%f",dynamic_x_gain);
+        ROS_INFO("当前平均curvature=%f",avrage_curvature);
+
+
+
+
+
+
+
+        cmd_vel.linear.x = target_pose.pose.position.x * dynamic_x_gain;//小车运动速度比例系数
+        cmd_vel.linear.y = target_pose.pose.position.y * path_linear_y_gain_;
+        cmd_vel.angular.z = target_pose.pose.position.y * path_angular_gain_;   
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+        //--------------------------全局路径显示，省去节省算力---------------------------------------------
+        // cv::Mat plan_image(600, 600, CV_8UC3, cv::Scalar(0, 0, 0));        
+        // for(int i=0;i<global_plan_.size();i++)
+        // {
+        //     geometry_msgs::PoseStamped pose_base;
+        //     global_plan_[i].header.stamp = ros::Time(0);
+        //     tf_listener_->transformPose("base_link",global_plan_[i],pose_base);
+        //     int cv_x = 300 - pose_base.pose.position.y*100;
+        //     int cv_y = 300 - pose_base.pose.position.x*100;
+        //     cv::circle(plan_image, cv::Point(cv_x,cv_y), 1, cv::Scalar(255,0,255)); 
+        // }
+        // cv::circle(plan_image, cv::Point(300, 300), 15, cv::Scalar(0, 255, 0));
+        // cv::line(plan_image, cv::Point(65, 300), cv::Point(510, 300), cv::Scalar(0, 255, 0), 1);
+        // cv::line(plan_image, cv::Point(300, 45), cv::Point(300, 555), cv::Scalar(0, 255, 0), 1);
+
+        // // cv::namedWindow("Plan");
+        // // cv::imshow("Plan", plan_image);
+        // cv::waitKey(1);
         
         return true;
     }
