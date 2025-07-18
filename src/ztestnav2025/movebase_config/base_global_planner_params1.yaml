@@ -32,8 +32,8 @@ GlobalPlanner:
   old_navfn_behavior: false
 
   lethal_cost: 255     #255
-  neutral_cost: 20     #73
-  cost_factor: 1.049   #1.049
+  neutral_cost: 20     #73增加 neutral_cost 相当于增加了路径长度在总代价值中的权重。这样一来，规划器会更倾向于选择物理距离更短的路径
+  cost_factor: 1.049   #1.049价地图的代价值与路径总成本的相关系数。减小它会降低地图代价值在总成本计算中的比重，从而让规划器更关注距离成本。
   publish_potential: true
   orientation_mode: 1
   orientation_window_size: 1

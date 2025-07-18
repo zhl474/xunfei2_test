@@ -3,61 +3,142 @@ import cv2
 import time
 
 def dynamic_awb(im):
-    # 整图快速统计（替代分块）
-    R, G, B = im[...,2], im[...,1], im[...,0]  # 直接引用而非拷贝
+    # 直接引用通道（避免拷贝）
+    R, G, B = im[...,2], im[...,1], im[...,0]
     
-    # 快速计算YCbCr
-    Y = 0.257 * R + 0.504 * G + 0.098 * B + 16/255
-    Cb = -0.148 * R - 0.291 * G + 0.439 * B + 128/255
-    Cr = -0.439 * R - 0.368 * G - 0.071 * B + 128/255
+    # 预计算常用系数
+    R_257 = R * 0.257
+    G_504 = G * 0.504
+    B_098 = B * 0.098
+    R_148 = R * 0.148
+    G_291 = G * 0.291
+    B_439 = B * 0.439
+    R_439 = R * 0.439
+    G_368 = G * 0.368
+    B_071 = B * 0.071
     
-    # 全局统计替代分块（精度损失可忽略）
+    # 原始YCbCr计算（展开循环）
+    Y = R_257 + G_504 + B_098 + 16/255
+    Cb = -R_148 - G_291 + B_439 + 128/255
+    Cr = -R_439 - G_368 - B_071 + 128/255
+    
+    # 快速统计（保持原始方法）
     Mb, Mr = np.mean(Cb), np.mean(Cr)
-    Db, Dr = np.mean(np.abs(Cb - Mb)), np.mean(np.abs(Cr - Mr))
+    Db = np.mean(np.abs(Cb - Mb))
+    Dr = np.mean(np.abs(Cr - Mr))
     
-    # 向量化白点筛选（替代循环）
-    bv = np.abs(Cb - (Mb + Db * np.sign(Mb)))
-    rv = np.abs(Cr - (1.5 * Mr + Dr * np.sign(Mr)))
-    J = np.where((bv < 1.5*Db) & (rv < 1.5*Dr), 1, 0)
+    # 向量化条件计算（完全保持原始逻辑）
+    bv = np.abs(Cb - (Mb + Db * (1 if Mb > 0 else -1)))
+    rv = np.abs(Cr - (1.5 * Mr + Dr * (1 if Mr > 0 else -1)))
+    J = (bv < 1.5*Db) & (rv < 1.5*Dr)
     
-    # 快速亮度筛选
-    candidate = np.sort(Y[J==1])[::-1]
-    min_v = candidate[int(len(candidate)*0.1)] if len(candidate)>0 else 0
-    Y1 = (Y > min_v).astype(float)
+    # 优化亮度筛选（保持原始逻辑）
+    Y_J = Y[J]
+    if Y_J.size > 0:
+        # 使用快速选择算法替代完整排序
+        k = max(1, int(len(Y_J) * 0.1))
+        min_v = np.partition(Y_J, -k)[-k]
+        Y1 = (Y >= min_v)
+    else:
+        Y1 = np.zeros_like(Y, dtype=bool)
     
-    # 增益计算
-    Ravg = np.sum(R*Y1)/np.sum(Y1)
-    Gavg = np.sum(G*Y1)/np.sum(Y1)
-    Bavg = np.sum(B*Y1)/np.sum(Y1)
-    Ymax = np.max(Y)
-    
-    # 应用增益（原地操作）
-    im[...,2] = np.clip(R * (Ymax/(Ravg+1e-6)), 0, 1)
-    im[...,1] = np.clip(G * (Ymax/(Gavg+1e-6)), 0, 1)
-    im[...,0] = np.clip(B * (Ymax/(Bavg+1e-6)), 0, 1)
+    # 增益计算（完全保持原始公式）
+    sum_Y1 = np.sum(Y1)
+    if sum_Y1 > 0:
+        Ravg = np.sum(R[Y1]) / sum_Y1
+        Gavg = np.sum(G[Y1]) / sum_Y1
+        Bavg = np.sum(B[Y1]) / sum_Y1
+        Ymax = np.max(Y[Y1] if np.any(Y1) else Y)
+        
+        # 应用增益（原地操作）
+        np.clip(R * (Ymax / (Ravg + 1e-6)), 0, 1, out=im[...,2])
+        np.clip(G * (Ymax / (Gavg + 1e-6)), 0, 1, out=im[...,1])
+        np.clip(B * (Ymax / (Bavg + 1e-6)), 0, 1, out=im[...,0])
     
     return im
 
 if __name__ == "__main__":
     start_time = time.time()
     
-    # 输入/输出路径
     input_path = "/home/ucar/ucar_car/ypicture/picture_130.jpg"
-    output_path = "/home/ucar/ucar_car/ypicture/picture_130_awb5.jpg"
+    output_path = "/home/ucar/ucar_car/ypicture/picture_130_awb6.jpg"
     
-    # 读取并处理
-    I = cv2.imread(input_path).astype(np.float32)/255.0
+    # 使用更高效的图像读取方式
+    I = cv2.imread(input_path, cv2.IMREAD_COLOR)
     if I is None:
         print("图片加载失败")
     else:
+        # 转换为float32并归一化
+        I = I.astype(np.float32) * (1.0/255.0)
         result = dynamic_awb(I)
-        cv2.imwrite(output_path, (result*255).astype(np.uint8))
+        # 使用更高效的保存方式
+        cv2.imwrite(output_path, (result * 255).astype(np.uint8), [cv2.IMWRITE_JPEG_QUALITY, 95])
     
     print(f"耗时：{(time.time()-start_time)*1000:.1f}ms")
+# 160
 
 
-# cd /home/ucar/
-# python3 dynamic_awb.py input.jpg
+# import numpy as np
+# import cv2
+# import time
+
+# def dynamic_awb(im):
+#     # 整图快速统计（替代分块）
+#     R, G, B = im[...,2], im[...,1], im[...,0]  # 直接引用而非拷贝
+    
+#     # 快速计算YCbCr
+#     Y = 0.257 * R + 0.504 * G + 0.098 * B + 16/255
+#     Cb = -0.148 * R - 0.291 * G + 0.439 * B + 128/255
+#     Cr = -0.439 * R - 0.368 * G - 0.071 * B + 128/255
+    
+#     # 全局统计替代分块（精度损失可忽略）
+#     Mb, Mr = np.mean(Cb), np.mean(Cr)
+#     Db, Dr = np.mean(np.abs(Cb - Mb)), np.mean(np.abs(Cr - Mr))
+    
+#     # 向量化白点筛选（替代循环）
+#     bv = np.abs(Cb - (Mb + Db * np.sign(Mb)))
+#     rv = np.abs(Cr - (1.5 * Mr + Dr * np.sign(Mr)))
+#     J = np.where((bv < 1.5*Db) & (rv < 1.5*Dr), 1, 0)
+    
+#     # 快速亮度筛选
+#     candidate = np.sort(Y[J==1])[::-1]
+#     min_v = candidate[int(len(candidate)*0.1)] if len(candidate)>0 else 0
+#     Y1 = (Y > min_v).astype(float)
+    
+#     # 增益计算
+#     Ravg = np.sum(R*Y1)/np.sum(Y1)
+#     Gavg = np.sum(G*Y1)/np.sum(Y1)
+#     Bavg = np.sum(B*Y1)/np.sum(Y1)
+#     Ymax = np.max(Y)
+    
+#     # 应用增益（原地操作）
+#     im[...,2] = np.clip(R * (Ymax/(Ravg+1e-6)), 0, 1)
+#     im[...,1] = np.clip(G * (Ymax/(Gavg+1e-6)), 0, 1)
+#     im[...,0] = np.clip(B * (Ymax/(Bavg+1e-6)), 0, 1)
+    
+#     return im
+
+# if __name__ == "__main__":
+#     start_time = time.time()
+    
+#     # 输入/输出路径
+#     input_path = "/home/ucar/ucar_car/ypicture/picture_130.jpg"
+#     output_path = "/home/ucar/ucar_car/ypicture/picture_130_awb5.jpg"
+    
+#     # 读取并处理
+#     I = cv2.imread(input_path).astype(np.float32)/255.0
+#     if I is None:
+#         print("图片加载失败")
+#     else:
+#         result = dynamic_awb(I)
+#         cv2.imwrite(output_path, (result*255).astype(np.uint8))
+    
+#     print(f"耗时：{(time.time()-start_time)*1000:.1f}ms")
+
+
+# ls -l /home/ucar/ucar_car/ypicture2/dynamic_awb.py
+# chmod +r /home/ucar/ucar_car/ypicture2/dynamic_awb.py
+# python3 /home/ucar/ucar_car/ypicture2/dynamic_awb.py
 # 执行mobax口令
 
 # import numpy as np

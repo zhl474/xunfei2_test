@@ -534,12 +534,14 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
         client_line_board.call(board);
         pose_client.call(pose);
         if(board.response.lidar_results[0] != -1){
+            ROS_INFO("最短距离%f",board.response.lidar_results[0]);
             double d = std::sqrt(1 + board.response.lidar_results[3]*board.response.lidar_results[3]);
             geometry_msgs::PointStamped lidar_point;
             lidar_point.header.frame_id = "laser_frame";
-            lidar_point.point.x = board.response.lidar_results[1] + 0.1*board.response.lidar_results[3]/d;
-            lidar_point.point.y = board.response.lidar_results[2] - 0.1/d;
+            lidar_point.point.x = board.response.lidar_results[1] + 0.15*board.response.lidar_results[3]/d;
+            lidar_point.point.y = board.response.lidar_results[2] - 0.15/d;
             lidar_point.point.z = std::atan(1/board.response.lidar_results[3]);
+            ROS_INFO("板子在雷达坐标系下的斜率%f",lidar_point.point.z);
             geometry_msgs::PointStamped point_base;
             tf_listener_->transformPoint("map", lidar_point, point_base);
             ROS_INFO("坐标变换结果: (%.2f, %.2f, %.2f)",
@@ -547,9 +549,9 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
                     point_base.point.y, 
                     point_base.point.z);
             
-            target_info.request.target_x = board.response.lidar_results[1]+ 0.1*board.response.lidar_results[3]/d + pose.response.pose_at[0];
-            target_info.request.target_y = board.response.lidar_results[2]- 0.1/d + pose.response.pose_at[1];
-            target_info.request.target_yaw = std::atan(1/board.response.lidar_results[3])-1.57+pose.response.pose_at[2];
+            target_info.request.target_x = point_base.point.x;
+            target_info.request.target_y = point_base.point.y;
+            target_info.request.target_yaw = point_base.point.z;
             client_movebase.call(target_info);
         }
 
@@ -614,9 +616,10 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
             else{
                 if (!left_forward && !point_forward && (ros::Time::now()-start_time).toSec()>1.0){
                     double_line = true;
-                    p = 0.007;
-                    i = 0.0;
-                    d = 0.0;
+                    nh.getParam("/line_right/double_P", p);
+                    nh.getParam("/line_right/double_I", i);
+                    nh.getParam("/line_right/double_D", d);
+                    ROS_INFO("p%f",p);
                     ROS_INFO("双边巡线");
                 }
                 point_confirm = 0;

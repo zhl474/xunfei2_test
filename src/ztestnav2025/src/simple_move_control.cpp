@@ -91,6 +91,7 @@ int main(int argc, char *argv[]) {
                 ROS_INFO("到达目标");
             else
                 ROS_INFO("无法到达目标");
+            movebaseflag = false;
         }
         control_rate.sleep();
     }

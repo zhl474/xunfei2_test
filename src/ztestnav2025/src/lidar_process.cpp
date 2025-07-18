@@ -174,7 +174,7 @@ private:
         //     }
         // }
         if(req.lidar_process_start==-2){//视觉巡线区的雷达处理代码第二版，考虑到雷达丢数据
-            ROS_INFO("雷达参数-2");
+            // ROS_INFO("雷达参数-2");
             int effective_point = 0;
             double average_x = 0;
             double average_y = 0;
@@ -208,7 +208,7 @@ private:
             }
             if (effective_point==0){
                 resp.lidar_results.push_back(-1);
-                ROS_INFO("没有点");
+                // ROS_INFO("没有点");
                 return true;
             }
             failed_count = 0;
@@ -238,8 +238,8 @@ private:
                 distance.push_back(ranges_[count]);
             }
             std::sort(distance.begin(), distance.end());
-            ROS_INFO("最小距离%f",distance[0]);
-            ROS_INFO("有效点数%d",effective_point);
+            // ROS_INFO("最小距离%f",distance[0]);
+            // ROS_INFO("有效点数%d",effective_point);
             if (effective_point > 5 && distance[0] < 0.45){ //满足条件就说明前方有障碍物
                 // waitForContinue();
                 cv::Vec4f lineParams;
@@ -248,6 +248,7 @@ private:
                 resp.lidar_results.push_back(average_x/effective_point);//中点x坐标
                 resp.lidar_results.push_back(average_y/effective_point);//中点y坐标
                 resp.lidar_results.push_back(lineParams[0]/lineParams[1]);//板子斜率
+                ROS_INFO("x%f,y%f",average_x/effective_point,average_y/effective_point);
                 return true;
             }
             else {//从else回来的第一项=-1就是没有障碍物
