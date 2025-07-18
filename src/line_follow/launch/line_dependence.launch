@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="ztestnav2025" type="simple_move_control" name="simple_move_control" output="screen"/>
+    <rosparam command="load" file="/home/ucar/ucar_car/src/line_follow/config/line.yaml" ns="line_right" />
+</launch>

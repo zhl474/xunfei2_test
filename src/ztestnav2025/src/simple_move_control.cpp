@@ -75,6 +75,7 @@ int main(int argc, char *argv[]) {
         ros::spinOnce();
         if(start) cmd_pub.publish(twist_msg);
         if(movebaseflag){
+            ROS_INFO("开始movebase");
             q1.setRPY(0, 0, yawtarget);
             goal1.target_pose.header.stamp = ros::Time::now();
             goal1.target_pose.pose.position.x = xtarget;

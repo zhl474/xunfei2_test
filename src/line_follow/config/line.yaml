@@ -1,0 +1,7 @@
+right_P: 0.005
+right_I: 0.05
+right_D: 0.0015
+
+leftpoint_p: 0.004
+leftpoint_I: 0.1
+leftpoint_D: 0.0

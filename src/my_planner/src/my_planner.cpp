@@ -1,4 +1,5 @@
 #include "my_planner.h"
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 
 PLUGINLIB_EXPORT_CLASS( my_planner::MyPlanner, nav_core::BaseLocalPlanner)
@@ -6,18 +7,13 @@ PLUGINLIB_EXPORT_CLASS( my_planner::MyPlanner, nav_core::BaseLocalPlanner)
 namespace my_planner 
 {
     // 构造函数：初始化指针成员为nullptr
-    MyPlanner::MyPlanner() : tf_listener_(nullptr), costmap_ros_(nullptr)
+    MyPlanner::MyPlanner() : costmap_ros_(nullptr)
     {
         setlocale(LC_ALL,"");
     }
     MyPlanner::~MyPlanner()
     {
-        // 检查指针是否有效，然后释放它
-        if(tf_listener_ != nullptr)
-        {
-            delete tf_listener_;
-            tf_listener_ = nullptr; // 释放后置空，防止悬挂指针
-        }
+        
     }
 
     // 移除了在这里的全局变量定义
@@ -26,7 +22,9 @@ namespace my_planner
     void MyPlanner::initialize(std::string name, tf2_ros::Buffer* tf, costmap_2d::Costmap2DROS* costmap_ros)
     {
         ROS_WARN("本地规划器，启动！");
-        tf_listener_ = new tf::TransformListener();
+        
+        tf_buffer_ = tf;
+
         costmap_ros_ = costmap_ros;
         // 为此插件创建一个私有的节点句柄，用于访问其私有命名空间下的参数
         //私有命名空间是 /move_base/MyPlanner
@@ -35,7 +33,7 @@ namespace my_planner
         ROS_INFO("为 %s 加载参数...", name.c_str());
 
         // 使用 .param() 方法读取参数。如果参数服务器上没有该参数，则使用第三个参数作为默认值。
-        private_nh.param("path_linear_x_gain", path_linear_x_gain_, 2.0);
+        private_nh.param("path_line#include <tf2_geometry_msgs/tf2_geometry_msgs.h>ar_x_gain", path_linear_x_gain_, 2.0);
         private_nh.param("path_linear_y_gain", path_linear_y_gain_, 0.5);
         private_nh.param("path_angular_gain", path_angular_gain_, 6.8);
         private_nh.param("lookahead_dist", lookahead_dist_, 0.2);
@@ -171,16 +169,19 @@ namespace my_planner
         
         int final_index = global_plan_.size()-1;
         geometry_msgs::PoseStamped pose_final;
-        global_plan_[final_index].header.stamp = ros::Time(0);
-        tf_listener_->transformPose("base_link",global_plan_[final_index],pose_final);
-        // try {
-        //     global_plan_[final_index].header.stamp = ros::Time(0);
-        //     tf_listener_->transformPose("base_link", global_plan_[final_index], pose_final);
-        // } catch (const tf::TransformException& ex) {
-        //     ROS_ERROR("[MyPlanner-FinalPose] TF变换失败!!!! 原因: %s", ex.what());
-        //     cmd_vel.linear.x = 0; cmd_vel.angular.z = 0;
-        //     return true;
-        // }
+        // global_plan_[final_index].header.stamp = ros::Time(0);
+        // tf_listener_->transformPose("base_link",global_plan_[final_index],pose_final);
+        
+        try {
+            pose_final = tf_buffer_->transform(global_plan_[final_index], "base_link");
+        } catch (tf2::TransformException &ex) {
+            ROS_ERROR("[MyPlanner-FinalPose] TF变换失败,原因: %s", ex.what());
+            cmd_vel.linear.x = 0; cmd_vel.angular.z = 0;
+            return true; // 返回 true，但速度为0，以示安全
+        }
+
+
+
         if(pose_adjusting_ == false)//如果未进入姿态调整状态
         {
             double dx = pose_final.pose.position.x;
@@ -191,8 +192,10 @@ namespace my_planner
         }
         if(pose_adjusting_ == true)
         {
-            double final_yaw = tf::getYaw(pose_final.pose.orientation);
-            // ROS_WARN("调整最终姿态，final_yaw = %.2f",final_yaw);
+            // double final_yaw = tf::getYaw(pose_final.pose.orientation);
+            double final_yaw = tf2::getYaw(pose_final.pose.orientation);
+
+            ROS_WARN("调整最终姿态，final_yaw = %.2f",final_yaw);
             cmd_vel.linear.x = pose_final.pose.position.x * final_pose_linear_gain_;//到达目标点附近后调整位姿的速度比例系数
             if(final_yaw>0) cmd_vel.angular.z = std::max(std::min(final_yaw * final_pose_angular_gain_,2.5),0.6);
             else cmd_vel.angular.z = std::min(std::max(final_yaw * final_pose_angular_gain_,-2.5),-0.6);
@@ -211,16 +214,18 @@ namespace my_planner
         for(int i=target_index_;i<global_plan_.size();i++)
         {
             geometry_msgs::PoseStamped pose_base;
-            global_plan_[i].header.stamp = ros::Time(0);
-            tf_listener_->transformPose("base_link",global_plan_[i],pose_base);
-            // try {
-            //     global_plan_[i].header.stamp = ros::Time(0);
-            //     tf_listener_->transformPose("base_link", global_plan_[i], pose_base);
-            // } catch (const tf::TransformException& ex) {
-            //     ROS_ERROR("[MyPlanner-TargetSearch] TF变换失败!!!! 原因: %s", ex.what());
-            //     cmd_vel.linear.x = 0; cmd_vel.angular.z = 0;
-            //     return true;
-            // }
+            // global_plan_[i].header.stamp = ros::Time(0);
+            // tf_listener_->transformPose("base_link",global_plan_[i],pose_base);
+            
+            try {
+                pose_base = tf_buffer_->transform(global_plan_[i], "base_link");
+            } catch (tf2::TransformException &ex) {
+                ROS_ERROR("[MyPlanner-TargetSearch] TF变换失败,原因: %s", ex.what());
+                cmd_vel.linear.x = 0; cmd_vel.angular.z = 0;
+                return true; // 返回 true，但速度为0，以示安全
+            }
+
+
             double dx = pose_base.pose.position.x;
             double dy = pose_base.pose.position.y;
             double dist = std::sqrt(dx*dx + dy*dy);
@@ -239,7 +244,7 @@ namespace my_planner
         if (!initial_rotation_done_) //如果还未进行过初始姿态调整，说明是第一个目标点
         {
             double angle_to_target = atan2(target_pose.pose.position.y, target_pose.pose.position.x);
-            // ROS_INFO("开始进行初始姿态调整");
+            ROS_INFO("开始进行初始姿态调整");
             if (std::abs(angle_to_target) < goal_yaw_tolerance_) {
                 ROS_INFO("初始姿态已对准，设置标志位并开始正常行驶。");
                 initial_rotation_done_ = true;

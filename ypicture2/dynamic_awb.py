@@ -43,7 +43,7 @@ if __name__ == "__main__":
     
     # 输入/输出路径
     input_path = "/home/ucar/ucar_car/ypicture/picture_130.jpg"
-    output_path = "/home/ucar/ucar_car/ypicture/picture_130_awb2.jpg"
+    output_path = "/home/ucar/ucar_car/ypicture/picture_130_awb5.jpg"
     
     # 读取并处理
     I = cv2.imread(input_path).astype(np.float32)/255.0
@@ -54,79 +54,6 @@ if __name__ == "__main__":
         cv2.imwrite(output_path, (result*255).astype(np.uint8))
     
     print(f"耗时：{(time.time()-start_time)*1000:.1f}ms")
-
-# import cv2
-# import numpy as np
-# import time
-
-# def dynamic_awb_fast(im):
-#     # 预分配内存（关键优化）
-#     R, G, B = im[...,2].copy(), im[...,1].copy(), im[...,0].copy()
-#     Y = np.empty_like(R)
-#     Cb = np.empty_like(R)
-#     Cr = np.empty_like(R)
-    
-#     # 向量化计算（比原版快3倍）
-#     np.multiply(R, 0.257, out=Y)
-#     np.multiply(G, 0.504, out=Y, where=True)
-#     np.add(Y, 0.098 * B + 16/255, out=Y)
-    
-#     np.multiply(R, -0.148, out=Cb)
-#     np.add(Cb, -0.291 * G + 128/255, out=Cb)
-#     np.add(Cb, 0.439 * B, out=Cb)
-    
-#     np.multiply(R, -0.439, out=Cr)
-#     np.add(Cr, -0.368 * G + 128/255, out=Cr)
-#     np.add(Cr, -0.071 * B, out=Cr)
-    
-#     # 快速统计（比mean()快2倍）
-#     Mb, Mr = np.mean(Cb), np.mean(Cr)
-#     Db = np.mean(np.abs(Cb - Mb))
-#     Dr = np.mean(np.abs(Cr - Mr))
-    
-#     # 向量化筛选（关键优化）
-#     bv = np.abs(Cb - (Mb + Db * np.sign(Mb)))
-#     rv = np.abs(Cr - (1.5 * Mr + Dr * np.sign(Mr)))
-#     J = (bv < 1.5*Db) & (rv < 1.5*Dr)
-    
-#     # 快速亮度筛选
-#     Y_filtered = Y[J]
-#     if Y_filtered.size > 0:
-#         min_v = np.partition(Y_filtered, int(len(Y_filtered)*0.1))[int(len(Y_filtered)*0.1)]
-#         Y1 = (Y > min_v).astype(np.float32)
-#     else:
-#         Y1 = np.zeros_like(Y)
-    
-#     # 增益计算（优化除法）
-#     sum_Y1 = np.sum(Y1)
-#     Ravg = np.sum(R*Y1) / sum_Y1 if sum_Y1 > 0 else 1.0
-#     Gavg = np.sum(G*Y1) / sum_Y1 if sum_Y1 > 0 else 1.0
-#     Bavg = np.sum(B*Y1) / sum_Y1 if sum_Y1 > 0 else 1.0
-#     ymax = np.max(Y)
-    
-#     # 原地操作（避免临时矩阵）
-#     np.multiply(R, ymax/(Ravg+1e-6), out=im[...,2])
-#     np.multiply(G, ymax/(Gavg+1e-6), out=im[...,1])
-#     np.multiply(B, ymax/(Bavg+1e-6), out=im[...,0])
-    
-#     # 快速截断（比clip快）
-#     np.clip(im[...,2], 0, 1, out=im[...,2])
-#     np.clip(im[...,1], 0, 1, out=im[...,1])
-#     np.clip(im[...,0], 0, 1, out=im[...,0])
-    
-#     return im
-
-# if __name__ == "__main__":
-#     start = time.time()
-    
-#     # 内存映射方式读取（比imread快2倍）
-#     I = cv2.imread("/home/ucar/ucar_car/ypicture/picture_130.jpg", cv2.IMREAD_COLOR)
-#     if I is not None:
-#         I = I.astype(np.float32) / 255.0
-#         result = dynamic_awb_fast(I)
-#         cv2.imwrite("/home/ucar/ucar_car/ypicture/picture_130_awb3_fast.jpg", (result*255).astype(np.uint8))
-    
-#     print(f"耗时：{(time.time()-start)*1000:.1f}ms")
 
 
 # cd /home/ucar/

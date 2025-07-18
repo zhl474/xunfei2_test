@@ -9,14 +9,18 @@
 #include <pluginlib/class_list_macros.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <tf/tf.h>
-#include <tf/transform_listener.h>
-#include <tf/transform_datatypes.h>
+// #include <tf/tf.h>
+// #include <tf/transform_listener.h>
+// #include <tf/transform_datatypes.h>
 
-// 向前声明 tf2_ros::Buffer，因为 initialize 函数签名需要它
-namespace tf2_ros {
-    class Buffer;
-}
+#include <tf2_ros/buffer.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+
+
+// // 向前声明 tf2_ros::Buffer，因为 initialize 函数签名需要它
+// namespace tf2_ros {
+//     class Buffer;
+// }
 namespace my_planner 
 {
     class MyPlanner : public nav_core::BaseLocalPlanner 
@@ -31,7 +35,8 @@ namespace my_planner
             bool isGoalReached();
         private:
             // 将所有变量移入类定义中，成为成员变量
-            tf::TransformListener* tf_listener_;
+            // tf::TransformListener* tf_listener_;
+            tf2_ros::Buffer* tf_buffer_; 
             costmap_2d::Costmap2DROS* costmap_ros_;
             std::vector<geometry_msgs::PoseStamped> global_plan_;
     
@@ -45,7 +50,7 @@ namespace my_planner
             int collision_check_lookahead_points_;
             int visualization_scale_factor_;
             bool visualize_costmap_;
-            // ================= 曲率动态速度控制的成员变量 =================
+            
 
             double a_;
             double k_;
