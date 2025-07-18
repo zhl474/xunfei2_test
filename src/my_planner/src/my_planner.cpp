@@ -1,6 +1,6 @@
 #include "my_planner.h"
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-
+#include <tf2/utils.h>
 
 PLUGINLIB_EXPORT_CLASS( my_planner::MyPlanner, nav_core::BaseLocalPlanner)
 
@@ -13,7 +13,7 @@ namespace my_planner
     }
     MyPlanner::~MyPlanner()
     {
-        
+        ROS_WARN(">>> 析构函数被调用 <<<");
     }
 
     // 移除了在这里的全局变量定义
@@ -33,7 +33,7 @@ namespace my_planner
         ROS_INFO("为 %s 加载参数...", name.c_str());
 
         // 使用 .param() 方法读取参数。如果参数服务器上没有该参数，则使用第三个参数作为默认值。
-        private_nh.param("path_line#include <tf2_geometry_msgs/tf2_geometry_msgs.h>ar_x_gain", path_linear_x_gain_, 2.0);
+        private_nh.param("path_linear_x_gain", path_linear_x_gain_, 2.0);
         private_nh.param("path_linear_y_gain", path_linear_y_gain_, 0.5);
         private_nh.param("path_angular_gain", path_angular_gain_, 6.8);
         private_nh.param("lookahead_dist", lookahead_dist_, 0.2);
@@ -166,17 +166,31 @@ namespace my_planner
 
 
 
-        
+        // ROS_INFO("进入代码确认");
         int final_index = global_plan_.size()-1;
         geometry_msgs::PoseStamped pose_final;
         // global_plan_[final_index].header.stamp = ros::Time(0);
         // tf_listener_->transformPose("base_link",global_plan_[final_index],pose_final);
         
-        try {
-            pose_final = tf_buffer_->transform(global_plan_[final_index], "base_link");
+        try {//各个节点之间的时间误差会导致请求的时间比最新的数据还要新，从而导致报错
+            // 创建一个临时变量，避免修改原始计划
+            geometry_msgs::PoseStamped final_pose_stamped = global_plan_[final_index];
+            // 将时间戳设置为0，以获取最新的可用变换
+            final_pose_stamped.header.stamp = ros::Time(0);
+
+
+            // 等待最多0.1秒，确保从目标姿态的坐标系到"base_link"的变换是可用的,防止访问空指针导致段错误
+            std::string source_frame = final_pose_stamped.header.frame_id;
+            if (!tf_buffer_->canTransform("base_link", source_frame, ros::Time(0), ros::Duration(0.1))) {
+                ROS_WARN("等待从 %s 到 base_link 的 TF 变换...", source_frame.c_str());
+                cmd_vel.linear.x = 0; cmd_vel.linear.y = 0; cmd_vel.angular.z = 0;
+                return true; // 返回安全指令，并在下一个周期重试
+            }
+
+            pose_final = tf_buffer_->transform(final_pose_stamped, "base_link");
         } catch (tf2::TransformException &ex) {
             ROS_ERROR("[MyPlanner-FinalPose] TF变换失败,原因: %s", ex.what());
-            cmd_vel.linear.x = 0; cmd_vel.angular.z = 0;
+            cmd_vel.linear.x = 0; cmd_vel.linear.y = 0; cmd_vel.angular.z = 0;
             return true; // 返回 true，但速度为0，以示安全
         }
 
@@ -195,7 +209,7 @@ namespace my_planner
             // double final_yaw = tf::getYaw(pose_final.pose.orientation);
             double final_yaw = tf2::getYaw(pose_final.pose.orientation);
 
-            ROS_WARN("调整最终姿态，final_yaw = %.2f",final_yaw);
+            // ROS_WARN("调整最终姿态，final_yaw = %.2f",final_yaw);
             cmd_vel.linear.x = pose_final.pose.position.x * final_pose_linear_gain_;//到达目标点附近后调整位姿的速度比例系数
             if(final_yaw>0) cmd_vel.angular.z = std::max(std::min(final_yaw * final_pose_angular_gain_,2.5),0.6);
             else cmd_vel.angular.z = std::min(std::max(final_yaw * final_pose_angular_gain_,-2.5),-0.6);
@@ -217,11 +231,25 @@ namespace my_planner
             // global_plan_[i].header.stamp = ros::Time(0);
             // tf_listener_->transformPose("base_link",global_plan_[i],pose_base);
             
-            try {
-                pose_base = tf_buffer_->transform(global_plan_[i], "base_link");
+            try {//各个节点之间的时间误差会导致请求的时间比最新的数据还要新，从而导致报错
+                // 创建一个临时变量，避免修改原始计划
+                geometry_msgs::PoseStamped current_pose_stamped = global_plan_[i];
+                // 将时间戳设置为0，以获取最新的可用变换
+                current_pose_stamped.header.stamp = ros::Time(0);
+
+                // 等待最多0.1秒，确保从目标姿态的坐标系到"base_link"的变换是可用的,防止访问空指针导致段错误
+                std::string source_frame = current_pose_stamped.header.frame_id;
+                if (!tf_buffer_->canTransform("base_link", source_frame, ros::Time(0), ros::Duration(0.1))) {
+                    ROS_WARN("等待从 %s 到 base_link 的 TF 变换...", source_frame.c_str());
+                    cmd_vel.linear.x = 0; cmd_vel.linear.y = 0; cmd_vel.angular.z = 0;
+                    return true; // 返回安全指令，并在下一个周期重试
+                }
+
+
+                pose_base = tf_buffer_->transform(current_pose_stamped, "base_link");
             } catch (tf2::TransformException &ex) {
                 ROS_ERROR("[MyPlanner-TargetSearch] TF变换失败,原因: %s", ex.what());
-                cmd_vel.linear.x = 0; cmd_vel.angular.z = 0;
+                cmd_vel.linear.x = 0; cmd_vel.linear.y = 0; cmd_vel.angular.z = 0;
                 return true; // 返回 true，但速度为0，以示安全
             }
 
@@ -244,7 +272,7 @@ namespace my_planner
         if (!initial_rotation_done_) //如果还未进行过初始姿态调整，说明是第一个目标点
         {
             double angle_to_target = atan2(target_pose.pose.position.y, target_pose.pose.position.x);
-            ROS_INFO("开始进行初始姿态调整");
+            // ROS_INFO("开始进行初始姿态调整");
             if (std::abs(angle_to_target) < goal_yaw_tolerance_) {
                 ROS_INFO("初始姿态已对准，设置标志位并开始正常行驶。");
                 initial_rotation_done_ = true;
@@ -268,11 +296,12 @@ namespace my_planner
 
         // 在 [0, target_index_] 区间内计算最大曲率
         // 需要至少3个点(i-1, i, i+1)来计算曲率，所以 target_index_ 必须至少为2
+        int cur_final = std::min(target_index_+15,final_index);//多看10cm
         if (target_index_ >= 2) 
         {
             // 循环遍历从路径起点到 target_index 的前一个点
             // 计算点 i 处的曲率，需要 p_i-1, p_i, p_i+1
-            for (size_t i = 1; i < target_index_; ++i)
+            for (int i = 1; i < cur_final; ++i)
             {
                 const auto& p0 = global_plan_[i-1].pose.position;
                 const auto& p1 = global_plan_[i].pose.position;
@@ -294,11 +323,11 @@ namespace my_planner
                     // if (curvature > max_curvature) {
                     //     max_curvature = curvature;
                     // }
-                    avrage_curvature += curvature;
+                    avrage_curvature += curvature*(1.5-i/cur_final);//曲率加平均，近处权重更大
                 }
             }
         }
-        avrage_curvature = avrage_curvature/target_index_;
+        avrage_curvature = avrage_curvature/cur_final;
         // 根据最大曲率调整速度增益
         // if (max_curvature > 10.0) // 设置一个阈值，避免在近似直线上过度反应，曲率超过阈值才会减速
         // {

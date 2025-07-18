@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_core
   pluginlib
   roscpp
+  tf2
   tf2_ros
   tf2_geometry_msgs
 )

@@ -163,8 +163,8 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 
 add_executable(line_right src/line_right.cpp)
-add_executable(dynamic_awb src/dynamic_awb.cpp)
-# add_executable(line_test src/line_test.cpp)
+# add_executable(dynamic_awb src/dynamic_awb.cpp)
+add_executable(wb src/wb.cpp)
 
 # 在add_executable之后添加以下内容调试用
 # target_compile_options(follower_line_pid
@@ -189,14 +189,14 @@ target_link_libraries(line_right
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
 )
-target_link_libraries(dynamic_awb
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
-)
-# target_link_libraries(line_test
+# target_link_libraries(dynamic_awb
 #   ${catkin_LIBRARIES}
 #   ${OpenCV_LIBS}
 # )
+target_link_libraries(wb
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
 
 #############
 ## Install ##
