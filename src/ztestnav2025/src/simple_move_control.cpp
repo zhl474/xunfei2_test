@@ -62,9 +62,9 @@ int main(int argc, char *argv[]) {
     MoveBaseClient ac1("move_base", true); 
     tf2::Quaternion q1;  
     //等待action回应
-    while(!ac1.waitForServer()){
-        ROS_INFO("等待movebase服务中---");
-    } 
+    // while(!ac1.waitForServer()){
+    //     ROS_INFO("等待movebase服务中---");
+    // } 
     move_base_msgs::MoveBaseGoal goal1;
     goal1.target_pose.header.frame_id = "map";
     

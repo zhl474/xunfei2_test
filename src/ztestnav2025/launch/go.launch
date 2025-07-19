@@ -2,4 +2,5 @@
     <node pkg="ztestnav2025" type="simple_move_control" name="simple_move_control" output="screen"/>
     <!-- <node pkg="ztestnav2025" type="myplanernav" name="myplanernav" output="screen"/> -->
     <node pkg="ztestnav2025" type="zhltest" name="zhltest" output="screen"/>
+    <rosparam command="load" file="/home/ucar/ucar_car/src/ztestnav2025/cfg/detect.yaml" ns="myplanernav" />
 </launch>

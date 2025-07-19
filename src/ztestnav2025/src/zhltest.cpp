@@ -80,6 +80,7 @@ int main(int argc, char *argv[]){
     mecanumController.detect(a,-1);
     
     mecanumController.adjust(2,0.4);//
+    ROS_INFO("结束了");
  
 }
 
