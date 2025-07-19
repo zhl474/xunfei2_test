@@ -68,7 +68,10 @@ namespace my_planner
         goal_reached_ = false;
         //每次设置新路径时，都将“初始旋转”标志重置为 false,确保下一次导航会执行初始旋转调整朝向
         // initial_rotation_done_ = false;
-       
+        // std::cout << "Press [Enter] to continue...";
+        // std::cin.ignore(); // 清除缓冲区
+        // std::cin.get();    // 等待回车
+        // ROS_INFO("查看全局路径规划");
         return true;
     }
 

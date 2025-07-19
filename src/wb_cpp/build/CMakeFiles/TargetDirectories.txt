@@ -1,0 +1,3 @@
+/home/ucar/ucar_car/src/wb_cpp/build/CMakeFiles/rebuild_cache.dir
+/home/ucar/ucar_car/src/wb_cpp/build/CMakeFiles/whitebalance.dir
+/home/ucar/ucar_car/src/wb_cpp/build/CMakeFiles/edit_cache.dir

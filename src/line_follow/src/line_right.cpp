@@ -542,22 +542,19 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
             double d = std::sqrt(1 + board.response.lidar_results[3]*board.response.lidar_results[3]);
             geometry_msgs::PointStamped lidar_point;
             lidar_point.header.frame_id = "laser_frame";
-            lidar_point.point.x = board.response.lidar_results[1] + 0.15*board.response.lidar_results[3]/d;
-            lidar_point.point.y = board.response.lidar_results[2] - 0.15/d;
-            // lidar_point.point.z = std::atan(1/board.response.lidar_results[3]);
-            lidar_point.point.z = std::atan2(vy, vx);//使用atan2不会有角度180度跳变
-            ROS_INFO("板子在雷达坐标系下的斜率%f",lidar_point.point.z);
+            lidar_point.point.x = board.response.lidar_results[1] - 0.3*vy;//法向量（-vy,vx）现在必定指向y正方向（小车前方）
+            lidar_point.point.y = board.response.lidar_results[2] + 0.3*vx;
+            lidar_point.point.z = 0;//使用atan2不会有角度180度跳变std::atan2(vx, -vy)
+            // ROS_INFO("板子在雷达坐标系下的斜率%f",lidar_point.point.z);
             geometry_msgs::PointStamped point_base;
             tf_listener_->transformPoint("map", lidar_point, point_base);
-            ROS_INFO("坐标变换结果: (%.2f, %.2f, %.2f)",
-                    point_base.point.x, 
-                    point_base.point.y, 
-                    point_base.point.z);
             
             target_info.request.target_x = point_base.point.x;
             target_info.request.target_y = point_base.point.y;
-            target_info.request.target_yaw = point_base.point.z;
+            target_info.request.target_yaw = std::atan2(vx, -vy) + pose.response.pose_at[2];
+            ROS_INFO("坐标变换结果: (%.2f, %.2f, %.2f)",point_base.point.x, point_base.point.y, target_info.request.target_yaw);
             client_movebase.call(target_info);
+            ROS_INFO("避障结束");
         }
 
 

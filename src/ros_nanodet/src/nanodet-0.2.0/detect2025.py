@@ -96,8 +96,8 @@ def detect_start(req):
         rospy.logerr("获取图片失败")
     frame = cv2.flip(frame, 1)
     res = detect(frame, predictor)
-    print("目标检测耗时")
-    print(time.time()-start_time)
+    # print("目标检测耗时")
+    # print(time.time()-start_time)
     max_score = -1.0
     best_bbox = [-1] * 5 
     target = -1
@@ -110,7 +110,7 @@ def detect_start(req):
                     best_bbox = bbox
                     target = label
                     # print("检测到目标")
-                    print(target)
+                    # print(target)
     x0, y0, x1, y1, conf = [int(coord) for coord in best_bbox]
     response.x0 = x0
     response.y0 = y0
@@ -118,15 +118,15 @@ def detect_start(req):
     response.y1 = y1
     response.class_name = target
     # print((x0+x1)/2)
-    print("标签筛选耗时")
-    print(time.time()-start_time)
+    # print("标签筛选耗时")
+    # print(time.time()-start_time)
     if best_bbox[0] != -1:
         visualize(frame,x0, y0, x1, y1,target,conf)
-    print("可视化耗时")
-    print(time.time()-start_time)
+    # print("可视化耗时")
+    # print(time.time()-start_time)
     out.write(frame)
-    print("完整服务耗时")
-    print(time.time()-start_time)
+    # print("完整服务耗时")
+    # print(time.time()-start_time)
     return response
 
 server = rospy.Service("nanodet_detect",detect_result_srv,detect_start)

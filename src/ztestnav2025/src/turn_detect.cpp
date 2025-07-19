@@ -32,11 +32,11 @@ MecanumController::MecanumController(ros::NodeHandle& nh) :
 
 void MecanumController::detect(std::vector<int>& result, int object_num){//封装目标检测功能
     start_detect_.request.detect_start = object_num;//要先传个-1把摄像头打开
-    // ros::Time test = ros::Time::now();
+    ros::Time test = ros::Time::now();
     bool flag = detect_client_.call(start_detect_);
-    // if ((ros::Time::now()-test).toSec()>0.1){
-    //     ROS_WARN("目标检测超时%f",(ros::Time::now()-test).toSec());
-    // }
+    if ((ros::Time::now()-test).toSec()>0.2){
+        ROS_WARN("目标检测超时%f",(ros::Time::now()-test).toSec());
+    }
     if (flag){
         result[0] = start_detect_.response.x0;result[1] = start_detect_.response.y0;result[2] = start_detect_.response.x1;result[3] = start_detect_.response.y1;result[4] = start_detect_.response.class_name;
         // ROS_INFO("结果：%d,%d,%d,%d,%d",start_detect_.response.class_name,start_detect_.response.x0,start_detect_.response.y0,start_detect_.response.x1,start_detect_.response.y1);
@@ -206,7 +206,7 @@ bool MecanumController::adjust(int z,double adjust_speed){
     set_speed_.request.target_twist.angular.z = 0;
     set_speed_.request.work = true;
     board_slope.request.lidar_process_start = 2;
-    // start_time_ = ros::Time::now();
+    start_time_ = ros::Time::now();
     int count = 0;//连续三帧目标都在中心，才认为对准
     double p,i,d,p1,i1,d1;
     nh_.getParam("/myplanernav/adjust_detecet_P",p);
@@ -284,6 +284,7 @@ bool MecanumController::adjust(int z,double adjust_speed){
     set_speed_.request.target_twist.angular.z = 0;
     set_speed_.request.work = false;
     set_speed_client_.call(set_speed_);
+    ROS_INFO("控制一次耗时%f",(ros::Time::now()-start_time_).toSec());
     return false;
 }
 

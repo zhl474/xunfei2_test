@@ -62,7 +62,7 @@ private:
                 slope.push_back((result[i+1][0]-result[i][0])/(result[i+1][1]-result[i][1])*-1);//这里是x/y，免得斜率变成无穷大了
             }
             std::sort(slope.begin(), slope.end());
-            ROS_INFO("板子斜率%f",slope[effective_point/2]);
+            // ROS_INFO("板子斜率%f",slope[effective_point/2]);
             resp.lidar_results.push_back(slope[effective_point/2]);
             return true;
         }
@@ -249,8 +249,8 @@ private:
                 float vx = lineParams[0];
                 float vy = lineParams[1];
 
-                // 强制让向量的x分量(车头方向)为正，以保证方向一致性
-                if (vx < 0) 
+                // 强制让向量的y分量为负，这样其法向量（-vy,vx）必定会指向障碍物后方
+                if (vy > 0) 
                 {
                     vx = -vx;
                     vy = -vy;

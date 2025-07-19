@@ -12,11 +12,8 @@ typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseCl
 
 geometry_msgs::Twist twist_msg;
 bool start = false;
-bool movebaseflag = false;
-float xtarget = 0;
-float ytarget = 0;
-float yawtarget = 0;
 // 速度设置服务回调
+
 bool setSpeedCallback(ztestnav2025::set_speed::Request &req,ztestnav2025::set_speed::Response &resp)
 {
     if (req.work == false) {
@@ -34,10 +31,32 @@ bool setSpeedCallback(ztestnav2025::set_speed::Request &req,ztestnav2025::set_sp
         // ROS_INFO("运动控制节点运行中");
     }
     if(req.movebase_flag){
-        movebaseflag = true;
-        xtarget = req.target_x;
-        ytarget = req.target_y;
-        yawtarget = req.target_yaw;
+        ROS_INFO("开始movebase");
+        ros::Time start1 = ros::Time::now();
+        MoveBaseClient ac1("move_base", true); 
+        tf2::Quaternion q1;  
+        //等待action回应
+        while(!ac1.waitForServer()){
+            ROS_INFO("等待movebase服务中---");
+        } 
+        move_base_msgs::MoveBaseGoal goal1;
+        q1.setRPY(0, 0, req.target_yaw);
+        goal1.target_pose.header.frame_id = "map";
+        goal1.target_pose.header.stamp = ros::Time::now();
+        goal1.target_pose.pose.position.x = req.target_x;
+        goal1.target_pose.pose.position.y = req.target_y;
+        goal1.target_pose.pose.position.z = 0.0;
+        goal1.target_pose.pose.orientation.x = q1.x();
+        goal1.target_pose.pose.orientation.y = q1.y();
+        goal1.target_pose.pose.orientation.z = q1.z();
+        goal1.target_pose.pose.orientation.w = q1.w();
+        ROS_INFO("开始导航,初始化耗时%f",(ros::Time::now()-start1).toSec());
+        ac1.sendGoal(goal1);
+        ac1.waitForResult();
+        if(ac1.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+            ROS_INFO("到达目标");
+        else
+            ROS_INFO("无法到达目标");
     }
     resp.success = true;
     return true;
@@ -58,15 +77,6 @@ int main(int argc, char *argv[]) {
     
     // 初始化控制循环
     ros::Rate control_rate(20); // 严格20Hz频率
-
-    MoveBaseClient ac1("move_base", true); 
-    tf2::Quaternion q1;  
-    //等待action回应
-    // while(!ac1.waitForServer()){
-    //     ROS_INFO("等待movebase服务中---");
-    // } 
-    move_base_msgs::MoveBaseGoal goal1;
-    goal1.target_pose.header.frame_id = "map";
     
     ROS_INFO("运动控制节点已启动 (20Hz 控制循环)");
     
@@ -74,25 +84,6 @@ int main(int argc, char *argv[]) {
         // 1. 处理回调获取当前速度值
         ros::spinOnce();
         if(start) cmd_pub.publish(twist_msg);
-        if(movebaseflag){
-            ROS_INFO("开始movebase");
-            q1.setRPY(0, 0, yawtarget);
-            goal1.target_pose.header.stamp = ros::Time::now();
-            goal1.target_pose.pose.position.x = xtarget;
-            goal1.target_pose.pose.position.y = ytarget;
-            goal1.target_pose.pose.position.z = 0.0;
-            goal1.target_pose.pose.orientation.x = q1.x();
-            goal1.target_pose.pose.orientation.y = q1.y();
-            goal1.target_pose.pose.orientation.z = q1.z();
-            goal1.target_pose.pose.orientation.w = q1.w();
-            ac1.sendGoal(goal1);
-            ac1.waitForResult();
-            if(ac1.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-                ROS_INFO("到达目标");
-            else
-                ROS_INFO("无法到达目标");
-            movebaseflag = false;
-        }
         control_rate.sleep();
     }
 
