@@ -244,10 +244,24 @@ private:
                 // waitForContinue();
                 cv::Vec4f lineParams;
                 cv::fitLine(points, lineParams, cv::DIST_L2, 0, 0.01, 0.01);
+
+                //标准化方向向量 
+                float vx = lineParams[0];
+                float vy = lineParams[1];
+
+                // 强制让向量的x分量(车头方向)为正，以保证方向一致性
+                if (vx < 0) 
+                {
+                    vx = -vx;
+                    vy = -vy;
+                }
                 resp.lidar_results.push_back(distance[0]);//最短距离
                 resp.lidar_results.push_back(average_x/effective_point);//中点x坐标
                 resp.lidar_results.push_back(average_y/effective_point);//中点y坐标
                 resp.lidar_results.push_back(lineParams[0]/lineParams[1]);//板子斜率
+
+                resp.lidar_results.push_back(vx); // 新增返回拟合直线的xy分量
+                resp.lidar_results.push_back(vy); 
                 ROS_INFO("x%f,y%f",average_x/effective_point,average_y/effective_point);
                 return true;
             }

@@ -535,12 +535,17 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
         pose_client.call(pose);
         if(board.response.lidar_results[0] != -1){
             ROS_INFO("最短距离%f",board.response.lidar_results[0]);
+
+            float vx = board.response.lidar_results[4];//存储xy分量
+            float vy = board.response.lidar_results[5];
+
             double d = std::sqrt(1 + board.response.lidar_results[3]*board.response.lidar_results[3]);
             geometry_msgs::PointStamped lidar_point;
             lidar_point.header.frame_id = "laser_frame";
             lidar_point.point.x = board.response.lidar_results[1] + 0.15*board.response.lidar_results[3]/d;
             lidar_point.point.y = board.response.lidar_results[2] - 0.15/d;
-            lidar_point.point.z = std::atan(1/board.response.lidar_results[3]);
+            // lidar_point.point.z = std::atan(1/board.response.lidar_results[3]);
+            lidar_point.point.z = std::atan2(vy, vx);//使用atan2不会有角度180度跳变
             ROS_INFO("板子在雷达坐标系下的斜率%f",lidar_point.point.z);
             geometry_msgs::PointStamped point_base;
             tf_listener_->transformPoint("map", lidar_point, point_base);

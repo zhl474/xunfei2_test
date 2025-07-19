@@ -5,7 +5,7 @@ import cv2
 
 predictor = init()
 
-frame = cv2.imread('/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/2/1.png')
+frame = cv2.imread('/home/ucar/ucar_car/ypicture/picture_14.jpg')
 res = detect(frame,predictor)# 识别
 res = detect(frame,predictor)# 识别2次
 print("warm up done")

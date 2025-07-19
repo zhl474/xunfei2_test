@@ -1,0 +1,9 @@
+INFO:root:Using Tensorboard, logs will be saved in workspace/nanodet_m_416/20250719115832/logs
+INFO:root:Creating model...
+INFO:root:Setting up data...
+INFO:root:Training batch size: 8
+INFO:root:loaded /home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/workspace/nanodet_m_416/model_best/model_best.pth, epoch 300
+INFO:root:Starting testing...
+INFO:root:test|Epoch0/28|Iter1(0/27)| lr:1.00e-02| loss_qfl:0.0233| loss_bbox:0.1266| loss_dfl:0.1538| 
+INFO:root:test|Epoch0/28|Iter1(10/27)| lr:1.00e-02| loss_qfl:0.3247| loss_bbox:0.2691| loss_dfl:0.2263| 
+INFO:root:test|Epoch0/28|Iter1(20/27)| lr:1.00e-02| loss_qfl:0.5128| loss_bbox:0.2629| loss_dfl:0.2295| 

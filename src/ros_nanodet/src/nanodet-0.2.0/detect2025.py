@@ -7,11 +7,12 @@ from demo.demo import detect
 from demo.demo import init
 import cv2
 import numpy as np
+import time
 
 predictor = init()
 rospy.init_node("nanodet_detect", anonymous=True)
 
-frame = cv2.imread('/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/2/1.png')
+frame = cv2.imread('/home/ucar/ucar_car/ypicture/picture_14.jpg')
 res = detect(frame,predictor)# 识别
 res = detect(frame,predictor)# 识别2次
 print("warm up done")
@@ -78,9 +79,11 @@ def visualize(image, x0, y0, x1, y1, name, conf):
     # cv2.imshow('Detection', image)
     # cv2.waitKey(1)
     # out.write(image)
+    
 
 #首次启动要发个-1启动摄像头，发送-2关闭摄像头防止冲突
 def detect_start(req):
+    start_time = time.time()
     global camera_active, cap, out
     response = detect_result_srvResponse()
     if req.detect_start==-1:
@@ -93,6 +96,8 @@ def detect_start(req):
         rospy.logerr("获取图片失败")
     frame = cv2.flip(frame, 1)
     res = detect(frame, predictor)
+    print("目标检测耗时")
+    print(time.time()-start_time)
     max_score = -1.0
     best_bbox = [-1] * 5 
     target = -1
@@ -113,9 +118,15 @@ def detect_start(req):
     response.y1 = y1
     response.class_name = target
     # print((x0+x1)/2)
+    print("标签筛选耗时")
+    print(time.time()-start_time)
     if best_bbox[0] != -1:
         visualize(frame,x0, y0, x1, y1,target,conf)
+    print("可视化耗时")
+    print(time.time()-start_time)
     out.write(frame)
+    print("完整服务耗时")
+    print(time.time()-start_time)
     return response
 
 server = rospy.Service("nanodet_detect",detect_result_srv,detect_start)
