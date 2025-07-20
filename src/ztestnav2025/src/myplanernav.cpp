@@ -226,7 +226,7 @@ int main(int argc, char *argv[])
     //视觉识别开始，先传个-1把摄像头打开
     std::vector<int> a = {-1,-1,-1,-1,-1,-1};
     mecanumController.detect(a,-1);
-    board_name = mecanumController.turn_and_find(5.5,1,board_class,-0.4);//请求视觉识别板子服务
+    board_name = mecanumController.turn_and_find(5.5,board_class,-0.4);//请求视觉识别板子服务
     if (board_name != -1) {
         if (poseget_client.call(pose_result)){
             ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
         //前往区域中心找板子
         ROS_INFO("前往中心找板");
         go_destination(goal,1.25,3.75,0,q,ac);
-        board_name = mecanumController.turn_and_find(17,1,board_class,0.4);//请求视觉识别板子服务
+        board_name = mecanumController.turn_and_find(17,board_class,0.4);//请求视觉识别板子服务
         if(board_name!=-1){
             if (poseget_client.call(pose_result)){
                 ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
@@ -282,7 +282,7 @@ int main(int argc, char *argv[])
         //前往第三区域找板子
         ROS_INFO("前往第三点找板");
         go_destination(goal,2.0,4.25,0,q,ac);
-        board_name = mecanumController.turn_and_find(17,1,board_class,0.4);//请求视觉识别板子服务
+        board_name = mecanumController.turn_and_find(17,board_class,0.4);//请求视觉识别板子服务
         if(board_name!=-1){
             if (poseget_client.call(pose_result)){
                 ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);

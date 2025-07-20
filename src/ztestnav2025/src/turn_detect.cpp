@@ -27,14 +27,14 @@ MecanumController::MecanumController(ros::NodeHandle& nh) :
         ROS_FATAL("运动控制服务 setspeed 不可用！");
         throw std::runtime_error("Service setspeed not found");
     }
-    server_.setCallback(boost::bind(&MecanumController::PID_change, this, _1, _2));
+    // server_.setCallback(boost::bind(&MecanumController::PID_change, this, _1, _2));
 }
 
 void MecanumController::detect(std::vector<int>& result, int object_num){//封装目标检测功能
     start_detect_.request.detect_start = object_num;//要先传个-1把摄像头打开
     ros::Time test = ros::Time::now();
     bool flag = detect_client_.call(start_detect_);
-    if ((ros::Time::now()-test).toSec()>0.2){
+    if ((ros::Time::now()-test).toSec()>0.3){
         ROS_WARN("目标检测超时%f",(ros::Time::now()-test).toSec());
     }
     if (flag){
@@ -91,15 +91,20 @@ void MecanumController::rotateCircle(double rotate, double angular_speed) {//控
     }
 }
 
-int MecanumController::turn_and_find(double find_time,int y,int z,double angular_speed){//原地旋转小车x度，执行y次目标检测,寻找z号目标
+int MecanumController::turn_and_find(double find_time,int z,double angular_speed){//原地旋转小车x度，执行y次目标检测,寻找z号目标
     result = {-1,-1,-1,-1,-1,-1};
     double integral = 0, prev_error = 0;
     // ros::Rate rate(20);     // 控制频率20Hz
     set_speed_.request.work = true;
     start_time_ = ros::Time::now();
+    double Kp,Ki,Kd;
+    nh_.getParam("/myplanernav/turn_find_p",Kp);
+    nh_.getParam("/myplanernav/turn_find_i",Ki);
+    nh_.getParam("/myplanernav/turn_find_d",Kd);
     while(ros::ok()&&!exit_flag){
+        // ros::Time test_time = ros::Time::now();
         detect(result, z);     // 持续检测目标
-        // ROS_INFO("%d",result[4]);
+        // ROS_INFO("目标检测结果%d",result[4]);
         if(result[4] < (z-1)*3 || result[4] >= z*3){
             set_speed_.request.target_twist.angular.z = angular_speed;
             set_speed_client_.call(set_speed_);
@@ -114,6 +119,7 @@ int MecanumController::turn_and_find(double find_time,int y,int z,double angular
         start_time_ = ros::Time::now();//找到目标就刷新开始时间免得一帧没检测到板子又退出去了
         // 计算中心点偏差（误差输入）
         int center_x = (result[0]+result[2])/2;
+        // ROS_INFO("中心点偏差%d",center_x);
         // 退出条件：误差<7像素
         if(std::abs(center_x - img_width/2) < 7){
             ROS_INFO("已经对准");
@@ -127,18 +133,23 @@ int MecanumController::turn_and_find(double find_time,int y,int z,double angular
         double error = (img_width/2.0 - center_x)/100; 
         
         // 离散PID计算
-        integral += error * 0.1;       // dt=1/20≈0.05
-        double derivative = (error - prev_error)/0.1;
-        double output = Kp_*error + Ki_*integral + Kd_*derivative;
-        output = clamp(output, -1.0, 1.0);
-        // ROS_INFO("速度发布:%f",output*0.2);
+        integral += error * 0.2;       // dt=1/20≈0.05
+        integral = clamp(integral, -1.0, 1.0);
+        double derivative = (error - prev_error)/0.2;
+        double output = Kp*error + Ki*integral + Kd*derivative;
+        output = clamp(output, -0.4, 0.4);
+        // ROS_INFO("error:%f",error);
+        // ROS_INFO("P:%f",Kp*error);
+        // ROS_INFO("I:%f",Ki*integral);
+        // ROS_INFO("D:%f",Kd*derivative);
+        // ROS_INFO("速度发布:%f",output);
         
         // 执行旋转（限制输出范围）
-        set_speed_.request.target_twist.angular.z = 0.2*output;
+        set_speed_.request.target_twist.angular.z = output;
         set_speed_client_.call(set_speed_);
         
         prev_error = error;
-        
+        // ROS_INFO("耗时%f",(ros::Time::now()-test_time).toSec());
     }
     exit_flag = false;
     set_speed_.request.target_twist.linear.z = 0;
@@ -154,11 +165,6 @@ bool MecanumController::forward(int z,double forward_speed){
     set_speed_.request.target_twist.linear.x = 0.15;
     set_speed_.request.work = true;
     while(ros::ok()){
-        // detect(result, z);     // 持续检测目标
-        // ROS_INFO("%d",result[4]);
-        // if(result[4] < (z-1)*3 || result[4] >= z*3){
-        //     continue;
-        // }  // 目标丢失则退出
         adjust_client_.call(board_slope);
         ROS_INFO("%f",board_slope.response.lidar_results[0]);
         if(board_slope.response.lidar_results[0] < 0.4){
@@ -168,25 +174,6 @@ bool MecanumController::forward(int z,double forward_speed){
             set_speed_client_.call(set_speed_);
             return true;
         }  // 利用雷达判定已经接近目标
-        // 计算中心点偏差（误差输入）
-        // int center_x = (result[0]+result[2])/2;
-        // if(std::abs(center_x - img_width/2) < 7){
-        //     integral = 0;
-        //     set_speed_.request.target_twist.angular.z = 0;
-        //     set_speed_.request.target_twist.linear.x = 0.3;
-        //     set_speed_client_.call(set_speed_);
-        // } 
-        // double error = (img_width/2.0 - center_x)/100; 
-        
-        // // 离散PID计算
-        // integral += error * 0.05;       // dt=1/20≈0.05
-        // double derivative = (error - prev_error)/0.05;
-        // double output = Kp_*error + Ki_*integral + Kd_*derivative;
-        // output = clamp(output, -1.0, 1.0);
-        // // ROS_INFO("速度发布:%f",output*0.2);
-        
-        // // 执行旋转（限制输出范围）
-        // set_speed_.request.target_twist.angular.z = 0.2*output;
         set_speed_client_.call(set_speed_);
         
         // prev_error = error;
@@ -206,7 +193,7 @@ bool MecanumController::adjust(int z,double adjust_speed){
     set_speed_.request.target_twist.angular.z = 0;
     set_speed_.request.work = true;
     board_slope.request.lidar_process_start = 2;
-    start_time_ = ros::Time::now();
+    
     int count = 0;//连续三帧目标都在中心，才认为对准
     double p,i,d,p1,i1,d1;
     nh_.getParam("/myplanernav/adjust_detecet_P",p);
@@ -216,6 +203,7 @@ bool MecanumController::adjust(int z,double adjust_speed){
     nh_.getParam("/myplanernav/adjust_lidar_I",i1);
     nh_.getParam("/myplanernav/adjust_lidar_D",d1);
     while(ros::ok()){
+        start_time_ = ros::Time::now();
         detect(result, z);     // 持续检测目标
         if(result[4] < (z-1)*3 || result[4] >= z*3){
             continue;
@@ -253,19 +241,22 @@ bool MecanumController::adjust(int z,double adjust_speed){
             } 
             lidar_integral += board_slope.response.lidar_results[0] * 0.2;
             lidar_integral = clamp(lidar_integral, -1.0, 1.0);
-            lidar_output = p1*board_slope.response.lidar_results[0] + lidar_integral*i1;
-            ROS_INFO("error:%f",board_slope.response.lidar_results[0]);
-            ROS_INFO("P:%f",p1*board_slope.response.lidar_results[0]);
-            ROS_INFO("I:%f",lidar_integral*i1);
-            ROS_INFO("D:%f",d1*derivative);
-            ROS_INFO("速度发布:%f",lidar_output);
-            // lidar_output = clamp(lidar_output, -0.15, 0.15);
+            double lidar_derivative = (board_slope.response.lidar_results[0] - lidar_prev_error)/0.2;
+            lidar_output = p1*board_slope.response.lidar_results[0] + lidar_integral*i1 + lidar_derivative*d1;
+            // ROS_INFO("error:%f",board_slope.response.lidar_results[0]);
+            // ROS_INFO("P:%f",p1*board_slope.response.lidar_results[0]);
+            // ROS_INFO("I:%f",lidar_integral*i1);
+            // ROS_INFO("D:%f",d1*lidar_derivative);
+            lidar_output = clamp(lidar_output, -0.13, 0.13);
+            // ROS_INFO("速度发布:%f",lidar_output);
+            lidar_prev_error = board_slope.response.lidar_results[0];
         }
         if(std::abs(center_x - img_width/2) < 20 && std::abs(board_slope.response.lidar_results[0]) < 0.1){
             count++;
             set_speed_.request.target_twist.linear.y = 0;
             set_speed_.request.target_twist.angular.z = 0;
             set_speed_client_.call(set_speed_);
+            ROS_INFO("满足退出条件第%d次",count);
             if (count>3){
                 set_speed_.request.work = false;
                 set_speed_client_.call(set_speed_);
@@ -278,24 +269,17 @@ bool MecanumController::adjust(int z,double adjust_speed){
         }
         set_speed_.request.target_twist.angular.z = lidar_output;
         set_speed_client_.call(set_speed_);
+        // ROS_INFO("控制一次耗时%f",(ros::Time::now()-start_time_).toSec());
     }
     set_speed_.request.target_twist.linear.x = 0;
     set_speed_.request.target_twist.linear.y = 0;
     set_speed_.request.target_twist.angular.z = 0;
     set_speed_.request.work = false;
     set_speed_client_.call(set_speed_);
-    ROS_INFO("控制一次耗时%f",(ros::Time::now()-start_time_).toSec());
+    
     return false;
 }
 
-    //解析动态参数
-void MecanumController::PID_change(ztestnav2025::drConfig &config, uint32_t level){
-    Kp_ = config.Kp; 
-    Ki_ = config.Ki;
-    Kd_ = config.Kd;
-    pid_change_flag = 1;
-    ROS_INFO("PID参数修改,P:%f,I:%f,D:%f",config.Kp,config.Ki,config.Kd);
-}
 
 std::vector<float> MecanumController::getCurrentPose(){
     start_get_pose_.request.getpose_start= 1;

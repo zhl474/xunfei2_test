@@ -13,8 +13,8 @@ predictor = init()
 rospy.init_node("nanodet_detect", anonymous=True)
 
 frame = cv2.imread('/home/ucar/ucar_car/ypicture/picture_14.jpg')
-res = detect(frame,predictor)# 识别
-res = detect(frame,predictor)# 识别2次
+_ = detect(frame,predictor)# 识别
+_ = detect(frame,predictor)# 识别2次
 print("warm up done")
 
 # 全局变量管理摄像头状态
@@ -23,7 +23,7 @@ cap = None
 
 output_filename = "/home/ucar/ucar_car/src/ztestnav2025/nanodet_debug/nanodet.avi"#录制视频防止可视化卡顿
 fourcc = cv2.VideoWriter_fourcc(*'XVID')  # MP4格式，其他选项：'XVID'->AVI, 'MJPG'->MJPEG
-fps = 5.0
+fps = 3.0
 frame_size = (640, 480)  # 必须和实际帧尺寸一致
 out = cv2.VideoWriter(output_filename, fourcc, fps, frame_size)
 # 检查是否成功创建
@@ -51,6 +51,7 @@ def open_cap():
         if not cap.isOpened():
             rospy.logerr("打开摄像头失败")
             return 0
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         camera_active = True
         rospy.loginfo("摄像头成功打开")
 
@@ -91,6 +92,7 @@ def detect_start(req):
     if req.detect_start==-2:
         shutdown_cap(response)
         return response
+    cap.grab()#摄像头会缓存一帧，把这一帧丢掉才是最新的照片
     rec, frame = cap.read()
     if not rec:
         rospy.logerr("获取图片失败")
@@ -104,7 +106,7 @@ def detect_start(req):
     for label in res:
         for bbox in res[label]:
             score = bbox[-1]
-            if score > max_score and score > 0.6:
+            if score > max_score and score > 0.5:
                 if label >= (req.detect_start-1)*3 and label <req.detect_start*3:
                     max_score = score
                     best_bbox = bbox

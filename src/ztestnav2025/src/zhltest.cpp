@@ -79,9 +79,10 @@ int main(int argc, char *argv[]){
     std::vector<int> a = {-1,-1,-1,-1,-1,-1};
     mecanumController.detect(a,-1);
     
-    mecanumController.adjust(2,0.4);//
+    // mecanumController.adjust(2,0.4);//
+    int de = mecanumController.turn_and_find(17,1,-0.4);
     ROS_INFO("结束了");
- 
+    ROS_INFO("%d",de);
 }
 
 

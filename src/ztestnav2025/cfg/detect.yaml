@@ -1,7 +1,11 @@
-adjust_detecet_P: 0.03
-adjust_detecet_I: 0.02
-adjust_detecet_D: 0.02
+adjust_detecet_P: 0.035
+adjust_detecet_I: 0.03
+adjust_detecet_D: 0.018
 
-adjust_lidar_P: 0.15
-adjust_lidar_I: 0.08
-adjust_lidar_D: 0.0
+adjust_lidar_P: 0.1
+adjust_lidar_I: 0.1
+adjust_lidar_D: 0.1
+
+turn_find_p: 0.1
+turn_find_i: 0.12
+turn_find_d: 0.08

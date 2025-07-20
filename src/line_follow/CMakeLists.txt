@@ -18,6 +18,8 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   # image_transport
   message_generation
+  actionlib      
+  move_base_msgs
 )
 # find_package(catkin REQUIRED COMPONENTS
 #   geometry_msgs

@@ -37,9 +37,9 @@ private:
                 effective_point++;
                 disdance.push_back(ranges_[i]);
             }
-            ROS_INFO("有效点数%d",effective_point);
+            // ROS_INFO("有效点数%d",effective_point);
             std::sort(disdance.begin(), disdance.end());
-            ROS_INFO("距离%f",disdance[effective_point/2]);//中位数
+            // ROS_INFO("距离%f",disdance[effective_point/2]);//中位数
             resp.lidar_results.push_back(disdance[effective_point/2]);
             return true;
         }

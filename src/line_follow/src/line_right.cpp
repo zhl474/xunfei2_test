@@ -10,11 +10,16 @@
 #include "line_follow/line_follow.h"
 #include "ztestnav2025/getpose_server.h"
 #include "ztestnav2025/lidar_process.h"
-#include "ztestnav2025/set_speed.h"
+// #include "ztestnav2025/set_speed.h"
 
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
+
+#include <actionlib/client/simple_action_client.h>
+#include <move_base_msgs/MoveBaseAction.h>
+
+typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
 using namespace cv;
 using namespace std;
@@ -461,11 +466,16 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
     ztestnav2025::getpose_server pose;
     pose.request.getpose_start = 1;
     pose_client.waitForExistence();
+    // ROS_INFO("等待movebase服务中---");
+    // ros::ServiceClient client_movebase = nh.serviceClient<ztestnav2025::set_speed>("set_speed");
+    // ztestnav2025::set_speed target_info;
+    // target_info.request.movebase_flag = true;
+    // client_movebase.waitForExistence();
+    MoveBaseClient ac("move_base", true);
     ROS_INFO("等待movebase服务中---");
-    ros::ServiceClient client_movebase = nh.serviceClient<ztestnav2025::set_speed>("set_speed");
-    ztestnav2025::set_speed target_info;
-    target_info.request.movebase_flag = true;
-    client_movebase.waitForExistence();
+    // 等待服务器连接成功，可以设置一个超时时间，或者一直等待
+    ac.waitForServer(); 
+    ROS_INFO("move_base action server 已连接.");
     ROS_INFO("tf变换");
     tf::TransformListener* tf_listener_;
     tf_listener_ = new tf::TransformListener();
@@ -498,12 +508,12 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
     Mat image,undistorted;
     Rect roi(0, 210, 640, 270);
 
-    double p,i,d,integration,pre_error,leftpoint_p_,leftpoint_I_;
+    double p,i,d,integration,pre_error,leftpoint_p,leftpoint_I;
     nh.getParam("/line_right/right_P", p);
     nh.getParam("/line_right/right_I", i);
     nh.getParam("/line_right/right_D", d);
-    nh.getParam("/line_right/leftpoint_p", leftpoint_p_);
-    nh.getParam("/line_right/leftpoint_I", leftpoint_I_);
+    nh.getParam("/line_right/leftpoint_p", leftpoint_p);
+    nh.getParam("/line_right/leftpoint_I", leftpoint_I);
     ROS_INFO("参数加载P: %f", p);
     integration = 0;
     pre_error = 0;
@@ -542,18 +552,35 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
             double d = std::sqrt(1 + board.response.lidar_results[3]*board.response.lidar_results[3]);
             geometry_msgs::PointStamped lidar_point;
             lidar_point.header.frame_id = "laser_frame";
+            lidar_point.header.stamp = ros::Time(0); // 使用最新tf
             lidar_point.point.x = board.response.lidar_results[1] - 0.3*vy;//法向量（-vy,vx）现在必定指向y正方向（小车前方）
             lidar_point.point.y = board.response.lidar_results[2] + 0.3*vx;
             lidar_point.point.z = 0;//使用atan2不会有角度180度跳变std::atan2(vx, -vy)
             // ROS_INFO("板子在雷达坐标系下的斜率%f",lidar_point.point.z);
             geometry_msgs::PointStamped point_base;
             tf_listener_->transformPoint("map", lidar_point, point_base);
+
+            move_base_msgs::MoveBaseGoal goal;
+            goal.target_pose.header.frame_id = "map";
+            goal.target_pose.header.stamp = ros::Time::now();
+            goal.target_pose.pose.position.x = point_base.point.x;
+            goal.target_pose.pose.position.y = point_base.point.y;
+            // 计算目标朝向：障碍物法线方向 + 机器人当前朝向
+            double goal_yaw = std::atan2(vx, -vy) + pose.response.pose_at[2];
+            tf::Quaternion q = tf::createQuaternionFromYaw(goal_yaw);
+            geometry_msgs::Quaternion q_msg;
+            tf::quaternionTFToMsg(q, q_msg);
+            goal.target_pose.pose.orientation = q_msg;
             
-            target_info.request.target_x = point_base.point.x;
-            target_info.request.target_y = point_base.point.y;
-            target_info.request.target_yaw = std::atan2(vx, -vy) + pose.response.pose_at[2];
-            ROS_INFO("坐标变换结果: (%.2f, %.2f, %.2f)",point_base.point.x, point_base.point.y, target_info.request.target_yaw);
-            client_movebase.call(target_info);
+            // target_info.request.target_x = point_base.point.x;
+            // target_info.request.target_y = point_base.point.y;
+            // target_info.request.target_yaw = std::atan2(vx, -vy) + pose.response.pose_at[2];
+
+            ROS_INFO("坐标变换结果: (%.2f, %.2f, %.2f)",point_base.point.x, point_base.point.y, goal_yaw);
+            ac.sendGoal(goal);
+            ac.waitForResult();
+
+            // client_movebase.call(target_info);
             ROS_INFO("避障结束");
         }
 

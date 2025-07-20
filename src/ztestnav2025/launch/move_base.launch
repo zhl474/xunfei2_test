@@ -29,4 +29,5 @@
     <rosparam file="$(find my_planner)/config/my_planner_params.yaml" command="load" ns="MyPlanner" />
   </node>
   <node pkg="line_follow" type="line_right" name="line_right" output="screen"/>
+  <rosparam command="load" file="/home/ucar/ucar_car/src/line_follow/config/line.yaml" ns="line_right" />
 </launch>
