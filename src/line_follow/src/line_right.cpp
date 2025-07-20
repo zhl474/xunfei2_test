@@ -555,7 +555,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
             lidar_point.header.stamp = ros::Time(0); // 使用最新tf
             lidar_point.point.x = board.response.lidar_results[1] - 0.3*vy;//法向量（-vy,vx）现在必定指向y正方向（小车前方）
             lidar_point.point.y = board.response.lidar_results[2] + 0.3*vx;
-            lidar_point.point.z = 0;//使用atan2不会有角度180度跳变std::atan2(vx, -vy)
+            lidar_point.point.z = 0;//使用atan2不会有角度180度跳变
             // ROS_INFO("板子在雷达坐标系下的斜率%f",lidar_point.point.z);
             geometry_msgs::PointStamped point_base;
             tf_listener_->transformPoint("map", lidar_point, point_base);
@@ -565,7 +565,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
             goal.target_pose.header.stamp = ros::Time::now();
             goal.target_pose.pose.position.x = point_base.point.x;
             goal.target_pose.pose.position.y = point_base.point.y;
-            // 计算目标朝向：障碍物法线方向 + 机器人当前朝向
+            // 计算目标朝向：障碍物法线方向相对于小车当前的角度 + 小车当前朝向
             double goal_yaw = std::atan2(vx, -vy) + pose.response.pose_at[2];
             tf::Quaternion q = tf::createQuaternionFromYaw(goal_yaw);
             geometry_msgs::Quaternion q_msg;

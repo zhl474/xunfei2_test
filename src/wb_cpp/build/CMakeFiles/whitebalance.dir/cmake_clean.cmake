@@ -1,7 +1,7 @@
 file(REMOVE_RECURSE
   "CMakeFiles/whitebalance.dir/whitebalance.cpp.o"
   "whitebalance.pdb"
-  "whitebalance.cpython-36m-aarch64-linux-gnu.so"
+  "whitebalance.so"
 )
 
 # Per-language clean rules from dependency scanning.

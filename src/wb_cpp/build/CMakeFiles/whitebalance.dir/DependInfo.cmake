@@ -10,6 +10,7 @@ set(CMAKE_CXX_COMPILER_ID "GNU")
 
 # The include file search paths:
 set(CMAKE_CXX_TARGET_INCLUDE_PATH
+  "../pybind11-2.10.1/include"
   "/usr/include/python3.6m"
   "/usr/local/include/opencv4"
   )

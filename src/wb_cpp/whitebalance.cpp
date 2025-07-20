@@ -79,31 +79,31 @@ cv::Mat numpy_to_mat(py::array_t<uchar>& array) {
 }
 
 // // OpenCV Mat转numpy数组
-// py::array_t<uchar> mat_to_numpy(const cv::Mat& mat) {
-//     auto shape = vector<size_t>{
-//         static_cast<size_t>(mat.rows),
-//         static_cast<size_t>(mat.cols),
-//         static_cast<size_t>(3) // 总是返回3通道
-//     };
-//     // py::array_t<uchar> result({mat.rows, mat.cols, mat.channels()});
-//     py::array_t<uchar> result(shape);
-//     py::buffer_info buf = result.request();
-//     cv::Mat rgb;
-//     cvtColor(mat, rgb, COLOR_BGR2RGB);
-//     memcpy(buf.ptr, rgb.data, rgb.total() * rgb.elemSize());
-//     // uchar* ptr = (uchar*)buf.ptr;
+py::array_t<uchar> mat_to_numpy(const cv::Mat& mat) {
+    auto shape = vector<size_t>{
+        static_cast<size_t>(mat.rows),
+        static_cast<size_t>(mat.cols),
+        static_cast<size_t>(3) // 总是返回3通道
+    };
+    // py::array_t<uchar> result({mat.rows, mat.cols, mat.channels()});
+    py::array_t<uchar> result(shape);
+    py::buffer_info buf = result.request();
+    cv::Mat rgb;
+    cvtColor(mat, rgb, COLOR_BGR2RGB);
+    memcpy(buf.ptr, rgb.data, rgb.total() * rgb.elemSize());
+    // uchar* ptr = (uchar*)buf.ptr;
     
-//     // // 复制数据
-//     // for (int i = 0; i < mat.rows; i++) {
-//     //     for (int j = 0; j < mat.cols; j++) {
-//     //         for (int c = 0; c < mat.channels(); c++) {
-//     //             ptr[(i * mat.cols + j) * mat.channels() + c] = mat.at<cv::Vec3b>(i, j)[c];
-//     //         }
-//     //     }
-//     // }
+    // // 复制数据
+    // for (int i = 0; i < mat.rows; i++) {
+    //     for (int j = 0; j < mat.cols; j++) {
+    //         for (int c = 0; c < mat.channels(); c++) {
+    //             ptr[(i * mat.cols + j) * mat.channels() + c] = mat.at<cv::Vec3b>(i, j)[c];
+    //         }
+    //     }
+    // }
     
-//     return result;
-// }
+    return result;
+}
 
 // Python绑定
 PYBIND11_MODULE(whitebalance, m) {
@@ -133,7 +133,7 @@ PYBIND11_MODULE(whitebalance, m) {
         std::cout << "处理耗时：" << elapsed.count() << "ms" << std::endl;
         
         // 转换回numpy数组
-        // return mat_to_numpy(result);
-        return 1;
+        return mat_to_numpy(result);
+        // return 1;
     }, "对输入图像进行快速白平衡处理", py::arg("image"));
 }

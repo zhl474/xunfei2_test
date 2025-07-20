@@ -1,8 +1,14 @@
 import cv2
+import sys
+import os
+
+# 添加 build 目录到 Python 路径
+build_dir = os.path.join(os.path.dirname(__file__), 'build')
+sys.path.insert(0, build_dir)
 import whitebalance
 
 # 读取图像
-img = cv2.imread("test_image.png")  # 替换为你的测试图片路径
+img = cv2.imread("/home/ucar/ucar_car/missing_76.jpg")  # 替换为你的测试图片路径
 if img is None:
     print("无法读取图像，请检查路径是否正确")
 else:

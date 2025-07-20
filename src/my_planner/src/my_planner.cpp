@@ -72,6 +72,7 @@ namespace my_planner
         // std::cin.ignore(); // 清除缓冲区
         // std::cin.get();    // 等待回车
         // ROS_INFO("查看全局路径规划");
+        ROS_INFO("目的地%f,%f",global_plan_[global_plan_.size()-1].pose.position.x,global_plan_[global_plan_.size()-1].pose.position.y);
         return true;
     }
 

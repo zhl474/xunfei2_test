@@ -194,11 +194,26 @@ PYBIND11_PYTHON_VERSION:STRING=
 //Path to a program.
 PYTHON_EXECUTABLE:FILEPATH=/usr/bin/python3.6
 
+//Path to a file.
+PYTHON_INCLUDE_DIR:PATH=/usr/include/python3.6m
+
 //Path to a library.
 PYTHON_LIBRARY:FILEPATH=/usr/lib/aarch64-linux-gnu/libpython3.6m.so
 
+//Path to a library.
+PYTHON_LIBRARY_DEBUG:FILEPATH=PYTHON_LIBRARY_DEBUG-NOTFOUND
+
+//The directory containing a CMake configuration file for Python.
+Python_DIR:PATH=Python_DIR-NOTFOUND
+
 //The directory containing a CMake configuration file for pybind11.
 pybind11_DIR:PATH=/usr/lib/cmake/pybind11
+
+//Dependencies for target
+test_LIB_DEPENDS:STATIC=
+
+//Dependencies for target
+test_m_LIB_DEPENDS:STATIC=
 
 //Value Computed by CMake
 wb_cpp_BINARY_DIR:STATIC=/home/ucar/ucar_car/src/wb_cpp/build
@@ -353,16 +368,20 @@ CMAKE_UNAME:INTERNAL=/bin/uname
 CMAKE_VERBOSE_MAKEFILE-ADVANCED:INTERNAL=1
 //Details about finding OpenCV
 FIND_PACKAGE_MESSAGE_DETAILS_OpenCV:INTERNAL=[/usr/local][v4.5.3()]
-//Details about finding PYTHON
-FIND_PACKAGE_MESSAGE_DETAILS_PYTHON:INTERNAL=/usr/bin/python3.6
 //Details about finding PythonInterp
-FIND_PACKAGE_MESSAGE_DETAILS_PythonInterp:INTERNAL=[/usr/bin/python3.6][v3.6.8()]
+FIND_PACKAGE_MESSAGE_DETAILS_PythonInterp:INTERNAL=[/usr/bin/python3.6][v3.6.8(3.6)]
+//Details about finding PythonLibs
+FIND_PACKAGE_MESSAGE_DETAILS_PythonLibs:INTERNAL=[/usr/lib/aarch64-linux-gnu/libpython3.6m.so][/usr/include/python3.6m][v3.6.8(3.6)]
 //Test HAS_CPP11_FLAG
 HAS_CPP11_FLAG:INTERNAL=1
 //Test HAS_CPP14_FLAG
 HAS_CPP14_FLAG:INTERNAL=1
 //ADVANCED property for variable: PYTHON_EXECUTABLE
 PYTHON_EXECUTABLE-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: PYTHON_INCLUDE_DIR
+PYTHON_INCLUDE_DIR-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: PYTHON_LIBRARY
 PYTHON_LIBRARY-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: PYTHON_LIBRARY_DEBUG
+PYTHON_LIBRARY_DEBUG-ADVANCED:INTERNAL=1
 
