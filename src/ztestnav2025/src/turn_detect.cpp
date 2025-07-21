@@ -34,7 +34,7 @@ void MecanumController::detect(std::vector<int>& result, int object_num){//封�
     start_detect_.request.detect_start = object_num;//要先传个-1把摄像头打开
     ros::Time test = ros::Time::now();
     bool flag = detect_client_.call(start_detect_);
-    if ((ros::Time::now()-test).toSec()>0.3){
+    if ((ros::Time::now()-test).toSec()>0.2){
         ROS_WARN("目标检测超时%f",(ros::Time::now()-test).toSec());
     }
     if (flag){
@@ -142,7 +142,7 @@ int MecanumController::turn_and_find(double find_time,int z,double angular_speed
         // ROS_INFO("P:%f",Kp*error);
         // ROS_INFO("I:%f",Ki*integral);
         // ROS_INFO("D:%f",Kd*derivative);
-        // ROS_INFO("速度发布:%f",output);
+        ROS_INFO("速度发布:%f",output);
         
         // 执行旋转（限制输出范围）
         set_speed_.request.target_twist.angular.z = output;
@@ -166,7 +166,7 @@ bool MecanumController::forward(int z,double forward_speed){
     set_speed_.request.work = true;
     while(ros::ok()){
         adjust_client_.call(board_slope);
-        ROS_INFO("%f",board_slope.response.lidar_results[0]);
+        // ROS_INFO("%f",board_slope.response.lidar_results[0]);
         if(board_slope.response.lidar_results[0] < 0.4){
             set_speed_.request.target_twist.linear.x = 0;
             set_speed_.request.target_twist.angular.z = 0;
@@ -185,7 +185,7 @@ bool MecanumController::forward(int z,double forward_speed){
     return false;
 }
 
-bool MecanumController::adjust(int z,double adjust_speed){
+int MecanumController::adjust(int z,double adjust_speed){
     result = {-1,-1,-1,-1,-1,-1};//
     double integral = 0, prev_error = 0;
     double lidar_integral = 0, lidar_prev_error = 0;
@@ -195,6 +195,7 @@ bool MecanumController::adjust(int z,double adjust_speed){
     board_slope.request.lidar_process_start = 2;
     
     int count = 0;//连续三帧目标都在中心，才认为对准
+    int failed_conut = 0;//连续5帧找不到目标，判定为目标丢失
     double p,i,d,p1,i1,d1;
     nh_.getParam("/myplanernav/adjust_detecet_P",p);
     nh_.getParam("/myplanernav/adjust_detecet_I",i);
@@ -207,6 +208,10 @@ bool MecanumController::adjust(int z,double adjust_speed){
         detect(result, z);     // 持续检测目标
         if(result[4] < (z-1)*3 || result[4] >= z*3){
             continue;
+            failed_conut++;
+            if(failed_conut>5){
+                return -1;
+            }
         }  // 目标丢失则退出
         int center_x = (result[0]+result[2])/2;
         if(std::abs(center_x - img_width/2) < 20){
@@ -218,8 +223,8 @@ bool MecanumController::adjust(int z,double adjust_speed){
         double error = (img_width/2.0 - center_x)/100; 
         // ROS_INFO("error:%f",error);
         // 离散PID计算
-        integral += error*0.2;      
-        integral = clamp(integral, -1.0, 1.0);
+        integral += error*0.4;      
+        integral = clamp(integral, -1.5, 1.5);
         double derivative = (error - prev_error)/0.2;
         double output = p*error + i*integral + d*derivative;
         // ROS_INFO("error:%f",error);
@@ -260,7 +265,7 @@ bool MecanumController::adjust(int z,double adjust_speed){
             if (count>3){
                 set_speed_.request.work = false;
                 set_speed_client_.call(set_speed_);
-                return true;//连续三帧都合格才退出
+                return result[4];//连续三帧都合格才退出
             }
             continue;
         }  // 已经接近目标退出循环
@@ -277,7 +282,7 @@ bool MecanumController::adjust(int z,double adjust_speed){
     set_speed_.request.work = false;
     set_speed_client_.call(set_speed_);
     
-    return false;
+    return -1;
 }
 
 

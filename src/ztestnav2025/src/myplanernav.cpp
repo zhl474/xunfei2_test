@@ -74,7 +74,7 @@ public:
 
     bool sim_done = 0;
     int sim_room = -1;
-    int sim_detect_class = -1;
+    int sim_detect_class = 1;
     void simreturn(const communication::msg_2::ConstPtr& sim_result){
         ROS_INFO("房间编号：%d,检测类型：%d", sim_result->room, sim_result->detected_class);
         sim_room = sim_result->room;
@@ -226,7 +226,7 @@ int main(int argc, char *argv[])
     //视觉识别开始，先传个-1把摄像头打开
     std::vector<int> a = {-1,-1,-1,-1,-1,-1};
     mecanumController.detect(a,-1);
-    board_name = mecanumController.turn_and_find(5.5,board_class,-0.4);//请求视觉识别板子服务
+    board_name = mecanumController.turn_and_find(7.1,board_class,-0.4);//请求视觉识别板子服务
     if (board_name != -1) {
         if (poseget_client.call(pose_result)){
             ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
@@ -242,7 +242,11 @@ int main(int argc, char *argv[])
             double target_y = (where_board.response.lidar_results[0]-0.6)*sin(pose_result.response.pose_at[2])+pose_result.response.pose_at[1];
             ROS_INFO("目的地%f,%f,%f",target_x,target_y,pose_result.response.pose_at[2]);
             go_destination(goal,target_x,target_y,pose_result.response.pose_at[2],q,ac);
-            mecanumController.adjust(board_class,0.4);
+            if(mecanumController.adjust(board_class,0.4)==-1){//要是找不到了再转一下
+                ROS_INFO("没找到，再转一下");
+                mecanumController.turn_and_find(17,board_class,0.4);
+                mecanumController.adjust(board_class,0.4);
+            }
             if(mecanumController.forward(board_class,0.3)){//直接前进，直到目标检测框高超过230
                 flag = 1;
             }
@@ -271,7 +275,12 @@ int main(int argc, char *argv[])
                 ROS_INFO("目的地%f,%f,%f",target_x,target_y,pose_result.response.pose_at[2]);
                 go_destination(goal,target_x,target_y,pose_result.response.pose_at[2],q,ac);
             }
-            mecanumController.adjust(board_class,0.4);
+            board_name = mecanumController.adjust(board_class,0.4);
+            if(board_name==-1){//要是找不到了再转一下
+                ROS_INFO("没找到，再转一下");
+                mecanumController.turn_and_find(17,board_class,0.4);
+                mecanumController.adjust(board_class,0.4);
+            }
             if(mecanumController.forward(board_class,0.3)){//直接前进，直到目标检测框高超过230
                 flag = 1;
             }
@@ -342,7 +351,7 @@ int main(int argc, char *argv[])
     if (detectTrafficLightStatus()==2){
         ROS_INFO("路口1可通过");
         play_audio(voice[3][0]);
-        go_destination(goal,2.75,3.50,-0.78,q,ac);
+        go_destination(goal,2.77,3.44,-1.18,q,ac);
     } 
     else {
         ROS_INFO("前往红绿灯区域路口2");
@@ -350,7 +359,7 @@ int main(int argc, char *argv[])
         if (detectTrafficLightStatus()==2){
             ROS_INFO("路口2可通过");
             play_audio(voice[3][1]);
-            go_destination(goal,4.75,3.50,-2.31,q,ac);
+            go_destination(goal,4.75,3.44,-1.86,q,ac);
         } 
     }
 

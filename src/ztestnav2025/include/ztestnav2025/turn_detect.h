@@ -26,7 +26,7 @@ public:
     std::vector<float> getCurrentPose();
     void cap_close();
     bool forward(int z,double forward_speed);
-    bool adjust(int z,double adjust_speed);
+    int adjust(int z,double adjust_speed);
 
     // bool pid_change_flag=0;
 

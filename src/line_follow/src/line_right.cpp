@@ -148,13 +148,14 @@ bool stop_car(Mat& gray,int brightness_threshold,int& point){
         }
     }
     point = white_count;
-    if (white_count>6058){
+    ROS_INFO("停车白点数量%d",white_count);
+    if (white_count>4058){
         return true;
     }
     return false;
 }
 
-// 从图像底部向上搜索指定行数，分别独立寻找左右两侧的赛道边缘起始点
+// 从图像底部向上搜索指定行数，分别独立寻找左右两侧的赛道边缘起始点s
 void find_track_edge(Mat& gray_img, Point& right_point, int scan_rows, int brightness_threshold) {
     int height = gray_img.rows;
     int width = gray_img.cols;
@@ -678,7 +679,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
                     pointx_integration = std::max(std::min(pointx_integration,1.0),-1.0);//pointy_integration = std::max(std::min(pointy_integration,1.0),-1.0);
                     // ROS_INFO("P%f,I%f",error_y/400,pointy_integration/400);
                     twist.linear.x = std::max(twist.linear.x-0.15,0.0);
-                    twist.angular.z = std::max(std::min(error_x*leftpoint_p_ + pointx_integration * leftpoint_I_,0.5),-0.5);
+                    twist.angular.z = std::max(std::min(error_x*leftpoint_p + pointx_integration * leftpoint_I,0.5),-0.5);
                     pointx_pre_error = error_x;//pointy_pre_error = error_y;
                     displayStream <<"z:  "<< twist.angular.z<<"errorx:  "<<error_x<<"pointx_integration:"<<pointx_integration;
                     string displayText = displayStream.str();

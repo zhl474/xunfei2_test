@@ -1,7 +1,7 @@
 <launch>
   <include file="$(find ucar_controller)/launch/base_driver.launch" />
   <include file="$(find ydlidar)/launch/ydlidar.launch"/>
-  <!-- <node pkg="ros_nanodet" type="detect2025.py" name="detect2025" output="screen"/> -->
+  <node pkg="ros_nanodet" type="detect2025.py" name="detect2025" output="screen"/>
   <!-- <include file="$(find xf_mic_asr_offline)/launch/mic_init.launch"/> -->
   <!--  启动底盘 雷达 麦克风-->
   <!-- <node pkg="awake" type="wa" name="detect2025" output="screen"/> -->

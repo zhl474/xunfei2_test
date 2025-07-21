@@ -7,5 +7,5 @@ adjust_lidar_I: 0.1
 adjust_lidar_D: 0.1
 
 turn_find_p: 0.1
-turn_find_i: 0.12
+turn_find_i: 0.1
 turn_find_d: 0.08

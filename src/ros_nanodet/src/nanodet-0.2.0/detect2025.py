@@ -84,7 +84,7 @@ def visualize(image, x0, y0, x1, y1, name, conf):
 
 #首次启动要发个-1启动摄像头，发送-2关闭摄像头防止冲突
 def detect_start(req):
-    start_time = time.time()
+    
     global camera_active, cap, out
     response = detect_result_srvResponse()
     if req.detect_start==-1:
@@ -93,13 +93,16 @@ def detect_start(req):
         shutdown_cap(response)
         return response
     cap.grab()#摄像头会缓存一帧，把这一帧丢掉才是最新的照片
+    # start_time = time.time()
     rec, frame = cap.read()
+    # print("拍照耗时")
+    # print(time.time()-start_time)
     if not rec:
         rospy.logerr("获取图片失败")
     frame = cv2.flip(frame, 1)
+    
+    # start_time = time.time()
     res = detect(frame, predictor)
-    # print("目标检测耗时")
-    # print(time.time()-start_time)
     max_score = -1.0
     best_bbox = [-1] * 5 
     target = -1
@@ -120,15 +123,9 @@ def detect_start(req):
     response.y1 = y1
     response.class_name = target
     # print((x0+x1)/2)
-    # print("标签筛选耗时")
-    # print(time.time()-start_time)
     if best_bbox[0] != -1:
         visualize(frame,x0, y0, x1, y1,target,conf)
-    # print("可视化耗时")
-    # print(time.time()-start_time)
     out.write(frame)
-    # print("完整服务耗时")
-    # print(time.time()-start_time)
     return response
 
 server = rospy.Service("nanodet_detect",detect_result_srv,detect_start)
