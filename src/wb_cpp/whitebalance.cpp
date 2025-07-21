@@ -149,11 +149,11 @@ PYBIND11_MODULE(whitebalance, m) {
         // }
         
         // 白平衡处理
-        auto start = high_resolution_clock::now();
+        // auto start = high_resolution_clock::now();
         cv::Mat result = white_balance(img);
-        auto end = high_resolution_clock::now();
-        duration<double, milli> elapsed = end - start;
-        std::cout << "处理耗时：" << elapsed.count() << "ms" << std::endl;
+        // auto end = high_resolution_clock::now();
+        // duration<double, milli> elapsed = end - start;
+        // std::cout << "处理耗时：" << elapsed.count() << "ms" << std::endl;
         
         // 转换回numpy数组
         return mat_to_numpy(result);

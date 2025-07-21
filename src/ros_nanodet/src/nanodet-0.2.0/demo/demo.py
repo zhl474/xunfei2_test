@@ -93,22 +93,14 @@ def Histogram(frame):#average filter
     result = cv2.merge((bH, gH, rH))
     return result
 def detect(frame,predictor):
-#    global m
-    # ret_val, frame = cap.read()
-#    frame = Histogram(frame)
-#    m = m+1
-    # frame = cv2.resize(frame,dsize=(960,540))  # new
-    # if ret_val:
     meta, res = predictor.inference(frame)#res is result dic
-#        cv2.imwrite('picture'+str(m)+'.jpg',frame)
-#        print("success to save" + str(m) + ".jpg")
     return res
 def init():
     # args = parse_args()
     path = '/dev/video0'
-    # path = '0'
-    model = '/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/workspace/nanodet_m_416/model_best/model_best.pth'
-    # model = '/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/workspace/nanodet_m/model_best/model_last.pth'
+    # model = '/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/workspace/nanodet_m_416/model_best/model_best.pth'
+
+    model = '/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/workspace/nanodet_m_416/model_best/model_best100.pth'
     config = '/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/config/nanodet-m-416-copy.yml'
     # config = '/home/ucar/ucar_car/src/ros_nanodet/src/nanodet-0.2.0/config/nanodet_custom_xml_dataset.yml'
     torch.backends.cudnn.enabled = True
@@ -117,11 +109,6 @@ def init():
     logger = Logger(-1, use_tensorboard=False)
     predictor = Predictor(cfg, model, logger, device='cuda:0')
     print("nanoedt ready")
-    # if demo == 'video' or demo == 'webcam':
-    # cap = cv2.VideoCapture(path)
-    # cap = cv2.VideoCapture(path)
-    # cap.set(cv2.CAP_PROP_FRAME_WIDTH,960)
-    # cap.set(cv2.CAP_PROP_FRAME_HEIGHT,540)
     return predictor
 
 
