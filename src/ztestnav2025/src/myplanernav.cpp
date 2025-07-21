@@ -38,10 +38,13 @@ public:
     bool waitForAwake() {
         ROS_INFO("等待语音唤醒信号...");
         ros::Rate rate(10);  // 10Hz检查频率
-        
+        ros::Time awake_limit = ros::Time::now();//防止超时
         while (ros::ok() && !awake_received_) {
             ros::spinOnce();
             rate.sleep();
+            if((ros::Time::now()-awake_limit).toSec()>40){
+                break;
+            }
         }
         
         if (awake_received_) {
@@ -169,26 +172,15 @@ int main(int argc, char *argv[])
     Sim_talkto_car sim_talkto_car(nh);
 
     //--------------------------------------语音唤醒等待--------------------------------//
-    // AwakeDetector awakeDetector(nh);
-    // if (!awakeDetector.waitForAwake()) {
-    //     ROS_ERROR("未接收到唤醒信号，程序退出");
-    //     return 1;
-    // }
-    
-    // ROS_INFO("已唤醒，开始执行任务...");
-    
+    AwakeDetector awakeDetector(nh);
+    if (!awakeDetector.waitForAwake()) {
+        ROS_ERROR("未接收到唤醒信号，程序退出");
+        return 1;
+    }
+    ROS_INFO("已唤醒，开始执行任务...");
 
     //--------------------------------------走廊环境导航，发布目标点--------------------------------//
     ROS_INFO("走廊环境导航开始");
-    // mecanumController.rotateCircle(3.14,0.5);
-    // mecanumController.rotateCircle(3.14,0.5);
-    // ros::Time start_time = ros::Time::now();
-    // geometry_msgs::Twist twist;
-    // twist.angular.z = 2;
-    // while((ros::Time::now() - start_time).toSec() < 3.14){
-    //     mecanumController.cmd_pub_.publish(twist);
-    // }//旋转收敛定位
-
     go_destination(goal,1.25,0.75,3.14,q,ac);
     // ros::Duration(0.5).sleep();
     what_qr.request.qr_start = 1;
@@ -199,7 +191,6 @@ int main(int argc, char *argv[])
         board_class = what_qr.response.qr_result;
         ROS_INFO("二维码结果:%d",board_class);
         if (board_class>0){
-            
             ROS_INFO("二维码结果:%d",what_qr.response.qr_result);
             break;
         }
@@ -371,8 +362,7 @@ int main(int argc, char *argv[])
         ROS_ERROR("视觉巡线失败....");
     }
     
-    play_audio(voice[4][board_name*3+sim_talkto_car.sim_detect_class]);
-    // play_audio(voice[board_name*3][1]);
+    play_audio(voice[4+board_name][sim_talkto_car.sim_detect_class]);
     ros::spin();
 
     return 0;

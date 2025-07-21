@@ -28,6 +28,7 @@ find_package(OpenCV REQUIRED COMPONENTS
   core
   highgui
   imgproc
+  calib3d
 )
 
 ## System dependencies are found with CMake's conventions

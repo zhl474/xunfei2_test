@@ -1,8 +1,22 @@
-
 from demo.demo import detect
 from demo.demo import init
 import cv2
 
+import sys
+import os
+import time
+
+# 硬编码添加 build 目录到 Python 路径
+build_dir = "/home/ucar/ucar_car/src/wb_cpp/build"
+sys.path.insert(0, build_dir)
+print(f"添加构建路径: {build_dir}")
+
+try:
+    import whitebalance
+    print("模块导入成功!")
+except ImportError as e:
+    print(f"模块导入失败: {e}")
+    
 predictor = init()
 
 frame = cv2.imread('/home/ucar/ucar_car/ypicture/picture_14.jpg')
@@ -25,7 +39,9 @@ THICKNESS = 2
 save_count = 76
 
 while True:
+    start = time.time()
     rec, frame = cap.read()
+    frame = whitebalance.process(frame)
     # print(rec)
     if not rec:
         print("Failed to read frame from video capture device.")
@@ -53,6 +69,7 @@ while True:
                           FONT_SCALE,
                           color,
                           THICKNESS)
+    print(time.time()-start)
     cv2.imshow('Detection Results', frame)
     key = cv2.waitKey(20) & 0xFF
 

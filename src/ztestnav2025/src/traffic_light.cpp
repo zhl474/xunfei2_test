@@ -16,18 +16,39 @@ int detectTrafficLightStatus() {
         ROS_ERROR("无法打开摄像头！");
         return -1;
     }
-    
+    FileStorage fs("/home/ucar/ucar_car/src/line_follow/camera_info/pinhole.yaml", FileStorage::READ);
+    if (!fs.isOpened()) {
+        cerr << "无法打开标定文件" << endl;
+        return -1;
+    }
+    Mat cameraMatrix, distCoeffs;
+    fs["camera_matrix"] >> cameraMatrix;
+    fs["distortion_coefficients"] >> distCoeffs;
+    fs.release();
+    Mat map1, map2;
+    Mat optimalMatrix = getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, Size(640, 480), 1,Size(640, 480));
+    initUndistortRectifyMap(
+        cameraMatrix, 
+        distCoeffs, 
+        Mat(), // 无旋转
+        optimalMatrix, 
+        Size(640, 480), 
+        CV_32FC1, // 32位浮点类型（速度优化）
+        map1, 
+        map2
+    );
     // 配置摄像头参数
     cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
 
     // 转换为 HSV 颜色空间
-    Mat hsv_frame,frame;
-    cap >> frame;
-    if (frame.empty()) {
+    Mat hsv_frame,frame,src;
+    cap >> src;
+    if (src.empty()) {
         ROS_WARN_THROTTLE(5, "接收到空帧");
         return false;
     }
+    remap(src, frame, map1, map2, INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
     cv::flip(frame,frame, 1);
     cvtColor(frame, hsv_frame, COLOR_BGR2HSV);
 

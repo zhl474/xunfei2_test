@@ -72,7 +72,10 @@
         "typeinfo": "cpp",
         "forward_list": "cpp",
         "future": "cpp",
-        "random": "cpp"
+        "random": "cpp",
+        "filesystem": "cpp",
+        "valarray": "cpp",
+        "variant": "cpp"
     },
     "ros.distro": "melodic",
     "C_Cpp.errorSquiggles": "disabled"

@@ -47,27 +47,53 @@ std::vector<std::vector<std::string>> voice = {
         "aplay ~/ucar_car/src/broadcast/20_wav/4_road_1.wav",
         "aplay ~/ucar_car/src/broadcast/20_wav/4_road_2.wav"
     },
-    //第4组：费用提示
+    //第456 789 10 11 12组：费用提示以辣椒土豆西红柿香蕉苹果西瓜可乐蛋糕牛奶排序
     {
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_chili.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_tomato.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_potato.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_tomato.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_potato.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_potato_potato.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_banana.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_banana.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_watermelon.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_apple.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_watermelon.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_watermelon_watermelon.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_cola_cola.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_cake_cola.wav",    
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cola.wav",  
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_cake_cake.wav",
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cake.wav",    
-    "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_milk.wav"    
-    }
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_chili.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_tomato.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_potato.wav"
+    },
+    {
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_tomato.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_potato_potato.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_potato.wav"
+    },
+    {
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_chili_tomato.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_potato.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_tomato_tomato.wav"
+        
+    },
+    {
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_banana.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_banana.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_watermelon.wav"
+    },
+    {
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_banana.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_apple.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_watermelon.wav"
+    },
+    {
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_banana_watermelon.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_apple_watermelon.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_watermelon_watermelon.wav"
+    },
+    {
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_cola_cola.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_cake_cola.wav",   
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cola.wav"  
+    } ,
+    {
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_cake_cola.wav",    
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_cake_cake.wav",
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cake.wav"
+    },
+    {
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cola.wav",  
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_cake.wav",   
+        "aplay ~/ucar_car/src/broadcast/20_wav/5_milk_milk.wav"    
+    }    
 };
 
 // // 费用相关语音（一维数组）
