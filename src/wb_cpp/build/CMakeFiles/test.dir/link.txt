@@ -1,1 +1,0 @@
-/usr/bin/c++ -fPIC   -shared  -o test CMakeFiles/test.dir/test.cpp.o 

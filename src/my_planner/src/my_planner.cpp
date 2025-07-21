@@ -357,7 +357,7 @@ namespace my_planner
 
         cmd_vel.linear.x = target_pose.pose.position.x * dynamic_x_gain;//小车运动速度比例系数
         cmd_vel.linear.y = target_pose.pose.position.y * path_linear_y_gain_;
-        cmd_vel.angular.z = target_pose.pose.position.y * path_angular_gain_;   
+        cmd_vel.angular.z = target_pose.pose.position.y * path_angular_gain_;   //
 
  
  

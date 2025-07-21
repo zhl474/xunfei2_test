@@ -91,8 +91,8 @@ Mat white_balance_5(const Mat& img) {
 
 // 主函数
 int main() {
-    string input_path = "/home/ucar/ucar_car/ypicture/picture_384.jpg";
-    string output_path = "/home/ucar/ucar_car/ypicture/picture_384_wb.jpg";
+    string input_path = "/home/ucar/ucar_car/ypicture/picture_130.jpg";
+    string output_path = "/home/ucar/ucar_car/ypicture/picture_130_wb.jpg";
 
     // 加载图像
     Mat img = imread(input_path, IMREAD_COLOR);

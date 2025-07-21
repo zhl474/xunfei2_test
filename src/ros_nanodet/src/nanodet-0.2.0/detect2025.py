@@ -9,6 +9,20 @@ import cv2
 import numpy as np
 import time
 
+import sys
+import os
+
+# 硬编码添加 build 目录到 Python 路径
+build_dir = "/home/ucar/ucar_car/src/wb_cpp/build"
+sys.path.insert(0, build_dir)
+print(f"添加构建路径: {build_dir}")
+
+try:
+    import whitebalance
+    print("模块导入成功!")
+except ImportError as e:
+    print(f"模块导入失败: {e}")
+
 predictor = init()
 rospy.init_node("nanodet_detect", anonymous=True)
 
@@ -84,8 +98,8 @@ def visualize(image, x0, y0, x1, y1, name, conf):
 
 #首次启动要发个-1启动摄像头，发送-2关闭摄像头防止冲突
 def detect_start(req):
-    
     global camera_active, cap, out
+    # start_time = time.time()
     response = detect_result_srvResponse()
     if req.detect_start==-1:
         open_cap()
@@ -93,8 +107,9 @@ def detect_start(req):
         shutdown_cap(response)
         return response
     cap.grab()#摄像头会缓存一帧，把这一帧丢掉才是最新的照片
-    # start_time = time.time()
+    
     rec, frame = cap.read()
+    frame = whitebalance.process(frame)
     # print("拍照耗时")
     # print(time.time()-start_time)
     if not rec:
@@ -103,6 +118,8 @@ def detect_start(req):
     
     # start_time = time.time()
     res = detect(frame, predictor)
+    # print("目标检测耗时")
+    # print(time.time()-start_time)
     max_score = -1.0
     best_bbox = [-1] * 5 
     target = -1
@@ -125,7 +142,10 @@ def detect_start(req):
     # print((x0+x1)/2)
     if best_bbox[0] != -1:
         visualize(frame,x0, y0, x1, y1,target,conf)
+    # start_time = time.time()
     out.write(frame)
+    # print("完整操作耗时")
+    # print(time.time()-start_time)
     return response
 
 server = rospy.Service("nanodet_detect",detect_result_srv,detect_start)

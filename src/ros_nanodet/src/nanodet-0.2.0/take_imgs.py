@@ -70,6 +70,7 @@ while judge:
     resize_whitebalanc = whitebalance.process(resize_img)
     hconcat_img = cv2.hconcat([resize_img, resize_whitebalanc])
     cv2.imshow("frame", resize_img)
+    cv2.imshow("white", resize_whitebalanc)
     keyword = cv2.waitKey(1)
     if keyword == ord('s'):      # 按s保存当前图片
         i += 1
