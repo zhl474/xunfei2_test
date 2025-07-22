@@ -7,7 +7,7 @@ PLUGINLIB_EXPORT_CLASS( my_planner::MyPlanner, nav_core::BaseLocalPlanner)
 namespace my_planner 
 {
     // 构造函数：初始化指针成员为nullptr
-    MyPlanner::MyPlanner() : costmap_ros_(nullptr)
+    MyPlanner::MyPlanner() : tf_buffer_(nullptr), costmap_ros_(nullptr), target_index_(0), pose_adjusting_(false), goal_reached_(false), initial_rotation_done_(false)//初始化指针和变量，防止在某些情况下触发exit code = -11的段错误
     {
         setlocale(LC_ALL,"");
     }
