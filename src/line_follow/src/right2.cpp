@@ -148,7 +148,7 @@ bool stop_car(Mat& gray,int brightness_threshold,int& point){
         }
     }
     point = white_count;
-    ROS_INFO("停车白点数量%d",white_count);
+    // ROS_INFO("停车白点数量%d",white_count);
     if (white_count>4058){
         return true;
     }
@@ -499,7 +499,7 @@ bool right_to_left(Mat gray_img,int brightness_threshold,bool& left_ready){//右
                 }
             }
         }
-        ROS_INFO("左点数量%d",left_count);
+        // ROS_INFO("左点数量%d",left_count);
         if(left_count>30){
             return true;
         }
@@ -517,7 +517,7 @@ bool right_to_left(Mat gray_img,int brightness_threshold,bool& left_ready){//右
                 }
             }
         }
-        ROS_INFO("左点数量%d",left_count);
+        // ROS_INFO("左点数量%d",left_count);
         if(left_count<50){
             left_ready = true;//左线断裂，准备进入圆环
         }
@@ -621,8 +621,6 @@ double right_error_calculater(vector<Point>& traced_points,int ystart,Mat& visua
         Point pt = Point(traced_points[i].x - (280 - (214-y)*1.34),ystart-i);
         circle(visualizeImg, pt, 3, Scalar(0, 255, 0), -1);
     }
-    // imshow("visualize",visualizeImg);
-    // waitKey(1);
     if (traced_points.size()==0){
         return 100.0;
     }
@@ -647,7 +645,7 @@ double left_error_calculater(vector<Point>& traced_points,int ystart,Mat& visual
     // 可视化代码（例如在图像上绘制轨迹）
     for (int i=0;i<traced_points.size();i++) {
         int y = ystart-i;
-        Point pt = Point(traced_points[i].x + (280 - (214-y)*1.34),ystart-i);
+        Point pt = Point(traced_points[i].x + (240 - (214-y)*1.34),ystart-i);
         circle(visualizeImg, pt, 3, Scalar(0, 255, 0), -1);
     }
     if (traced_points.size()==0){
@@ -723,8 +721,8 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
     nh.getParam("/line_right/right_D", d);
     nh.getParam("/line_right/leftpoint_p", leftpoint_p);
     nh.getParam("/line_right/leftpoint_I", leftpoint_I);
-    nh.getParam("/line_right/x_max", x_max);
-    ROS_INFO("参数加载P: %f", p);
+    nh.getParam("/line_right/x_max_", x_max);
+    ROS_INFO("参数加载P: %f", x_max);
     integration = 0;
     pre_error = 0;
     double pointx_integration = 0;
@@ -831,6 +829,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
             if(traced_left.size()<15){
                 twist.linear.x = 0;
                 twist.angular.z = 0.15;
+                ROS_INFO("左线太少，舍弃");
             }
             else{
                 double line_error = left_error_calculater(traced_left,left_edge_point.y,cropped);//有调试图片输出
@@ -840,7 +839,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
                 diff = std::max(std::min(diff,50.0),-50.0);
                 twist.linear.x = x_max*0.5 / exp(abs(line_error) / 100.0);
                 twist.angular.z = std::max(std::min(line_error*p+integration*i+diff*d,2.0),-2.0);
-                ROS_INFO("速度x%f",twist.linear.x);
+                // ROS_INFO("速度x%f",x_max);
                 pre_error = line_error;
                 displayStream << "error: " << line_error << "p: " << line_error*p << "i: " << integration*i << "d: " << diff*d<<"z: "<< twist.angular.z<<"x: "<<twist.linear.x;
                 string displayText = displayStream.str();
