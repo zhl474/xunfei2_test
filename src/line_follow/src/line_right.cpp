@@ -29,7 +29,7 @@ VideoWriter out;
 int fourcc = VideoWriter::fourcc('X', 'V', 'I', 'D'); // MP4V编码
 ostringstream displayStream;
 
-
+//不再查看角点，依靠定位判定左右巡线和转弯
 void drawLineFromEquation(cv::Mat& img, double a, double b, double c, const cv::Scalar& color, int thickness) {
     int width = img.cols;
     int height = img.rows;

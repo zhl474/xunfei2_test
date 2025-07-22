@@ -36,10 +36,10 @@ FONT = cv2.FONT_HERSHEY_SIMPLEX
 FONT_SCALE = 0.6
 THICKNESS = 2
 
-save_count = 76
+save_count = 1
 
 while True:
-    start = time.time()
+    # start = time.time()
     rec, frame = cap.read()
     frame = whitebalance.process(frame)
     # print(rec)
@@ -69,7 +69,7 @@ while True:
                           FONT_SCALE,
                           color,
                           THICKNESS)
-    print(time.time()-start)
+    # print(time.time()-start)
     cv2.imshow('Detection Results', frame)
     key = cv2.waitKey(20) & 0xFF
 
