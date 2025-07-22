@@ -165,6 +165,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 
 add_executable(line_right src/line_right.cpp)
+add_executable(right2 src/right2.cpp)
 # add_executable(dynamic_awb src/dynamic_awb.cpp)
 add_executable(wb src/wb.cpp)
 
@@ -188,6 +189,10 @@ add_executable(wb src/wb.cpp)
 ## Specify libraries to link a library or executable target against
 
 target_link_libraries(line_right
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
+target_link_libraries(right2
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
 )

@@ -72,7 +72,7 @@ namespace my_planner
         // std::cin.ignore(); // 清除缓冲区
         // std::cin.get();    // 等待回车
         // ROS_INFO("查看全局路径规划");
-        ROS_INFO("目的地%f,%f,%f",global_plan_[global_plan_.size()-1].pose.position.x,global_plan_[global_plan_.size()-1].pose.position.y,tf2::getYaw(global_plan_[global_plan_.size()-1].pose.orientation));
+        // ROS_INFO("目的地%f,%f,%f",global_plan_[global_plan_.size()-1].pose.position.x,global_plan_[global_plan_.size()-1].pose.position.y,tf2::getYaw(global_plan_[global_plan_.size()-1].pose.orientation));
         return true;
     }
 
@@ -205,7 +205,7 @@ namespace my_planner
             double dx = pose_final.pose.position.x;
             double dy = pose_final.pose.position.y;
             double dist = std::sqrt(dx*dx + dy*dy);
-            ROS_INFO("终点距离%f",dist);
+            // ROS_INFO("终点距离%f",dist);
             if(dist < goal_dist_threshold_)//判定是否到达目标点附近的距离阈值
                 pose_adjusting_ = true;
         }

@@ -8,4 +8,6 @@ leftpoint_D: 0.0
 
 double_P: 0.007
 double_I: 0.15
-double_D: 0.0
+double_D: 0.1
+
+x_max: 0.7

@@ -342,7 +342,7 @@ int main(int argc, char *argv[])
     if (detectTrafficLightStatus()==2){
         ROS_INFO("路口1可通过");
         play_audio(voice[3][0]);
-        go_destination(goal,2.77,3.44,-1.18,q,ac);
+        go_destination(goal,2.83,3.5,-1.18,q,ac);
     } 
     else {
         ROS_INFO("前往红绿灯区域路口2");

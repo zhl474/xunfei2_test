@@ -29,7 +29,7 @@ VideoWriter out;
 int fourcc = VideoWriter::fourcc('X', 'V', 'I', 'D'); // MP4V编码
 ostringstream displayStream;
 
-//不再查看角点，依靠定位判定左右巡线和转弯
+
 void drawLineFromEquation(cv::Mat& img, double a, double b, double c, const cv::Scalar& color, int thickness) {
     int width = img.cols;
     int height = img.rows;
@@ -167,9 +167,7 @@ void find_track_edge(Mat& gray_img, Point& right_point, int scan_rows, int brigh
         // 向右搜索边界
         if (right_point.x == -1) {
             for (int x = middle_x + 1; x < width - 2; x++) {
-                int current = (int)gray_img.at<uchar>(y, x);
-                int next = (int)gray_img.at<uchar>(y, x + 1);
-                if (next>=brightness_threshold){ 
+                if ((int)gray_img.at<uchar>(y, x)>=brightness_threshold){ 
                     right_point = Point(x, y);
                     break;
                 }
@@ -219,29 +217,30 @@ void trace_edge(Point start_point, Mat& gray_img, vector<Point>& traced_points, 
             //根据阈值
             int brightness_change;
             //右减左
+            int current = 0;
             if (left_check){
-                int current = gray_img.at<uchar>(center_y, cand_x2);
+                current = gray_img.at<uchar>(center_y, cand_x2);
                 int prev = gray_img.at<uchar>(center_y, cand_x2 - 1);
                 brightness_change = current - prev;
+            }
+            if (current >= brightness_threshold) {
+                if (brightness_change > max_brightness_change) {
+                    max_brightness_change = brightness_change;
+                    best_point = Point(cand_x2, center_y);
+                    found = true;
+                }
+            }
+            else{
+                if (right_check) {
+                    current = gray_img.at<uchar>(center_y, cand_x);
+                    int next = gray_img.at<uchar>(center_y, cand_x + 1);
+                    brightness_change = next-current;
+                } 
                 if (current >= brightness_threshold) {
                     if (brightness_change > max_brightness_change) {
                         max_brightness_change = brightness_change;
-                        best_point = Point(cand_x2, center_y);
+                        best_point = Point(cand_x, center_y);
                         found = true;
-                    }
-                }
-                else{
-                    if (right_check) {
-                        current = gray_img.at<uchar>(center_y, cand_x);
-                        int next = gray_img.at<uchar>(center_y, cand_x + 1);
-                        brightness_change = next-current;
-                    } 
-                    if (current >= brightness_threshold) {
-                        if (brightness_change > max_brightness_change) {
-                            max_brightness_change = brightness_change;
-                            best_point = Point(cand_x, center_y);
-                            found = true;
-                        }
                     }
                 }
             }
@@ -359,11 +358,13 @@ bool find_left_line(Mat gray_img,vector<Point>& left_edge_points,int brightness_
     }
 }
 
-double double_find(Mat gray_img,int brightness_threshold)//最后阶段采用双边巡线，避免单边巡线导致的偏离从而无法停车
+double double_find(Mat gray_img,int brightness_threshold, Mat& visual_img)//最后阶段采用双边巡线，避免单边巡线导致的偏离从而无法停车
 {
     vector<int> left_total;
     vector<int> right_total;
     double error = 0.0;
+
+    vector<Point> midPoints; // 存储所有中线的点坐标
 
     bool falg = false;//赛道先有后无，就是没线了
     int failed = 0;//连续几行都没找到才算丢线
@@ -413,6 +414,22 @@ double double_find(Mat gray_img,int brightness_threshold)//最后阶段采用双
     for(int i=0;i<row;i++){
         error += (640-(left_total[i]+right_total[i]))*(1-i/row);//error += (left_total+right_total-640)/2.0*(1-i/row) error = error/(row/2)归一化的除以2整理到前面
     }
+
+    int minSize = min(left_total.size(), right_total.size());
+    for (int i = 0; i < minSize; i++) {
+        // 计算当前行的中线x坐标 (左右边界的中点)
+        int midX = (left_total[i] + right_total[i]) / 2;
+        // 计算当前行的y坐标 (从底部向上递减)
+        int y = 269 - i;
+        // 存储中点坐标
+        midPoints.push_back(Point(midX, y));
+    }
+
+    // 在可视化图像上绘制黄色中线点
+    for (const Point& p : midPoints) {
+        circle(visual_img, p, 1, Scalar(0, 255, 255), -1); // 绘制1像素的实心黄点
+    }
+
     return error/row;
 }
 
@@ -435,7 +452,7 @@ double error_calculater(vector<Point>& traced_points,int ystart,Mat& visualizeIm
     // 可视化代码（例如在图像上绘制轨迹）
     for (int i=0;i<traced_points.size();i++) {
         int y = ystart-i;
-        Point pt = Point(traced_points[i].x - (320 - (214-y)*1.34),ystart-i);
+        Point pt = Point(traced_points[i].x - (280 - (214-y)*1.34),ystart-i);
         circle(visualizeImg, pt, 3, Scalar(0, 255, 0), -1);
     }
     // imshow("visualize",visualizeImg);
@@ -674,7 +691,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
                 line_error = error_calculater(traced_right,right_edge_point.y,cropped);//有调试图片输出
             }
             else{
-                line_error = double_find(gray_img,brightness_threshold);
+                line_error = double_find(gray_img,brightness_threshold,cropped);
             }
 
             integration += line_error*0.03;
@@ -742,16 +759,9 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
                     }
                     pointx_integration = std::max(std::min(pointx_integration,1.0),-1.0);//pointy_integration = std::max(std::min(pointy_integration,1.0),-1.0);
                     // ROS_INFO("P%f,I%f",error_y/400,pointy_integration/400);
-                    twist.linear.x = std::max(twist.linear.x-0.15,0.0);
-                    // if(avoid_done){
-                    //     twist.angular.z = 0;
-                    //     // twist.linear.y = -1*std::max(std::min(error_x*leftpoint_p + pointx_integration * leftpoint_I,0.5),-0.5);
-                    //     ROS_INFO("避障结束左点%f",twist.angular.z);
-                    // }
-                    // else{
-                    //     ROS_INFO("正常左%f",twist.linear.y);
-                        twist.angular.z = std::max(std::min(error_x*leftpoint_p + pointx_integration * leftpoint_I,0.5),-0.5);
-                    // }
+                    twist.linear.x = std::max(twist.linear.x-0.2,0.0);
+                    twist.angular.z = std::max(std::min(error_x*leftpoint_p + pointx_integration * leftpoint_I,0.5),-0.5);
+
                     pointx_pre_error = error_x;//pointy_pre_error = error_y;
                     displayStream <<"z:  "<< twist.angular.z<<"errorx:  "<<error_x<<"pointx_integration:"<<pointx_integration;
                     string displayText = displayStream.str();
@@ -797,7 +807,7 @@ int main(int argc, char **argv) {
     setlocale(LC_ALL,"");
     ros::init(argc, argv, "line_right");
     ros::NodeHandle nh_;
-    ros::ServiceServer line_server = nh_.advertiseService("line_server", line_server_callback);
+    ros::ServiceServer line_server = nh_.advertiseService("line_right", line_server_callback);
     ROS_INFO("视觉巡线初始化");
     ros::spin();
     return 0;
