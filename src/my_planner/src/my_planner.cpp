@@ -26,6 +26,14 @@ namespace my_planner
         tf_buffer_ = tf;
 
         costmap_ros_ = costmap_ros;
+        if (!tf) {
+            ROS_ERROR("tf空指针");
+            return;
+        }
+        if (!costmap_ros) {
+            ROS_ERROR("costmap空指针");
+            return;
+        }
         // 为此插件创建一个私有的节点句柄，用于访问其私有命名空间下的参数
         //私有命名空间是 /move_base/MyPlanner
         ros::NodeHandle private_nh("/move_base/MyPlanner" );

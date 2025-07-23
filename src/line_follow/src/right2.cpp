@@ -454,29 +454,77 @@ bool find_left_edge(Mat gray_img,Point& left_edge_point,int brightness_threshold
     }
 }
 
-bool find_other_coner_edge(Mat gray_img,Point& left_edge_point,int brightness_threshold,Mat& visualizeImg){
+Point find_other_coner_edge(Mat gray_img,Point left_edge_point,int brightness_threshold,Mat& visualizeImg){//拐角的特征是这一行有下一行没
     int height = gray_img.rows;
     int width = gray_img.cols;
-    bool flag = false;
-    left_edge_point = Point(-1,-1);
-    Mat blurred = gray_img;
-    // GaussianBlur(gray_img, blurred, cv::Size(5,5), 0);//这个点很重要，务必不能找错
-    for (int y = height - 1; y >= 2; y--) {
-        for (int x = width -1; x > 2; x--) {
-            if (blurred.at<uchar>(y, x) >= brightness_threshold) {
-                if(blurred.at<uchar>(y-1, x) >= brightness_threshold){//需要连续看到两个点
-                    left_edge_point=Point(x, y);
-                    flag = true;
-                }
+    Point maybe_point = Point(-1,-1);
+    if(left_edge_point.x<280){
+        Point first_point = Point(-1,-1);
+        bool flag = false;
+        for(int x=0;x<300;x++){//先把第一个点找出来
+            // ROS_INFO("亮度%d,%d",(int)gray_img.at<uchar>(50, x),brightness_threshold);
+            if ((int)gray_img.at<uchar>(50, x) >= brightness_threshold){
+                first_point = Point(x, 50);
+                // ROS_INFO("找到首点%d",first_point.x);
+                flag = true;
                 break;
             }
         }
-        if (flag) break;
+        if (!flag) {
+            ROS_INFO("第一个点都没找到");
+            return Point(-1, -1);//第一个点都没找到就是还没有
+        }
+        int finded_count = 0;//连续三行满足条件退出
+        maybe_point = first_point;
+        circle(visualizeImg, maybe_point, 5, Scalar(255, 0, 0), -1);
+        for (int y = 51; y <= 180; y++) {
+            bool flag = false;
+            for (int x = max(maybe_point.x-30,1); x < min(maybe_point.x+30,639); x++) {
+                // ROS_INFO("亮度%d,%d",(int)gray_img.at<uchar>(50, x),brightness_threshold);
+                if (gray_img.at<uchar>(y, x) >= brightness_threshold) {
+                    maybe_point=Point(x, y);
+                    // ROS_INFO("test");
+                    circle(visualizeImg, maybe_point, 5, Scalar(255, 90, 100), -1);
+                    flag = true;
+                    finded_count = 0;
+                    break;
+                }
+            }
+            if (!flag) {
+                finded_count++;
+                if(finded_count>10){
+                    circle(visualizeImg, maybe_point, 9, Scalar(0, 0, 255), -1);
+                    return maybe_point;
+                }
+            }
+        }
+        ROS_INFO("没有满足条件的点");
+        return Point(-1,-1);
     }
-    if(left_edge_point.x == -1){
-        ROS_INFO("没找到左点");
-        return false;
-    } 
+    else{
+        maybe_point = left_edge_point;
+        int finded_count = 0;
+        for (int y = maybe_point.y-40; y >= 220; y++) {
+            bool flag = false;
+            for (int x = max(maybe_point.x-30,1); x < min(maybe_point.x+30,639); x++) {
+                if (gray_img.at<uchar>(y, x) >= brightness_threshold) {
+                    maybe_point=Point(x, y);
+                    circle(visualizeImg, maybe_point, 5, Scalar(255, 90, 100), -1);
+                    flag = true;
+                    finded_count = 0;
+                    break;
+                }
+            }
+            if (!flag) {
+                finded_count++;
+                if(finded_count>10){
+                    circle(visualizeImg, maybe_point, 7, Scalar(0, 0, 255), -1);
+                    return maybe_point;
+                }
+            }
+        }
+        return Point(-1,-1);
+    }
 }
 
 bool find_left_line(Mat gray_img,vector<Point>& left_edge_points,int brightness_threshold,Mat visualizeImg = Mat()){
@@ -798,13 +846,15 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
     Mat image,undistorted;
     Rect roi(0, 210, 640, 270);
 
-    double p,i,d,integration,pre_error,leftpoint_p,leftpoint_I,x_max;
+    double p,i,d,integration,pre_error,leftpoint_p,leftpoint_I,x_max,other_enter_pointy,other_enter_pointx;
     nh.getParam("/line_right/right_P", p);
     nh.getParam("/line_right/right_I", i);
     nh.getParam("/line_right/right_D", d);
     nh.getParam("/line_right/leftpoint_p", leftpoint_p);
     nh.getParam("/line_right/leftpoint_I", leftpoint_I);
     nh.getParam("/line_right/x_max_", x_max);
+    nh.getParam("/line_right/other_enter_pointy", other_enter_pointy);
+    nh.getParam("/line_right/other_enter_pointx", other_enter_pointx);
     ROS_INFO("参数加载P: %f", x_max);
     integration = 0;
     pre_error = 0;
@@ -833,6 +883,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
 
     bool out_range = false;//出圆环判断标志
     bool other_enter = false,pass_out = false,pass_enter = false;//绕环岛期间左巡线
+    bool left_ready;//判断是否进入圆环需要一个标志位辅助，两边线都看到才算进圆环否则离圆环太远容易出问题
     double position_right_change_left = -1;//右转左的y坐标，用来恢复左转右出圆环
     Point other_enter_last_conner = Point(-1,-1);//另一个入口的角点储存
     while(ros::ok()){
@@ -897,30 +948,46 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
         int brightness_threshold = brightness_threshold_calculator(gray_img);  // 亮度变化阈值就是跳变最剧烈点的左值
         // ROS_INFO("%d",brightness_threshold);
         //-----------------------------预处理结束开始计算赛道误差
-
+        // ROS_INFO("out%d,pass%d,other%d,enter%d",out_range,pass_out,other_enter,pass_enter);
         if(!out_range && !pass_out && !other_enter && !pass_enter){//没有进入左逻辑才要判断需不需要右转左,只有第一圈需要判断
-            pass_out = right_to_left(gray_img,brightness_threshold,pass_out);
+            // ROS_INFO("进入if");
+            pass_out = right_to_left(gray_img,brightness_threshold,left_ready);
             position_right_change_left = pose.response.pose_at[1];
-            if(pass_out) ROS_INFO("第一次即将抵达出口");
+            if(pass_out) {
+                // std::cout << "Press [Enter] to continue...";
+                // std::cin.ignore(); // 清除缓冲区
+                // std::cin.get();    // 等待回车
+                ROS_INFO("第一次即将抵达出口%f",position_right_change_left);
+            }
         }
         if(!out_range && pass_out && !other_enter && !pass_enter){
-            if(pose.response.pose_at[1]>position_right_change_left){
+            // ROS_INFO("位置%f",pose.response.pose_at[1]);
+            if(pose.response.pose_at[2]>0.5){//朝向大于30度了再说
                 other_enter = true;   //已经绕圆环半圈准备离开
                 pass_out = false;
                 ROS_INFO("到达另一个入口");
+                // std::cout << "Press [Enter] to continue...";
+                // std::cin.ignore(); // 清除缓冲区
+                // std::cin.get();    // 等待回车
             }
         }
         if(other_enter){
-            other_enter_last_conner = corner_finder(gray_img,brightness_threshold,other_enter_last_conner,cropped);
-            // ROS_INFO("点%d,%d",other_enter_last_conner.x,other_enter_last_conner.y);
-            twist.linear.x = std::min(std::max((214-other_enter_last_conner.y)/100.0,0.1),0.5);
-            twist.angular.z = std::min(std::max((553-other_enter_last_conner.x)/100.0,0.1),0.5);
-            if(abs(twist.linear.x)<0.12 && abs(twist.angular.z)<0.12){
-                other_enter = false;
-                pass_enter = true;//这个的逻辑塞到后面去了
-                ROS_INFO("离开另一个路口");
+            // ROS_INFO("靠近另一个入口");
+            other_enter_last_conner = find_other_coner_edge(gray_img,other_enter_last_conner,brightness_threshold,cropped);
+            ROS_INFO("点%d,%d",other_enter_last_conner.x,other_enter_last_conner.y);
+            if(other_enter_last_conner.x != -1){
+                out.write(cropped);
+                twist.linear.x = (205-other_enter_last_conner.y)*other_enter_pointy;
+                twist.angular.z = (553-other_enter_last_conner.x)*other_enter_pointx;
+                cmd_pub.publish(twist);
+                ROS_INFO("速度%f,%f,参数%f,误差%d",twist.linear.x,twist.angular.z,other_enter_pointx,205-other_enter_last_conner.y);
+                if(abs(twist.linear.x)<0.12 && abs(twist.angular.z)<0.12){
+                    other_enter = false;
+                    pass_enter = true;//这个的逻辑塞到后面去了
+                    ROS_INFO("离开另一个路口");
+                }
+                continue;
             }
-            continue;
         }
 
         if(out_range && pose.response.pose_at[1]<position_right_change_left){
