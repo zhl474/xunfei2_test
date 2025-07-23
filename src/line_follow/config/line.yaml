@@ -10,7 +10,7 @@ double_P: 0.007
 double_I: 0.15
 double_D: 0.1
 
-other_enter_pointx: 0.001
-other_enter_pointy: 0.001
+other_enter_pointx: 0.0015
+other_enter_pointy: 0.0015
 
 x_max_: 0.7

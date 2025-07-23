@@ -1,3 +1,4 @@
+add_compile_options(-g)
 cmake_minimum_required(VERSION 3.0.2)
 project(my_planner)
 

@@ -13,7 +13,7 @@ namespace my_planner
     }
     MyPlanner::~MyPlanner()
     {
-        ROS_WARN(">>> 析构函数被调用 <<<");
+        ROS_WARN(">>> 析构函数被调用 <<<");//
     }
 
     // 移除了在这里的全局变量定义
@@ -22,18 +22,37 @@ namespace my_planner
     void MyPlanner::initialize(std::string name, tf2_ros::Buffer* tf, costmap_2d::Costmap2DROS* costmap_ros)
     {
         ROS_WARN("本地规划器，启动！");
+        if (!tf || !costmap_ros) {
+            ROS_FATAL("致命错误: TF Buffer 或 CostmapROS 的指针为空!");
+            // 抛出异常是更健壮的做法，能让 move_base 知道插件初始化失败
+            throw std::runtime_error("TF Buffer 或 CostmapROS 的指针为空!");
+        }
         
         tf_buffer_ = tf;
 
         costmap_ros_ = costmap_ros;
-        if (!tf) {
-            ROS_ERROR("tf空指针");
-            return;
+        ROS_INFO("指针检查通过，tf_buffer 和 costmap_ros 已接收。");
+
+        costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
+        if (!costmap) {
+            ROS_FATAL("致命错误: 代价地图尚未初始化!");
+            throw std::runtime_error("代价地图尚未初始化!");
         }
-        if (!costmap_ros) {
-            ROS_ERROR("costmap空指针");
-            return;
+        ROS_INFO("代价地图功能检查通过，尺寸: %d x %d。",
+             costmap->getSizeInCellsX(), costmap->getSizeInCellsY());
+        
+        try {
+        std::string global_frame = costmap_ros_->getGlobalFrameID();
+        ROS_INFO("正在检查从 %s 到 base_link 的 TF 变换...", global_frame.c_str());
+        if (tf_buffer_->canTransform("base_link", global_frame, ros::Time(0), ros::Duration(1.0))) {
+            ROS_INFO("TF 功能检查通过。");
+        } else {
+            ROS_WARN("TF 功能暂不可用，可能是因为系统刚启动。");
         }
+        } catch (tf2::TransformException &ex) {
+            ROS_WARN("检查 TF 时发生警告: %s", ex.what());
+        }
+
         // 为此插件创建一个私有的节点句柄，用于访问其私有命名空间下的参数
         //私有命名空间是 /move_base/MyPlanner
         ros::NodeHandle private_nh("/move_base/MyPlanner" );
@@ -174,7 +193,10 @@ namespace my_planner
         
 
 
-
+        if (global_plan_.empty()) {
+        ROS_ERROR("MyPlanner: Received an empty global plan. Cannot compute velocity commands.");
+        return false; // 返回 false 表示规划失败，这可能会触发 move_base 的恢复行为
+        }
 
 
 

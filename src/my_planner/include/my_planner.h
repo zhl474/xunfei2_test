@@ -7,8 +7,8 @@
 #include <vector>
 #include <string>
 #include <pluginlib/class_list_macros.h>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
+// #include <opencv2/highgui/highgui.hpp>
+// #include <opencv2/imgproc/imgproc.hpp>
 // #include <tf/tf.h>
 // #include <tf/transform_listener.h>
 // #include <tf/transform_datatypes.h>
