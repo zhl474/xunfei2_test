@@ -495,10 +495,7 @@ Point find_other_coner_edge(Mat gray_img,Point left_edge_point,int brightness_th
         for (int y = 52; y <= 180; y++) {
             bool flag = false;
             for (int x = maybe_point.x+80; x > 0; x--) {
-                // ROS_INFO("亮度%d,%d",(int)gray_img.at<uchar>(50, x),brightness_threshold);
                 if (gray_img.at<uchar>(y, x) >= brightness_threshold) {
-                    // double slope = (double)(last_point.y - y)/(last_point.x - x);
-                    // ROS_INFO("相邻点距离%d",(x-last_point.x)*(x-last_point.x)+(y-last_point.y)*(y-last_point.y));
                     if((x-last_point.x)*(x-last_point.x)+(y-last_point.y)*(y-last_point.y)<100){
                         maybe_point=Point(x, y);
                         // ROS_INFO("test");
@@ -515,15 +512,10 @@ Point find_other_coner_edge(Mat gray_img,Point left_edge_point,int brightness_th
                 if(finded_count>4){
                     if(maybe_point.x>520) return Point(-1,-1);//才刚刚看到角点,不接受点在右边
                     circle(visualizeImg, maybe_point, 9, Scalar(0, 0, 255), -1);
-                    // imshow("test",visualizeImg);
-                    // waitKey(1);
                     return maybe_point;
                 }
             }
         }
-        // ROS_INFO("没有满足条件的点");
-        // imshow("test",visualizeImg);
-        // waitKey(1);
         return Point(-1,-1);
     }
     else{
@@ -642,53 +634,7 @@ int recently_white(Mat gray_img,int brightness_threshold,Mat& visualizeImg){//�
         }
     }
     circle(visualizeImg, Point(320,recent), 9, Scalar(0, 0, 180), -1);
-    // out.write(visualizeImg);
-    // imshow("test",visualizeImg);
-    // waitKey(1);
     return recent;
-}
-
-Point corner_finder(Mat gray_img,int brightness_threshold,Point last_conner,Mat& visualizeImg){
-    // Mat binary;
-    // threshold(gray_img, binary, brightness_threshold, 255, cv::THRESH_BINARY);
-
-    std::vector<cv::Point2f> corners;
-    int maxCorners = 1;          // 最大角点数量
-    double qualityLevel = 0.01;    // 质量等级
-    double minDistance = 10;       // 最小间距
-    int cut_x = 0,cut_y = 50;
-    Mat cropped;
-    if (last_conner.x <= 270){
-        cv::Rect roi(30,50,300,180);
-        cropped = gray_img(roi).clone();
-        cut_x = 30;
-    }
-    else if(last_conner.x >270 && last_conner.x < 350){
-        cv::Rect roi(120,50,280,170);
-        cropped = gray_img(roi).clone();
-        cut_x = 120;
-    }
-    else if(last_conner.x >= 350){
-        cv::Rect roi(200,50,415,170);
-        cropped = gray_img(roi).clone();
-        cut_x = 200;
-    }
-    
-    find_other_coner_edge(cropped,last_conner,brightness_threshold,visualizeImg);
-    int radius = 5;
-    // cv::Mat colorDisplay;
-    // cv::cvtColor(cropped, colorDisplay, cv::COLOR_GRAY2BGR); // 转为彩色以便绘制
-    // cv::circle(colorDisplay, last_conner, radius, cv::Scalar(0, 0, 255), -1); // 红色实心圆
-    last_conner.x += cut_x;
-    last_conner.y += 50;
-
-    
-    cv::circle(visualizeImg, last_conner, radius, cv::Scalar(0, 0, 255), -1); // 红色实心圆
-    out.write(visualizeImg);
-    // cv::imshow("Binary", colorDisplay);
-    // cv::imshow("Corners", visualizeImg);
-    // cv::waitKey(1);
-    return last_conner;
 }
 
 double double_find(Mat gray_img,int brightness_threshold, Mat& visual_img)//最后阶段采用双边巡线，避免单边巡线导致的偏离从而无法停车
@@ -849,18 +795,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
     // 等待服务器连接成功，可以设置一个超时时间，或者一直等待
     ac.waitForServer(); 
     ROS_INFO("move_base action server 已连接.");
-    // ros::ServiceClient client = nh.serviceClient<dynamic_reconfigure::Reconfigure>("/move_base/set_parameters");
-    // dynamic_reconfigure::Client<move_base::MoveBaseConfig> reconfigure_client("/move_base");//把定时全局路径规划取消
-    // move_base::MoveBaseConfig config;
-    // if (!reconfigure_client.getCurrentConfiguration(config, ros::Duration(5.0))) {
-    //     ROS_ERROR("无法获取当前配置！");
-    // }
-    // config.planner_frequency = 0.0;
-    // if (reconfigure_client.setConfiguration(config)) {
-    //     ROS_INFO("关闭定时全局规划");
-    // } else {
-    //     ROS_ERROR("关闭全局规划失败");
-    // }
+
     ros::ServiceClient reconfigure_client = nh.serviceClient<dynamic_reconfigure::Reconfigure>("/move_base/set_parameters");
     reconfigure_client.waitForExistence();
     dynamic_reconfigure::ReconfigureRequest request;
@@ -1024,14 +959,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
                 ROS_INFO("第一次即将抵达出口%f",position_right_change_left);
             }
         }
-        // if(!out_range && pass_out && !other_enter && !pass_enter && !out_ready && !pass_enter_ready){
-        //     // ROS_INFO("位置%f",pose.response.pose_at[1]);other_enter,pass_out,pass_enter,out_ready =,pass_enter_ready ;//绕环岛期间左巡线
-        //     if(pose.response.pose_at[2]>0.5){//朝向大于30度了再说
-        //         other_enter = true;   //已经绕圆环半圈准备离开
-        //         pass_out = false;
-        //         ROS_INFO("到达另一个入口");
-        //     }
-        // }
+
         if(!out_range && !pass_out && other_enter && !pass_enter && !out_ready){
             // ROS_INFO("靠近另一个入口");
             other_enter_last_conner = find_other_coner_edge(gray_img,other_enter_last_conner,brightness_threshold,cropped);
@@ -1157,8 +1085,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
                     }
                 }
                 string displayText = displayStream.str();
-                putText(cropped, displayText, Point(50, 50),
-                FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
+                putText(cropped, displayText, Point(50, 50),FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
                 out.write(cropped);
             }
         } 

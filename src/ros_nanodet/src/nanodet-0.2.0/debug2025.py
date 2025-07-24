@@ -36,7 +36,7 @@ FONT = cv2.FONT_HERSHEY_SIMPLEX
 FONT_SCALE = 0.6
 THICKNESS = 2
 
-save_count = 1
+save_count = 74
 
 while True:
     # start = time.time()

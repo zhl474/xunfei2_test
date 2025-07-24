@@ -490,6 +490,25 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
     // 等待服务器连接成功，可以设置一个超时时间，或者一直等待
     ac.waitForServer(); 
     ROS_INFO("move_base action server 已连接.");
+
+    ros::ServiceClient reconfigure_client = nh.serviceClient<dynamic_reconfigure::Reconfigure>("/move_base/set_parameters");
+    reconfigure_client.waitForExistence();
+    dynamic_reconfigure::ReconfigureRequest request;
+    dynamic_reconfigure::ReconfigureResponse response;
+    dynamic_reconfigure::DoubleParameter planner_frequency;
+    planner_frequency.name = "planner_frequency";
+    planner_frequency.value = 0.0;
+    request.config.doubles.push_back(planner_frequency);
+    if (reconfigure_client.call(request, response)) {
+        ROS_INFO("参数更新成功");
+        double new_value;
+        if (ros::param::get("/move_base/planner_frequency", new_value)) {
+            ROS_INFO("Current planner_frequency: %.2f", new_value);
+        }
+    } else {
+        ROS_ERROR("参数更新失败");
+    }
+    
     ROS_INFO("tf变换");
     tf::TransformListener* tf_listener_;
     tf_listener_ = new tf::TransformListener();
@@ -575,57 +594,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
             // ROS_INFO("板子在雷达坐标系下的斜率%f",lidar_point.point.z);
             geometry_msgs::PointStamped point_base;
             tf_listener_->transformPoint("map", lidar_point, point_base);
-            //-----------------------------------圆环避障部分代码--------------------------------------
-            // //使用圆环中心（3.75，2）修正计算出来的坐标（仅在point_base.point.y在圆环范围内时触发）
-            // if (point_base.point.y > 1.5 && point_base.point.y < 2.75)//计算出的初始点位在圆环的范围内时，开始修正坐标和朝向
-            // {
-            //     ROS_INFO("开始圆环避障");
-            //     double d_from_center = sqrt(pow((3.75-point_base.point.x),2) + pow((2 - point_base.point.y),2));//当前导航点到圆心的距离
-            //     double dx = (3.75 - point_base.point.x)/d_from_center;//计算从导航点指向圆心的向量（dx,dy）
-            //     double dy = (2 - point_base.point.y)/d_from_center;
-            //     double error_in_circle = d_from_center - 0.4;//当前导航点距离理想居中位置（40cm）的距离
-            //     point_base.point.x = point_base.point.x + error_in_circle * dx;//修正后的理想坐标（仅在原导航点和圆心的连线上移动位置）
-            //     point_base.point.y = point_base.point.y + error_in_circle * dy;
-            //     double new_yaw = std::atan2(-dx,dy);//最理想的朝向（与圆环相切）的方向向量为（dy,-dx）,这个角度相对map坐标系，无需变换
-            //     move_base_msgs::MoveBaseGoal goal;
-            //     goal.target_pose.header.frame_id = "map";
-            //     goal.target_pose.header.stamp = ros::Time::now();
-            //     goal.target_pose.pose.position.x = point_base.point.x;
-            //     goal.target_pose.pose.position.y = point_base.point.y;
-            //     tf::Quaternion q = tf::createQuaternionFromYaw(new_yaw);
-            //     geometry_msgs::Quaternion q_msg;
-            //     tf::quaternionTFToMsg(q, q_msg);
-            //     goal.target_pose.pose.orientation = q_msg;
-            //     ROS_INFO("坐标变换结果: (%.2f, %.2f, %.2f)",point_base.point.x, point_base.point.y, new_yaw);
-            //     ac.sendGoal(goal);
-            //     ac.waitForResult();
-
-            // }
-            // else//非圆环条件下使用原本的避障坐标
-            // {
-            //     move_base_msgs::MoveBaseGoal goal;
-            //     goal.target_pose.header.frame_id = "map";
-            //     goal.target_pose.header.stamp = ros::Time::now();
-            //     goal.target_pose.pose.position.x = point_base.point.x;
-            //     goal.target_pose.pose.position.y = point_base.point.y;
-            //     // 计算目标朝向：障碍物法线方向相对于小车当前的角度 + 小车当前朝向
-            //     double goal_yaw = std::atan2(vx, -vy) + pose.response.pose_at[2];//乘2后方向关于法线对称
-            //     tf::Quaternion q = tf::createQuaternionFromYaw(goal_yaw);
-            //     geometry_msgs::Quaternion q_msg;
-            //     tf::quaternionTFToMsg(q, q_msg);
-            //     goal.target_pose.pose.orientation = q_msg;
-            
-            //     // target_info.request.target_x = point_base.point.x;
-            //     // target_info.request.target_y = point_base.point.y;
-            //     // target_info.request.target_yaw = std::atan2(vx, -vy) + pose.response.pose_at[2];
-
-            //     ROS_INFO("坐标变换结果: (%.2f, %.2f, %.2f)",point_base.point.x, point_base.point.y, goal_yaw);
-            //     ac.sendGoal(goal);
-            //     ac.waitForResult();
-            // }
-
-            
-            
+            //-----------------------------------圆环避障部分代码--------------------------------------                     
             move_base_msgs::MoveBaseGoal goal;
             goal.target_pose.header.frame_id = "map";
             goal.target_pose.header.stamp = ros::Time::now();
