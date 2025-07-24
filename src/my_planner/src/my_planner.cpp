@@ -1,5 +1,5 @@
 #include "my_planner.h"
-#include <tf/tf.h>
+#include <tf/tf.h>//沟槽的move_base源码用的TF1，这里用TF2就会导致重启时odom,amcl,globalplan出现一堆莫名其妙的错误，甚至与启动位置有关，原理不详，疑似机魂不悦
 #include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
 

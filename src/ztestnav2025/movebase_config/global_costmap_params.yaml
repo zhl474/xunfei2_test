@@ -14,7 +14,7 @@ global_costmap:
 
   
   static_map: true
-  rolling_window: true
+  rolling_window: ture
   transform_tolerance: 2
   track_unknown_space: false
   plugins:

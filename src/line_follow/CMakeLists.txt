@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   actionlib      
   move_base_msgs
+  dynamic_reconfigure
 )
 # find_package(catkin REQUIRED COMPONENTS
 #   geometry_msgs
