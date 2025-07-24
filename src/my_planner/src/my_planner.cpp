@@ -1,19 +1,26 @@
 #include "my_planner.h"
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <tf2/utils.h>
+#include <tf/tf.h>
+#include <tf/transform_listener.h>
+#include <tf/transform_datatypes.h>
 
 PLUGINLIB_EXPORT_CLASS( my_planner::MyPlanner, nav_core::BaseLocalPlanner)
 
 namespace my_planner 
 {
     // 构造函数：初始化指针成员为nullptr
-    MyPlanner::MyPlanner() : tf_buffer_(nullptr), costmap_ros_(nullptr), target_index_(0), pose_adjusting_(false), goal_reached_(false), initial_rotation_done_(false)//初始化指针和变量，防止在某些情况下触发exit code = -11的段错误
+    MyPlanner::MyPlanner() : tf_listener_(nullptr), costmap_ros_(nullptr), target_index_(0), pose_adjusting_(false), goal_reached_(false), initial_rotation_done_(false)//初始化指针和变量，防止在某些情况下触发exit code = -11的段错误
     {
         setlocale(LC_ALL,"");
     }
     MyPlanner::~MyPlanner()
     {
         ROS_WARN(">>> 析构函数被调用 <<<");//
+        // 检查指针是否有效，然后释放它
+        if(tf_listener_ != nullptr)
+        {
+            delete tf_listener_;
+            tf_listener_ = nullptr; // 释放后置空，防止悬挂指针
+        }
     }
 
     // 移除了在这里的全局变量定义
@@ -28,7 +35,10 @@ namespace my_planner
             throw std::runtime_error("TF Buffer 或 CostmapROS 的指针为空!");
         }
         
-        tf_buffer_ = tf;
+        if(tf_listener_ == nullptr)
+        {
+            tf_listener_ = new tf::TransformListener();
+        }
 
         costmap_ros_ = costmap_ros;
         ROS_INFO("指针检查通过，tf_buffer 和 costmap_ros 已接收。");
@@ -41,17 +51,7 @@ namespace my_planner
         ROS_INFO("代价地图功能检查通过，尺寸: %d x %d。",
              costmap->getSizeInCellsX(), costmap->getSizeInCellsY());
         
-        try {
-        std::string global_frame = costmap_ros_->getGlobalFrameID();
-        ROS_INFO("正在检查从 %s 到 base_link 的 TF 变换...", global_frame.c_str());
-        if (tf_buffer_->canTransform("base_link", global_frame, ros::Time(0), ros::Duration(1.0))) {
-            ROS_INFO("TF 功能检查通过。");
-        } else {
-            ROS_WARN("TF 功能暂不可用，可能是因为系统刚启动。");
-        }
-        } catch (tf2::TransformException &ex) {
-            ROS_WARN("检查 TF 时发生警告: %s", ex.what());
-        }
+        
 
         // 为此插件创建一个私有的节点句柄，用于访问其私有命名空间下的参数
         //私有命名空间是 /move_base/MyPlanner
@@ -206,27 +206,8 @@ namespace my_planner
         // global_plan_[final_index].header.stamp = ros::Time(0);
         // tf_listener_->transformPose("base_link",global_plan_[final_index],pose_final);
         
-        try {//各个节点之间的时间误差会导致请求的时间比最新的数据还要新，从而导致报错
-            // 创建一个临时变量，避免修改原始计划
-            geometry_msgs::PoseStamped final_pose_stamped = global_plan_[final_index];
-            // 将时间戳设置为0，以获取最新的可用变换
-            final_pose_stamped.header.stamp = ros::Time(0);
-
-
-            // 等待最多0.1秒，确保从目标姿态的坐标系到"base_link"的变换是可用的,防止访问空指针导致段错误
-            std::string source_frame = final_pose_stamped.header.frame_id;
-            if (!tf_buffer_->canTransform("base_link", source_frame, ros::Time(0), ros::Duration(0.1))) {
-                ROS_WARN("等待从 %s 到 base_link 的 TF 变换...", source_frame.c_str());
-                cmd_vel.linear.x = 0; cmd_vel.linear.y = 0; cmd_vel.angular.z = 0;
-                return true; // 返回安全指令，并在下一个周期重试
-            }
-
-            pose_final = tf_buffer_->transform(final_pose_stamped, "base_link");
-        } catch (tf2::TransformException &ex) {
-            ROS_ERROR("[MyPlanner-FinalPose] TF变换失败,原因: %s", ex.what());
-            cmd_vel.linear.x = 0; cmd_vel.linear.y = 0; cmd_vel.angular.z = 0;
-            return true; // 返回 true，但速度为0，以示安全
-        }
+        global_plan_[final_index].header.stamp = ros::Time(0);
+        tf_listener_->transformPose("base_link",global_plan_[final_index],pose_final);
 
 
 
@@ -241,8 +222,8 @@ namespace my_planner
         }
         if(pose_adjusting_ == true)
         {
-            // double final_yaw = tf::getYaw(pose_final.pose.orientation);
-            double final_yaw = tf2::getYaw(pose_final.pose.orientation);
+            double final_yaw = tf::getYaw(pose_final.pose.orientation);
+            // double final_yaw = tf2::getYaw(pose_final.pose.orientation);
 
             // ROS_WARN("调整最终姿态，final_yaw = %.2f",final_yaw);
             cmd_vel.linear.x = pose_final.pose.position.x * final_pose_linear_gain_;//到达目标点附近后调整位姿的速度比例系数
@@ -263,30 +244,10 @@ namespace my_planner
         for(int i=target_index_;i<global_plan_.size();i++)
         {
             geometry_msgs::PoseStamped pose_base;
-            // global_plan_[i].header.stamp = ros::Time(0);
-            // tf_listener_->transformPose("base_link",global_plan_[i],pose_base);
+            global_plan_[i].header.stamp = ros::Time(0);
+            tf_listener_->transformPose("base_link",global_plan_[i],pose_base);
             
-            try {//各个节点之间的时间误差会导致请求的时间比最新的数据还要新，从而导致报错
-                // 创建一个临时变量，避免修改原始计划
-                geometry_msgs::PoseStamped current_pose_stamped = global_plan_[i];
-                // 将时间戳设置为0，以获取最新的可用变换
-                current_pose_stamped.header.stamp = ros::Time(0);
-
-                // 等待最多0.1秒，确保从目标姿态的坐标系到"base_link"的变换是可用的,防止访问空指针导致段错误
-                std::string source_frame = current_pose_stamped.header.frame_id;
-                if (!tf_buffer_->canTransform("base_link", source_frame, ros::Time(0), ros::Duration(0.1))) {
-                    ROS_WARN("等待从 %s 到 base_link 的 TF 变换...", source_frame.c_str());
-                    cmd_vel.linear.x = 0; cmd_vel.linear.y = 0; cmd_vel.angular.z = 0;
-                    return true; // 返回安全指令，并在下一个周期重试
-                }
-
-
-                pose_base = tf_buffer_->transform(current_pose_stamped, "base_link");
-            } catch (tf2::TransformException &ex) {
-                ROS_ERROR("[MyPlanner-TargetSearch] TF变换失败,原因: %s", ex.what());
-                cmd_vel.linear.x = 0; cmd_vel.linear.y = 0; cmd_vel.angular.z = 0;
-                return true; // 返回 true，但速度为0，以示安全
-            }
+            
 
 
             double dx = pose_base.pose.position.x;

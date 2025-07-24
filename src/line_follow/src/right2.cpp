@@ -311,6 +311,9 @@ void trace_rightedge(Point start_point, Mat& gray_img, vector<Point>& traced_poi
         string displayText1 = displayStream1.str();
         putText(*visual_img, displayText1, Point(50, 100),
         FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
+        if(!right){
+            circle(*visual_img, Point(320,100), 7, Scalar(255, 0, 255), -1);
+        }
         // imshow("test",*visual_img);
         // waitKey(1);
     }
@@ -632,8 +635,9 @@ int recently_white(Mat gray_img,int brightness_threshold,Mat& visualizeImg){//�
         }
     }
     circle(visualizeImg, Point(320,recent), 9, Scalar(0, 0, 255), -1);
-    imshow("test",visualizeImg);
-    waitKey(1);
+    out.write(visualizeImg);
+    // imshow("test",visualizeImg);
+    // waitKey(1);
     return recent;
 }
 
@@ -905,7 +909,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
 
     bool avoid_done = false;//避障结束后不急着走，先平移恢复一下
 
-    bool out_range = false;//出圆环判断标志
+    bool out_range = false,start = true;//出圆环判断标志,开始巡线标志，movabese可能导致巡线一开始就压线，先导航到外面，让他自己进来
     bool other_enter = false,pass_out = false,pass_enter = false,out_ready = false,pass_enter_ready = false;//绕环岛期间左巡线
     int out_ready_count = 0;//检测到右线25帧后判定离开
     bool left_ready;//判断是否进入圆环需要一个标志位辅助，两边线都看到才算进圆环否则离圆环太远容易出问题
@@ -918,42 +922,42 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
         //----------------------------------避障逻辑----------------------------//
         client_line_board.call(board);
         pose_client.call(pose);
-        // if(board.response.lidar_results[0] != -1){
-        //     ROS_INFO("最短距离%f",board.response.lidar_results[0]);
+        if(board.response.lidar_results[0] != -1){
+            ROS_INFO("最短距离%f",board.response.lidar_results[0]);
 
-        //     float vx = board.response.lidar_results[4];//存储xy分量
-        //     float vy = board.response.lidar_results[5];
+            float vx = board.response.lidar_results[4];//存储xy分量
+            float vy = board.response.lidar_results[5];
 
-        //     double d = std::sqrt(1 + board.response.lidar_results[3]*board.response.lidar_results[3]);
-        //     geometry_msgs::PointStamped lidar_point;
-        //     lidar_point.header.frame_id = "laser_frame";
-        //     lidar_point.header.stamp = ros::Time(0); // 使用最新tf
-        //     lidar_point.point.x = board.response.lidar_results[1] - 0.26*vy;//法向量（-vy,vx）现在必定指向y正方向（小车前方）
-        //     lidar_point.point.y = board.response.lidar_results[2] + 0.26*vx;
-        //     lidar_point.point.z = 0;//使用atan2不会有角度180度跳变
-        //     // ROS_INFO("板子在雷达坐标系下的斜率%f",lidar_point.point.z);
-        //     geometry_msgs::PointStamped point_base;
-        //     tf_listener_->transformPoint("map", lidar_point, point_base);
+            double d = std::sqrt(1 + board.response.lidar_results[3]*board.response.lidar_results[3]);
+            geometry_msgs::PointStamped lidar_point;
+            lidar_point.header.frame_id = "laser_frame";
+            lidar_point.header.stamp = ros::Time(0); // 使用最新tf
+            lidar_point.point.x = board.response.lidar_results[1] - 0.26*vy;//法向量（-vy,vx）现在必定指向y正方向（小车前方）
+            lidar_point.point.y = board.response.lidar_results[2] + 0.26*vx;
+            lidar_point.point.z = 0;//使用atan2不会有角度180度跳变
+            // ROS_INFO("板子在雷达坐标系下的斜率%f",lidar_point.point.z);
+            geometry_msgs::PointStamped point_base;
+            tf_listener_->transformPoint("map", lidar_point, point_base);
       
-        //     move_base_msgs::MoveBaseGoal goal;
-        //     goal.target_pose.header.frame_id = "map";
-        //     goal.target_pose.header.stamp = ros::Time::now();
-        //     goal.target_pose.pose.position.x = point_base.point.x;
-        //     goal.target_pose.pose.position.y = point_base.point.y;
-        //     // 计算目标朝向：障碍物法线方向相对于小车当前的角度 + 小车当前朝向
-        //     double goal_yaw = std::atan2(vx, -vy) + pose.response.pose_at[2];//乘2后方向关于法线对称
-        //     tf::Quaternion q = tf::createQuaternionFromYaw(goal_yaw);
-        //     geometry_msgs::Quaternion q_msg;
-        //     tf::quaternionTFToMsg(q, q_msg);
-        //     goal.target_pose.pose.orientation = q_msg;
+            move_base_msgs::MoveBaseGoal goal;
+            goal.target_pose.header.frame_id = "map";
+            goal.target_pose.header.stamp = ros::Time::now();
+            goal.target_pose.pose.position.x = point_base.point.x;
+            goal.target_pose.pose.position.y = point_base.point.y;
+            // 计算目标朝向：障碍物法线方向相对于小车当前的角度 + 小车当前朝向
+            double goal_yaw = std::atan2(vx, -vy) + pose.response.pose_at[2];//乘2后方向关于法线对称
+            tf::Quaternion q = tf::createQuaternionFromYaw(goal_yaw);
+            geometry_msgs::Quaternion q_msg;
+            tf::quaternionTFToMsg(q, q_msg);
+            goal.target_pose.pose.orientation = q_msg;
 
-        //     ROS_INFO("坐标变换结果: (%.2f, %.2f, %.2f)",point_base.point.x, point_base.point.y, goal_yaw);
-        //     ac.sendGoal(goal);
-        //     ac.waitForResult();
+            ROS_INFO("坐标变换结果: (%.2f, %.2f, %.2f)",point_base.point.x, point_base.point.y, goal_yaw);
+            ac.sendGoal(goal);
+            ac.waitForResult();
             
-        //     avoid_done = true;
-        //     ROS_INFO("避障结束");
-        // }
+            avoid_done = true;
+            ROS_INFO("避障结束");
+        }
 
 
         //----------------------------------巡线逻辑----------------------------//
@@ -982,18 +986,15 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
                 ROS_INFO("第一次即将抵达出口%f",position_right_change_left);
             }
         }
-        if(!out_range && pass_out && !other_enter && !pass_enter && !out_ready && !pass_enter_ready){
-            // ROS_INFO("位置%f",pose.response.pose_at[1]);other_enter,pass_out,pass_enter,out_ready =,pass_enter_ready ;//绕环岛期间左巡线
-            if(pose.response.pose_at[2]>0.5){//朝向大于30度了再说
-                other_enter = true;   //已经绕圆环半圈准备离开
-                pass_out = false;
-                ROS_INFO("到达另一个入口");
-                // std::cout << "Press [Enter] to continue...";
-                // std::cin.ignore(); // 清除缓冲区
-                // std::cin.get();    // 等待回车
-            }
-        }
-        if(!out_range && !pass_out && other_enter && !pass_enter && !out_ready && !pass_enter_ready){
+        // if(!out_range && pass_out && !other_enter && !pass_enter && !out_ready && !pass_enter_ready){
+        //     // ROS_INFO("位置%f",pose.response.pose_at[1]);other_enter,pass_out,pass_enter,out_ready =,pass_enter_ready ;//绕环岛期间左巡线
+        //     if(pose.response.pose_at[2]>0.5){//朝向大于30度了再说
+        //         other_enter = true;   //已经绕圆环半圈准备离开
+        //         pass_out = false;
+        //         ROS_INFO("到达另一个入口");
+        //     }
+        // }
+        if(!out_range && !pass_out && other_enter && !pass_enter && !out_ready){
             // ROS_INFO("靠近另一个入口");
             other_enter_last_conner = find_other_coner_edge(gray_img,other_enter_last_conner,brightness_threshold,cropped);
             // ROS_INFO("点%d,%d",other_enter_last_conner.x,other_enter_last_conner.y);
@@ -1005,23 +1006,19 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
                 // ROS_INFO("速度%f,%f,参数%f,误差%d",twist.linear.x,twist.angular.z,other_enter_pointx,205-other_enter_last_conner.y);
                 if(abs(twist.linear.x)<0.08 && abs(twist.angular.z)<0.12){
                     other_enter = false;
-                    pass_enter_ready = true;//这个的逻辑塞到后面去了
+                    pass_enter = true;//这个的逻辑塞到后面去了
                     // out_ready = true;
                     ROS_INFO("离开另一个路口");
                 }
                 continue;
             }
         }
-        // recently_white(gray_img,brightness_threshold,cropped);
-        // if(pass_enter && pose.response.pose_at[1]<position_right_change_left){
-        //     out_range = true;
-        //     ROS_INFO("准备离开圆环");
-        // }
+
         //---------------------------右巡线逻辑--------------------、、
         Point right_edge_point = Point(-1, -1);//
         int last_scanned_y;
         find_righttrack_edge(gray_img,right_edge_point, scan_rows, brightness_threshold);
-        if (out_range && right && (first_point_x_last - right_edge_point.x>250) &&pose.response.pose_at[0]>3.0){//如果右边线丢了或者右边界首个点发生剧烈左移动
+        if ((out_range || pass_out) && right && (first_point_x_last - right_edge_point.x>250) &&pose.response.pose_at[0]>3.0){//如果右边线丢了或者右边界首个点发生剧烈左移动
             right = false;
             ROS_INFO("左跳变%d,%d",first_point_x_last,right_edge_point.x);
         }
@@ -1034,6 +1031,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
         // 追踪右侧边线
         bool right_checker = true;//右线不一定真的是右线，可能是太偏的左线，不接受右线向右倾斜，不满足条件切换逻辑
         if (right) {
+            double line_error = 0;
             if(!double_line){
                 trace_rightedge(right_edge_point, gray_img, traced_right, right_checker, brightness_threshold, &cropped);
                 line_error = right_error_calculater(traced_right,right_edge_point.y,cropped);//有调试图片输出
@@ -1041,31 +1039,28 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
             else{
                 line_error = double_find(gray_img,brightness_threshold,cropped);
             }
-            if(!right_checker || pass_enter){
+            if(!right_checker){
                 // ROS_INFO("右线斜率出错，舍弃");
-                // twist.angular.z = std::max(twist.angular.z-0.05,-0.3);
-                if(pass_enter_ready){
-                    pass_enter = true;
-                    pass_enter_ready = false;
-                }
+                displayStream <<"point: "<< traced_right.size();
+                string displayText = displayStream.str();
+                putText(cropped, displayText, Point(50, 50),FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
+                
                 if(pass_enter){//如果现在是通过路口处
                     int recent = recently_white(gray_img,brightness_threshold,cropped);
+                    pass_enter_ready = true;//这个标志用来判断是否已经发生丢线，如果已经发生丢线，再重新看到右线，passenter取消
                     ROS_INFO("回到路口");
-                    if(recent>45){
+                    if(recent>55){
                         cmd_pub.publish(twist);
                         continue;
                     }
                     twist.linear.x = max(twist.linear.x - 0.2,0.0);
                     twist.angular.z = 0.6;
-                    if(pose.response.pose_at[2]<-1.57 && pose.response.pose_at[2]>-2.2){
-                        pass_enter = false;
-                        out_range = true;
-                    }
                     ROS_INFO("回到路口且靠近边线");
                 }
                 else{
                     cmd_pub.publish(twist);
-                    ROS_INFO("丢线，保持原来运动状态，大概率第一次到达出口");
+                    out.write(cropped);
+                    ROS_INFO("丢线，保持原来运动状态");
                     continue;
                 }
                 
@@ -1082,10 +1077,10 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
                 point_confirm = 0;
                 left_forward = true;
                 point_forward = true;
+
+
                 // ROS_INFO("右巡线");
                 first_point_x_last = right_edge_point.x;
-                double line_error = 0;
-
                 integration += line_error*0.03;
                 integration = std::max(std::min(integration,1.0),-1.0);
                 double diff = line_error - pre_error;
@@ -1100,59 +1095,74 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
                     }
                 }
                 else{
-                    twist.linear.x = 0.5 / exp(abs(line_error) / 100.0);
+                    twist.linear.x = x_max / exp(abs(line_error) / 100.0);
                     twist.angular.z = std::max(std::min(line_error*p+integration*i+diff*d,1.0),-1.0);
                 }
                 pre_error = line_error;
-                displayStream << "error: " << line_error << "p: " << line_error*p << "i: " << integration*i << "d: " << diff*d<<"z: "<< twist.angular.z;
+                displayStream << "error: " << line_error << "p: " << line_error*p << "i: " << integration*i << "d: " << diff*d<<"point: "<< traced_right.size();
+
+
+                if(pass_enter_ready){
+                    out_ready_count++;
+                    displayStream << "out_ready_count: "<< out_ready_count;
+                    if(out_ready_count>25){//准备好出圆环后看到80帧画面，就出圆环
+                        out_range = true;
+                        pass_enter = false;
+                        pass_enter_ready = false;
+                        ROS_INFO("准备离开圆环");
+                    }
+                }
                 string displayText = displayStream.str();
                 putText(cropped, displayText, Point(50, 50),
                 FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
                 out.write(cropped);
-                // ROS_INFO("积分项%f",integration);
-                if(out_ready){
-                    out_ready_count++;
-                    ROS_INFO("准备离开圆环，已经有%d帧右线",out_ready_count);
-                    if(out_ready_count>25){//准备好出圆环后看到80帧画面，就出圆环
-                        out_range = true;
-                        ROS_INFO("准备离开圆环");
-                        out_ready = false;
-                    }
-                }
             }
         } 
         else {
             if(left_forward){
                 if(point_forward){
-                    // ROS_INFO("左点");
-                    start_time = ros::Time::now();
-                    find_left_edge(gray_img, left_edge_point,brightness_threshold,cropped);
-                    first_point_x_last = left_edge_point.x;
-                    // find_left_edge(gray_img, left_edge_point,brightness_threshold);
-                    double error_x = 320-left_edge_point.x;//double error_y = 160-left_edge_point.y;
-                    pointx_integration += error_x*0.02;//pointy_integration += error_y*0.02;
-                    // ROS_INFO("转折点坐标x%d,y%d",left_edge_point.x,left_edge_point.y);
-                    // if(abs(left_edge_point.x-320) < 20 && abs(left_edge_point.y -160)<20){
-                    if(abs(left_edge_point.x-320) < 20){
-                        avoid_done = false;
-                        point_confirm++;
-                        if(point_confirm>7){
-                            pointx_integration = 0;
-                            // pointy_integration = 0;
-                            point_forward = false;
+                    if(pass_out){
+                        find_left_edge(gray_img, left_edge_point,brightness_threshold,cropped);
+                        twist.linear.x = (205-left_edge_point.y)*other_enter_pointx;
+                        twist.angular.z = (553-left_edge_point.x)*other_enter_pointy;
+                        if(left_edge_point.x>450 && left_edge_point.y >180){
+                            right = true;//恢复右巡线逻辑
+                            other_enter = true;   //已经绕圆环半圈准备离开
+                            pass_out = false;
+                            ROS_INFO("到达另一个入口");//
                         }
+                        out.write(cropped);
                     }
-                    pointx_integration = std::max(std::min(pointx_integration,1.0),-1.0);//pointy_integration = std::max(std::min(pointy_integration,1.0),-1.0);
-                    // ROS_INFO("P%f,I%f",error_y/400,pointy_integration/400);
-                    twist.linear.x = std::max(twist.linear.x-0.2,0.0);
-                    twist.angular.z = std::max(std::min(error_x*leftpoint_p + pointx_integration * leftpoint_I,0.5),-0.5);
+                    else{
+                        start_time = ros::Time::now();
+                        find_left_edge(gray_img, left_edge_point,brightness_threshold,cropped);
+                        first_point_x_last = left_edge_point.x;
+                        // find_left_edge(gray_img, left_edge_point,brightness_threshold);
+                        double error_x = 320-left_edge_point.x;//double error_y = 160-left_edge_point.y;
+                        pointx_integration += error_x*0.02;//pointy_integration += error_y*0.02;
+                        // ROS_INFO("转折点坐标x%d,y%d",left_edge_point.x,left_edge_point.y);
+                        // if(abs(left_edge_point.x-320) < 20 && abs(left_edge_point.y -160)<20){
+                        if(abs(left_edge_point.x-320) < 20){
+                            avoid_done = false;
+                            point_confirm++;
+                            if(point_confirm>7){
+                                pointx_integration = 0;
+                                // pointy_integration = 0;
+                                point_forward = false;
+                            }
+                        }
+                        pointx_integration = std::max(std::min(pointx_integration,1.0),-1.0);//pointy_integration = std::max(std::min(pointy_integration,1.0),-1.0);
+                        // ROS_INFO("P%f,I%f",error_y/400,pointy_integration/400);
+                        twist.linear.x = std::max(twist.linear.x-0.2,0.0);
+                        twist.angular.z = std::max(std::min(error_x*leftpoint_p + pointx_integration * leftpoint_I,0.5),-0.5);
 
-                    pointx_pre_error = error_x;//pointy_pre_error = error_y;
-                    displayStream <<"z:  "<< twist.angular.z<<"errorx:  "<<error_x<<"pointx_integration:"<<pointx_integration;
-                    string displayText = displayStream.str();
-                    putText(cropped, displayText, Point(50, 50),
-                    FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
-                    out.write(cropped);
+                        pointx_pre_error = error_x;//pointy_pre_error = error_y;
+                        displayStream <<"z:  "<< twist.angular.z<<"errorx:  "<<error_x<<"pointx_integration:"<<pointx_integration;
+                        string displayText = displayStream.str();
+                        putText(cropped, displayText, Point(50, 50),
+                        FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
+                        out.write(cropped);
+                    }
                 }
                 else{
                     // ROS_INFO("左线");

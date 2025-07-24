@@ -9,12 +9,12 @@
 #include <pluginlib/class_list_macros.h>
 // #include <opencv2/highgui/highgui.hpp>
 // #include <opencv2/imgproc/imgproc.hpp>
-// #include <tf/tf.h>
-// #include <tf/transform_listener.h>
-// #include <tf/transform_datatypes.h>
+#include <tf/tf.h>
+#include <tf/transform_listener.h>
+#include <tf/transform_datatypes.h>
 
-#include <tf2_ros/buffer.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+// #include <tf2_ros/buffer.h>
+// #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 
 // // 向前声明 tf2_ros::Buffer，因为 initialize 函数签名需要它
@@ -35,8 +35,8 @@ namespace my_planner
             bool isGoalReached();
         private:
             // 将所有变量移入类定义中，成为成员变量
-            // tf::TransformListener* tf_listener_;
-            tf2_ros::Buffer* tf_buffer_; 
+            tf::TransformListener* tf_listener_;
+            // tf2_ros::Buffer* tf_buffer_; 
             costmap_2d::Costmap2DROS* costmap_ros_;
             std::vector<geometry_msgs::PoseStamped> global_plan_;
     
