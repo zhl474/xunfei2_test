@@ -166,16 +166,10 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 
 add_executable(line_right src/line_right.cpp)
+add_executable(line_left src/line_left.cpp)
 add_executable(right2 src/right2.cpp)
 # add_executable(dynamic_awb src/dynamic_awb.cpp)
 add_executable(wb src/wb.cpp)
-
-# 在add_executable之后添加以下内容调试用
-# target_compile_options(follower_line_pid
-#     PRIVATE 
-#     -g          # 生成调试符号
-#     -O0         # 禁用优化
-# )
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -190,6 +184,10 @@ add_executable(wb src/wb.cpp)
 ## Specify libraries to link a library or executable target against
 
 target_link_libraries(line_right
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
+target_link_libraries(line_left
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
 )

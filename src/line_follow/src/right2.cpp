@@ -10,7 +10,6 @@
 #include "line_follow/line_follow.h"
 #include "ztestnav2025/getpose_server.h"
 #include "ztestnav2025/lidar_process.h"
-// #include "ztestnav2025/set_speed.h"
 
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
@@ -18,8 +17,7 @@
 
 #include <actionlib/client/simple_action_client.h>
 #include <move_base_msgs/MoveBaseAction.h>
-// #include <dynamic_reconfigure/client.h>
-// #include <move_base/MoveBaseConfig.h> // move_base 的配置头文件
+
 #include <dynamic_reconfigure/Reconfigure.h>
 #include <dynamic_reconfigure/Config.h>
 
@@ -848,14 +846,14 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
     Rect roi(0, 210, 640, 270);
 
     double p,i,d,integration,pre_error,leftpoint_p,leftpoint_I,x_max,other_enter_pointy,other_enter_pointx;
-    nh.getParam("/line_right/right_P", p);
-    nh.getParam("/line_right/right_I", i);
-    nh.getParam("/line_right/right_D", d);
-    nh.getParam("/line_right/leftpoint_p", leftpoint_p);
-    nh.getParam("/line_right/leftpoint_I", leftpoint_I);
-    nh.getParam("/line_right/x_max_", x_max);
-    nh.getParam("/line_right/other_enter_pointy", other_enter_pointy);
-    nh.getParam("/line_right/other_enter_pointx", other_enter_pointx);
+    nh.getParam("/right2/right_P", p);
+    nh.getParam("/right2/right_I", i);
+    nh.getParam("/right2/right_D", d);
+    nh.getParam("/right2/leftpoint_p", leftpoint_p);
+    nh.getParam("/right2/leftpoint_I", leftpoint_I);
+    nh.getParam("/right2/x_max_", x_max);
+    nh.getParam("/right2/other_enter_pointy", other_enter_pointy);
+    nh.getParam("/right2/other_enter_pointx", other_enter_pointx);
     ROS_INFO("参数加载P: %f", x_max);
     integration = 0;
     pre_error = 0;

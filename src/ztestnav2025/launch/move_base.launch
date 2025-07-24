@@ -33,5 +33,6 @@
   </node>
   <node pkg="line_follow" type="line_right" name="line_right" output="screen"/>
   <rosparam command="load" file="/home/ucar/ucar_car/src/line_follow/config/line.yaml" ns="line_right" />
+  <rosparam command="load" file="/home/ucar/ucar_car/src/line_follow/config/line2.yaml" ns="right2" />
 
 </launch>
