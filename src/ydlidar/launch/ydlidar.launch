@@ -5,8 +5,8 @@
     <param name="resolution_fixed"    type="bool"   value="true"/>
     <param name="auto_reconnect"    type="bool"   value="true"/>
     <param name="reversion"    type="bool"   value="true"/>
-    <param name="angle_min"    type="double" value="180" />
-    <param name="angle_max"    type="double" value="-180" />
+    <param name="angle_min"    type="double" value="-180" />
+    <param name="angle_max"    type="double" value="180" />
     <param name="range_min"    type="double" value="0.01" />
     <param name="range_max"    type="double" value="5.0" />
     <param name="ignore_array" type="string" value="" />
@@ -15,5 +15,5 @@
     <remap from="scan" to="scan" />
   </node>
   <node pkg="tf" type="static_transform_publisher" name="base_link_to_laser"
-    args="-0.11 0.0 0.165 -0.07 0.0  0.0 /base_link /laser_frame 100" />
+    args="-0.11 0.0 0.165 -0.07 0.0  0.0 /base_link /laser_frame 40" /> <!-- 在ROS网络中，不同的节点可能会在任意时间启动或重启。如果静态变换只发布一次，那么在它发布之后才启动的节点就会错过这个信息，导致它们的坐标系树TF Tree不完整，从而引发错误。 -->
 </launch>

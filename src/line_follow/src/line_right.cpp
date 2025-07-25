@@ -583,20 +583,23 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
             geometry_msgs::PointStamped lidar_point;
             lidar_point.header.frame_id = "laser_frame";
             lidar_point.header.stamp = ros::Time(0); // 使用最新tf
-            lidar_point.point.x = board.response.lidar_results[1] - 0.26*vy;//法向量（-vy,vx）现在必定指向y正方向（小车前方）
-            lidar_point.point.y = board.response.lidar_results[2] + 0.26*vx;
+            // lidar_point.point.x = board.response.lidar_results[1] - 0.26*vy;//法向量（-vy,vx）现在必定指向y正方向（小车前方）
+            // lidar_point.point.y = board.response.lidar_results[2] + 0.26*vx;
+            lidar_point.point.x = 3.75;//位置固定，直接硬编码
+            lidar_point.point.y = board.response.lidar_results[2] + 0.26;
             lidar_point.point.z = 0;//使用atan2不会有角度180度跳变
             // ROS_INFO("板子在雷达坐标系下的斜率%f",lidar_point.point.z);
             geometry_msgs::PointStamped point_base;
             tf_listener_->transformPoint("map", lidar_point, point_base);
-            //-----------------------------------圆环避障部分代码--------------------------------------                     
+                                
             move_base_msgs::MoveBaseGoal goal;
             goal.target_pose.header.frame_id = "map";
             goal.target_pose.header.stamp = ros::Time::now();
             goal.target_pose.pose.position.x = point_base.point.x;
             goal.target_pose.pose.position.y = point_base.point.y;
             // 计算目标朝向：障碍物法线方向相对于小车当前的角度 + 小车当前朝向
-            double goal_yaw = std::atan2(vx, -vy) + pose.response.pose_at[2];//乘2后方向关于法线对称
+            // double goal_yaw = std::atan2(vx, -vy) + pose.response.pose_at[2];//乘2后方向关于法线对称
+            double goal_yaw = -1.57;
             tf::Quaternion q = tf::createQuaternionFromYaw(goal_yaw);
             geometry_msgs::Quaternion q_msg;
             tf::quaternionTFToMsg(q, q_msg);

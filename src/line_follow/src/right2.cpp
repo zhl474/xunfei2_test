@@ -168,33 +168,13 @@ void find_righttrack_edge(Mat& gray_img, Point& right_point, int scan_rows, int 
     bool flag = 1;
     int last_scanned_y = height - scan_rows;
 
-    for (int y = height - 1; y >= last_scanned_y; y--) {//
+    for (int y = height - 1; y >= last_scanned_y; y--) {
         // 向右搜索边界
         if (right_point.x == -1) {
             for (int x = middle_x + 1; x < width - 2; x++) {
                 if ((int)gray_img.at<uchar>(y, x)>=brightness_threshold){ 
                     right_point = Point(x, y);
                     circle(visualizeImg, right_point, 7, Scalar(0, 0, 0), -1);
-                    break;
-                }
-            }
-        }
-        else break;
-    }
-}
-void find_lefttrack_edge(Mat& gray_img, Point& left_point, int scan_rows, int brightness_threshold) {
-    int height = gray_img.rows;
-    int width = gray_img.cols;
-    int middle_x = width / 2;
-    bool flag = 1;
-    int last_scanned_y = height - scan_rows;
-
-    for (int y = height - 1; y >= last_scanned_y; y--) {//
-        // 向右搜索边界
-        if (left_point.x == -1) {
-            for (int x = middle_x - 1; x > 2; x--) {
-                if ((int)gray_img.at<uchar>(y, x)>=brightness_threshold){ 
-                    left_point = Point(x, y);
                     break;
                 }
             }
@@ -320,129 +300,19 @@ void trace_rightedge(Point start_point, Mat& gray_img, vector<Point>& traced_poi
         if(!right){
             circle(*visual_img, Point(320,100), 7, Scalar(255, 0, 255), -1);
         }
-        // imshow("test",*visual_img);
-        // waitKey(1);
     }
 }
-void trace_leftedge(Point start_point, Mat& gray_img, vector<Point>& traced_points,  
-                int brightness_threshold,Mat* visual_img = nullptr) {
-    int height = gray_img.rows;
-    int width = gray_img.cols;
-    int search_range = 80;
-    traced_points.clear();
-    traced_points.push_back(start_point);
-    bool broken = false;
-    // 计数器：记录连续未找到点的行数
-    int fail_count = 0;
-    
-    // 初始化搜索中心
-    int center_x = start_point.x;
-    int center_y = start_point.y - 1;  // 从起始点上方开始搜索
-    int number = 1;//没必要找太多，60个点够了
 
-    while (center_y > start_point.y-100) {  // 只看往上130行
-        bool found = false;
-        Point best_point;
-        int max_brightness_change = 0;
-
-        // 在当前行搜索范围内检查所有可能点
-        for (int dx = 0; dx <= search_range/2; dx++) {
-            // 计算候选点位置
-            int cand_x = center_x + dx;
-            int cand_x2 = center_x - dx;
-            bool left_check = 1;
-            bool right_check = 1;
-            // 边界检查
-            if (cand_x >= width - 1) {
-                right_check = 0;
-            }
-            if (cand_x2 < 1) {
-                left_check = 0;
-            }
-
-            //根据阈值
-            int brightness_change;
-            //右减左
-            int current = 0;
-            if (right_check) {
-                current = gray_img.at<uchar>(center_y, cand_x);
-                int next = gray_img.at<uchar>(center_y, cand_x + 1);
-                brightness_change = current-next;
-            } 
-            if (current >= brightness_threshold) {
-                if (brightness_change > max_brightness_change) {
-                    max_brightness_change = brightness_change;
-                    best_point = Point(cand_x, center_y);
-                    found = true;
-                }
-            }
-            else{
-                if (left_check){
-                    current = gray_img.at<uchar>(center_y, cand_x2);
-                    int prev = gray_img.at<uchar>(center_y, cand_x2 - 1);
-                    brightness_change = prev-current;
-                }
-                if (current >= brightness_threshold) {
-                    if (brightness_change > max_brightness_change) {
-                        max_brightness_change = brightness_change;
-                        best_point = Point(cand_x2, center_y);
-                        found = true;
-                    }
-                }
-            }
-        }
-
-        if (found) {
-            traced_points.push_back(best_point);
-            // 重置失败计数器
-            fail_count = 0;
-            number++;
-            // 更新搜索中心（继续向上移动）
-            center_x = best_point.x;
-            center_y = best_point.y - 1;
-
-        } else {
-            // 没有找到符合条件的点
-            fail_count++;
-            // 向上移动一行继续搜索
-            center_y--;
-            // 如果连续40行找不到点，判定为赛道断裂
-            if (fail_count >= 20) {
-                broken = true;
-                break;
-            }
-        }
-        // 如果已经到达图像顶部，结束追踪
-        if (number>60|| center_y <= 0) {
-            break;
-        }
-    }
-    
-    if (visual_img != nullptr) {
-        Scalar color = Scalar(0, 255, 0);  // 红色:左, 绿色:右
-        for (const auto& point : traced_points) {
-            circle(*visual_img, point, 2, color, -1);
-        }
-        circle(*visual_img, start_point, 2, Scalar(0, 0, 0), -1);
-        ostringstream displayStream1;
-        displayStream1 << fixed << setprecision(2);
-        string displayText1 = displayStream1.str();
-        putText(*visual_img, displayText1, Point(50, 100),
-        FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
-    }
-}
 //如果右边丢线，就只看左边，因为右边丢线了，所以直接从最右边开始找，找到就是左线，然后把左线拟合成直线，如果左线碰到图片底端，就开始旋转，通过定位来判断是否到达终点，到达终点前不启用停车逻辑
 bool find_left_edge(Mat gray_img,Point& left_edge_point,int brightness_threshold,Mat& visualizeImg){
     int height = gray_img.rows;
     int width = gray_img.cols;
     bool flag = false;
     left_edge_point = Point(-1,-1);
-    Mat blurred = gray_img;
-    // GaussianBlur(gray_img, blurred, cv::Size(5,5), 0);//这个点很重要，务必不能找错
     for (int y = height - 1; y >= 69; y--) {
         for (int x = width -1; x > 150; x--) {
-            if (blurred.at<uchar>(y, x) >= brightness_threshold) {
-                if(blurred.at<uchar>(y-1, x) >= brightness_threshold){//需要连续看到两个点
+            if (gray_img.at<uchar>(y, x) >= brightness_threshold) {
+                if(gray_img.at<uchar>(y-1, x) >= brightness_threshold){//需要连续看到两个点
                     left_edge_point=Point(x, y);
                     flag = true;
                 }
@@ -527,6 +397,7 @@ Point find_other_coner_edge(Mat gray_img,Point left_edge_point,int brightness_th
                     for(int i=x-10;i<x+10;i++){
                         if(gray_img.at<uchar>(y+1, i) >= brightness_threshold) finded_count++;
                         if(gray_img.at<uchar>(y+2, i) >= brightness_threshold) finded_count++;
+                        if(finded_count>3) break;
                     }
                     if(finded_count<3){
                         maybe_point=Point(x, y);
@@ -537,13 +408,9 @@ Point find_other_coner_edge(Mat gray_img,Point left_edge_point,int brightness_th
                 }
             }
             if (flag) {
-                // imshow("test",visualizeImg);
-                waitKey(1);
                 return maybe_point;
             }
         }
-        // imshow("test",visualizeImg);
-        waitKey(1);
         return Point(-1,-1);
     }
 }
@@ -738,35 +605,6 @@ double right_error_calculater(vector<Point>& traced_points,int ystart,Mat& visua
         return total_error/traced_points.size()*-1;
     }
 }
-double left_error_calculater(vector<Point>& traced_points,int ystart,Mat& visualizeImg){
-    double total_error = 0;
-    for (size_t i=0;i<traced_points.size();i++){
-        int y = ystart-i;
-        if (i <= 30.0) {
-            double mid_error = (traced_points[i].x + (240 - (214-y)*1.34)-320)*(1-i/100);
-            total_error += mid_error;
-        }
-        else {
-            double mid_error = (traced_points[i].x + (240 - (214-y)*1.34)-320)*0.7 * exp(-0.064 * (i - 30.0));
-            total_error += mid_error;
-        }
-    }
-
-    // 可视化代码（例如在图像上绘制轨迹）
-    for (int i=0;i<traced_points.size();i++) {
-        int y = ystart-i;
-        Point pt = Point(traced_points[i].x + (240 - (214-y)*1.34),ystart-i);
-        circle(visualizeImg, pt, 3, Scalar(0, 255, 0), -1);
-    }
-    if (traced_points.size()==0){
-        return 100.0;
-    }
-    else{
-        return total_error/traced_points.size()*-1;
-    }
-}
-
-
 
 bool line_server_callback(line_follow::line_follow::Request& req,line_follow::line_follow::Response& resp){
     FileStorage fs("/home/ucar/ucar_car/src/line_follow/camera_info/pinhole.yaml", FileStorage::READ);
