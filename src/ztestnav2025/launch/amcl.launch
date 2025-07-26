@@ -17,15 +17,16 @@
         <!-- //当设置为true时，AMCL将仅仅使用订阅的第一个地图，而不是每次接收到新的时更新为一个新的地图，在navigation 1.4.2中新加入的参数。 -->
         <!-- 允许的最小、最大粒子数 -->
         <param name="min_particles"             value="100"/> <!--如果环境特征较少或对称性高，导致机器人容易定位丢失，可以适当增加此值，以保持一定的粒子多样性来应对突发情况。 -->
-        <param name="max_particles"             value="5000"/>
+        <param name="max_particles"             value="3000"/>
         <!-- 真实分布和估计分布之间的最大误差 -->
         <param name="kld_err"                   value="0.01"/><!-- 0.05 -->
         <param name="kld_z"                     value="0.99"/>
         <!-- 执行筛选器更新之前需要的平移/旋转运动 -->
-        <param name="update_min_d"              value="0.10"/>
+        <param name="update_min_d"              value="0.15"/>
         <param name="update_min_a"              value="0.25"/>
         <!-- 重新采样前所需的筛选器更新数 -->
-        <param name="resample_interval"         value="1"/>
+        <param name="resample_interval"         value="2"/>
+        <param name="initial_resample_count" value="3"/>
         <!-- 发布转换数据的有效时间 -->
         <param name="transform_tolerance"       value="0.1"/>
         <!-- 重新定位。 -->
@@ -36,10 +37,10 @@
         <param name="initial_pose_y"            value="$(arg initial_pose_y)"/>
         <param name="initial_pose_a"            value="$(arg initial_pose_a)"/> 
         <!-- 初始协方差矩阵参数 -->
-        <param name="initial_cov_xx" value="0.01"/>  <!-- x方向方差=0.25² -->
-        <param name="initial_cov_yy" value="0.01"/>  <!-- y方向方差=0.25² -->
-        <param name="initial_cov_aa" value="0.222"/>   <!-- 角度方差=(π/2)²/3≈0.822 -->
-        <param name="gui_publish_rate"          value="10.0"/>
+        <param name="initial_cov_xx" value="0.005"/>  <!-- x方向方差=0.25² -->
+        <param name="initial_cov_yy" value="0.001"/>  <!-- y方向方差=0.25² -->
+        <param name="initial_cov_aa" value="0.01"/>   <!-- 角度方差=(π/2)²/3≈0.822 -->
+        <param name="gui_publish_rate"          value="2.0"/>
         <!-- amcl会订阅san话题，这里是将扫描信息映射到scan话题 -->
         <remap from="scan"                      to="$(arg scan_topic)"/>
         <!-- 激光参数设置 -->
@@ -65,7 +66,7 @@
         <!-- 里程计模型参数设置 -->
         <param name="odom_model_type"           value="omni"/>
         <!-- 执行旋转指令时，其实际旋转角度的误差有多大。 -->
-        <param name="odom_alpha1"               value="0.16"/>
+        <param name="odom_alpha1"               value="0.08"/>
         <!--  当机器人执行直行指令时，其方向发生的意外偏转有多大 -->
         <param name="odom_alpha2"               value="0.06"/>
         <!-- 直行指令时，其实际行驶距离的误差有多大。 -->

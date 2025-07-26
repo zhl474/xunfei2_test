@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(project)
+project(xf_mic_asr_offline)
 add_compile_options(-std=c++11)
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)

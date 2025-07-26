@@ -4,7 +4,7 @@
 #include <thread>
 
 // 模拟语音唤醒信号发布节点
-int main(int argc, char** argv) {
+int main(int argc, char** argv) {//
     setlocale(LC_ALL,"");
     ros::init(argc, argv, "wakeup_subscriber");
     ros::NodeHandle nh;

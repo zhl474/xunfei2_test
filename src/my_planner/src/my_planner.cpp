@@ -195,8 +195,8 @@ namespace my_planner
 
 
         if (global_plan_.empty()) {
-        ROS_ERROR("MyPlanner: Received an empty global plan. Cannot compute velocity commands.");
-        return false; // 返回 false 表示规划失败，这可能会触发 move_base 的恢复行为
+            ROS_ERROR("MyPlanner: Received an empty global plan. Cannot compute velocity commands.");
+            return false; // 返回 false 表示规划失败，这可能会触发 move_base 的恢复行为
         }
 
 
@@ -242,29 +242,37 @@ namespace my_planner
         }
 
         geometry_msgs::PoseStamped target_pose;
-        for(int i=target_index_;i<global_plan_.size();i++)
-        {
-            geometry_msgs::PoseStamped pose_base;
-            global_plan_[i].header.stamp = ros::Time(0);
-            tf_listener_->transformPose("base_link",global_plan_[i],pose_base);
-            
-            
-
-
-            double dx = pose_base.pose.position.x;
-            double dy = pose_base.pose.position.y;
-            double dist = std::sqrt(dx*dx + dy*dy);
-
-            if (dist > lookahead_dist_) //选取的临时目标点的距离阈值
+        global_plan_[target_index_].header.stamp = ros::Time(0);
+        tf_listener_->transformPose("base_link",global_plan_[target_index_],target_pose);
+        double dxt = target_pose.pose.position.x;
+        double dyt = target_pose.pose.position.y;
+        double distt = std::sqrt(dxt*dxt + dyt*dyt);
+        if(distt<0.1){//小于10cm才会触发重新规划
+            for(int i=target_index_;i<global_plan_.size();i++)
             {
-                target_pose = pose_base;
-                target_index_ = i;
-                // ROS_WARN("选择第 %d 个路径点作为临时目标，距离=%.2f",target_index_,dist);
-                break;
-            }
+                geometry_msgs::PoseStamped pose_base;
+                global_plan_[i].header.stamp = ros::Time(0);
+                tf_listener_->transformPose("base_link",global_plan_[i],pose_base);
+                
+                
 
-            if(i == global_plan_.size()-1)//  如果最远的点也没超出阈值，就取最远的点
-                target_pose = pose_base; 
+
+                double dx = pose_base.pose.position.x;
+                double dy = pose_base.pose.position.y;
+                double dist = std::sqrt(dx*dx + dy*dy);
+
+                if (dist > lookahead_dist_) //选取的临时目标点的距离阈值
+                {
+                    target_pose = pose_base;
+                    target_index_ = i;
+                    ROS_WARN("选择第 %d 个路径点作为临时目标，坐标x%f,y%f",target_index_,global_plan_[i].pose.position.x,global_plan_[i].pose.position.x);
+                    break;
+                }
+
+                if(i == global_plan_.size()-1){//  如果最远的点也没超出阈值，就取最远的点
+                    target_pose = pose_base; 
+                }
+            }
         }
         if (!initial_rotation_done_) //如果还未进行过初始姿态调整，说明是第一个目标点
         {
@@ -273,7 +281,7 @@ namespace my_planner
             if (std::abs(angle_to_target) < goal_yaw_tolerance_) {
                 ROS_INFO("初始姿态已对准，设置标志位并开始正常行驶。");
                 initial_rotation_done_ = true;
-             
+            
                 // 对准后，这个周期就可以开始前进了，直接执行下面的正常行驶逻辑
             } else {//旋转朝向第一个导航点
                 
@@ -288,7 +296,7 @@ namespace my_planner
 
         //-----------------新增通过计算当前全局路径到target_index的最大曲率控制转弯速度--------------------
         
-        double avrage_curvature = 0.0;//平均曲率
+        double avrage_curvature = 0.0001;//平均曲率
         double dynamic_x_gain = path_linear_x_gain_; // 默认使用参数文件中的基础x增益
 
         // 在 [0, target_index_] 区间内计算最大曲率
@@ -353,7 +361,8 @@ namespace my_planner
         {
             cmd_vel.angular.z = target_pose.pose.position.y * path_angular_gain_;
         }
- 
+        ROS_INFO("速度:x%f,y%f,z%f",cmd_vel.linear.x,cmd_vel.linear.y,cmd_vel.angular.z);
+    
         //--------------------------全局路径显示，省去节省算力---------------------------------------------
         // cv::Mat plan_image(600, 600, CV_8UC3, cv::Scalar(0, 0, 0));        
         // for(int i=0;i<global_plan_.size();i++)
@@ -375,8 +384,10 @@ namespace my_planner
         
         return true;
     }
+
     bool MyPlanner::isGoalReached()
     {
         return goal_reached_;
     }
-} // namespace my_planner
+}
+ // namespace my_planner

@@ -173,25 +173,25 @@ catkin_package(
 
 
 
-include_directories(
-  include
-  ${catkin_INCLUDE_DIRS}
-)
+# include_directories(
+#   include
+#   ${catkin_INCLUDE_DIRS}
+# )
 
-add_executable(voice_control src/voice_control.cpp)
-target_link_libraries(voice_control ${catkin_LIBRARIES} offline_record_lib hid_lib rt dl pthread stdc++ )
+# add_executable(voice_control src/voice_control.cpp)
+# target_link_libraries(voice_control ${catkin_LIBRARIES} offline_record_lib hid_lib rt dl pthread stdc++ )
 
 
-add_executable(client_node src/call_recognition.cpp)
+# add_executable(client_node src/call_recognition.cpp)
 
-target_link_libraries(
-    client_node
-    ${catkin_LIBRARIES} 
-#    offline_record_lib hid_lib rt dl pthread stdc++ 
-)
+# target_link_libraries(
+#     client_node
+#     ${catkin_LIBRARIES} 
+# #    offline_record_lib hid_lib rt dl pthread stdc++ 
+# )
 
-add_dependencies(client_node  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(voice_control  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(client_node  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(voice_control  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 
 #add_executable(test
