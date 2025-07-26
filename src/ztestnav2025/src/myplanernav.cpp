@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
     //----------------------------------------目标检测区域开始-------------------------------------------//
     ROS_INFO("拣货区域任务开始");
     int board_name;
-    int flag=0;//判断雷达识别的点是否和视觉对得上
+    bool flag=false;//判断雷达识别的点是否和视觉对得上
     //第一点视觉识别
     //视觉识别开始，先传个-1把摄像头打开
     std::vector<std::vector<int>> a = {{-1},{-1},{-1},{-1},{-1},{-1}};
@@ -289,7 +289,34 @@ int main(int argc, char *argv[])
     
     //然后去中间，识别目标，或者定位遮挡视野的板子
     double targetx, targety, targetz, targetx2, targety2, targetz2;
-    if(mecanumController.turn_and_find_plus(17,board_class,0.4,targetx, targety, targetz, targetx2, targety2, targetz2));
+    if(mecanumController.turn_and_find_plus(17,board_class,0.4,targetx, targety, targetz, targetx2, targety2, targetz2)){
+        go_destination(goal,targetx2,targety2,targetz2,q,ac);
+        mecanumController.adjust(board_class,0.4);
+        board_name = mecanumController.forward(board_class,0.3);
+        flag=true;
+    }
+    else{
+        double passx, passy, passz, passx2, passy2, passz2;
+        go_destination(goal,targetx,targety,targetz,q,ac);
+        if(mecanumController.turn_and_find_plus(8.5,board_class,0.4,passx, passy, passz, passx2, passy2, passz2)){
+            go_destination(goal,passx2, passy2, passz2,q,ac);
+            mecanumController.adjust(board_class,0.4);
+            mecanumController.forward(board_class,0.3);
+            flag=true;
+        }
+        else{
+            go_destination(goal,targetx2, targety2, targetz2,q,ac);
+            if(mecanumController.turn_and_find_plus(8.5,board_class,0.4,passx, passy, passz, passx2, passy2, passz2)){
+                go_destination(goal,passx2, passy2, passz2,q,ac);
+                mecanumController.adjust(board_class,0.4);
+                mecanumController.forward(board_class,0.3);
+                flag=true;
+            }
+            else{
+                ROS_INFO("找不到板子走了");
+            }
+        }
+    }
 
 
     if (!flag){

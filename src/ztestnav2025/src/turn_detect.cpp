@@ -223,14 +223,14 @@ bool MecanumController::turn_and_find_plus(double find_time,int z,double angular
                     std::vector<float> position = getCurrentPose();
                     if(test_point(position[2],board_slope.response.lidar_results[0])){
                         if(the_first){
-                            targetx = (board_slope.response.lidar_results[0]-0.6)*cos(position[2])+position[0];
-                            targety = (board_slope.response.lidar_results[0]-0.6)*sin(position[2])+position[1];
+                            targetx = (board_slope.response.lidar_results[0]+0.5)*cos(position[2])+position[0];
+                            targety = (board_slope.response.lidar_results[0]+0.5)*sin(position[2])+position[1];
                             targetz = position[2];
                             the_first = false;
                         }
                         else{
-                            targetx2 = (board_slope.response.lidar_results[0]-0.6)*cos(position[2])+position[0];
-                            targety2 = (board_slope.response.lidar_results[0]-0.6)*sin(position[2])+position[1];
+                            targetx2 = (board_slope.response.lidar_results[0]+0.5)*cos(position[2])+position[0];
+                            targety2 = (board_slope.response.lidar_results[0]+0.5)*sin(position[2])+position[1];
                             targetz2 = position[2];
                         }
                     }
@@ -258,7 +258,7 @@ bool MecanumController::turn_and_find_plus(double find_time,int z,double angular
                 exit_flag = false;
                 targetx2 = (board_slope.response.lidar_results[0]-0.6)*cos(position[2])+position[0];
                 targety2 = (board_slope.response.lidar_results[0]-0.6)*sin(position[2])+position[1];
-                targetz2 = position[2];
+                targetz2 = position[2]-1.57;
                 return true;
             } 
             double error = (img_width/2.0 - center_x)/100; 

@@ -54,6 +54,7 @@ namespace my_planner
 
             double a_;
             double k_;
+            double angular_limit_;
     };
 } // namespace my_planner
  
