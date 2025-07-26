@@ -30,7 +30,7 @@ MecanumController::MecanumController(ros::NodeHandle& nh) :
     // server_.setCallback(boost::bind(&MecanumController::PID_change, this, _1, _2));
 }
 
-void MecanumController::detect(std::vector<int>& result, int object_num){//封装目标检测功能
+void MecanumController::detect(std::vector<std::vector<int>>& result, int object_num){//封装目标检测功能
     start_detect_.request.detect_start = object_num;//要先传个-1把摄像头打开
     ros::Time test = ros::Time::now();
     bool flag = detect_client_.call(start_detect_);
@@ -91,104 +91,104 @@ void MecanumController::rotateCircle(double rotate, double angular_speed) {//控
     }
 }
 
-int MecanumController::turn_and_find(double find_time,int z,double angular_speed){//原地旋转小车x度，执行y次目标检测,寻找z号目标
-    result = {-1,-1,-1,-1,-1,-1};
-    double integral = 0, prev_error = 0;
-    // ros::Rate rate(20);     // 控制频率20Hz
-    set_speed_.request.work = true;
-    start_time_ = ros::Time::now();
-    double Kp,Ki,Kd;
-    nh_.getParam("/myplanernav/turn_find_p",Kp);
-    nh_.getParam("/myplanernav/turn_find_i",Ki);
-    nh_.getParam("/myplanernav/turn_find_d",Kd);
+// int MecanumController::turn_and_find(double find_time,int z,double angular_speed){//原地旋转小车x度，执行y次目标检测,寻找z号目标
+//     std::vector<std::vector<int>> result = {{-1},{-1},{-1},{-1},{-1},{-1}};
+//     double integral = 0, prev_error = 0;
+//     // ros::Rate rate(20);     // 控制频率20Hz
+//     set_speed_.request.work = true;
+//     start_time_ = ros::Time::now();
+//     double Kp,Ki,Kd;
+//     nh_.getParam("/myplanernav/turn_find_p",Kp);
+//     nh_.getParam("/myplanernav/turn_find_i",Ki);
+//     nh_.getParam("/myplanernav/turn_find_d",Kd);
 
-    bool exit_flag = =false;
-    while(ros::ok()&&!exit_flag){
-        // ros::Time test_time = ros::Time::now();
-        detect(result, z);     // 持续检测目标
-        // ROS_INFO("目标检测结果%d",result[4]);
-        if(result[4] < (z-1)*3 || result[4] >= z*3){
-            set_speed_.request.target_twist.angular.z = angular_speed;
-            set_speed_client_.call(set_speed_);
-            integral = 0;
-            if ((ros::Time::now() - start_time_).toSec()>find_time){
-                exit_flag = true;
-                result[4] = -1;
-                ROS_INFO("找板超时");
-            }
-            continue;
-        }  // 目标丢失则旋转寻找目标
-        start_time_ = ros::Time::now();//找到目标就刷新开始时间免得一帧没检测到板子又退出去了
-        // 计算中心点偏差（误差输入）
-        int center_x = (result[0]+result[2])/2;
-        // ROS_INFO("中心点偏差%d",center_x);
-        // 退出条件：误差<7像素
-        if(std::abs(center_x - img_width/2) < 7){
-            ROS_INFO("已经对准");
-            integral = 0;
-            set_speed_.request.target_twist.angular.z = 0;
-            set_speed_.request.work = false;
-            set_speed_client_.call(set_speed_);
-            exit_flag = false;
-            return result[4];
-        } 
-        double error = (img_width/2.0 - center_x)/100; 
+//     bool exit_flag = false;
+//     while(ros::ok()&&!exit_flag){
+//         // ros::Time test_time = ros::Time::now();
+//         detect(result, z);     // 持续检测目标
+//         // ROS_INFO("目标检测结果%d",result[4]);
+//         if(result[4][i] < (z-1)*3 || result[4][i] >= z*3){
+//             set_speed_.request.target_twist.angular.z = angular_speed;
+//             set_speed_client_.call(set_speed_);
+//             integral = 0;
+//             if ((ros::Time::now() - start_time_).toSec()>find_time){
+//                 exit_flag = true;
+//                 result[4][i] = -1;
+//                 ROS_INFO("找板超时");
+//             }
+//             continue;
+//         }  // 目标丢失则旋转寻找目标
+//         start_time_ = ros::Time::now();//找到目标就刷新开始时间免得一帧没检测到板子又退出去了
+//         // 计算中心点偏差（误差输入）
+//         int center_x = (result[0][i]+result[2][i])/2;
+//         // ROS_INFO("中心点偏差%d",center_x);
+//         // 退出条件：误差<7像素
+//         if(std::abs(center_x - img_width/2) < 7){
+//             ROS_INFO("已经对准");
+//             integral = 0;
+//             set_speed_.request.target_twist.angular.z = 0;
+//             set_speed_.request.work = false;
+//             set_speed_client_.call(set_speed_);
+//             exit_flag = false;
+//             return result[4][i];
+//         } 
+//         double error = (img_width/2.0 - center_x)/100; 
         
-        // 离散PID计算
-        integral += error * 0.2;       // dt=1/20≈0.05
-        integral = clamp(integral, -1.0, 1.0);
-        double derivative = (error - prev_error)/0.2;
-        double output = Kp*error + Ki*integral + Kd*derivative;
-        output = clamp(output, -0.4, 0.4);
-        // ROS_INFO("error:%f",error);
-        // ROS_INFO("P:%f",Kp*error);
-        // ROS_INFO("I:%f",Ki*integral);
-        // ROS_INFO("D:%f",Kd*derivative);
-        ROS_INFO("速度发布:%f",output);
+//         // 离散PID计算
+//         integral += error * 0.2;       // dt=1/20≈0.05
+//         integral = clamp(integral, -1.0, 1.0);
+//         double derivative = (error - prev_error)/0.2;
+//         double output = Kp*error + Ki*integral + Kd*derivative;
+//         output = clamp(output, -0.4, 0.4);
+//         // ROS_INFO("error:%f",error);
+//         // ROS_INFO("P:%f",Kp*error);
+//         // ROS_INFO("I:%f",Ki*integral);
+//         // ROS_INFO("D:%f",Kd*derivative);
+//         ROS_INFO("速度发布:%f",output);
         
-        // 执行旋转（限制输出范围）
-        set_speed_.request.target_twist.angular.z = output;
-        set_speed_client_.call(set_speed_);
+//         // 执行旋转（限制输出范围）
+//         set_speed_.request.target_twist.angular.z = output;
+//         set_speed_client_.call(set_speed_);
         
-        prev_error = error;
-        // ROS_INFO("耗时%f",(ros::Time::now()-test_time).toSec());
-    }
-    exit_flag = false;
-    set_speed_.request.target_twist.linear.z = 0;
-    set_speed_.request.work = false;
-    set_speed_client_.call(set_speed_);
-    return result[4];
-}
+//         prev_error = error;
+//         // ROS_INFO("耗时%f",(ros::Time::now()-test_time).toSec());
+//     }
+//     exit_flag = false;
+//     set_speed_.request.target_twist.linear.z = 0;
+//     set_speed_.request.work = false;
+//     set_speed_client_.call(set_speed_);
+//     return result[4][i];
+// }
 
 bool MecanumController::test_point(double yaw,double distance){
     if(yaw>-0.95 &&yaw<=0.785){
-        if(disdance>1.25/cos(yaw)-0.5){
+        if(distance>1.25/cos(yaw)-0.5){
             return false;
         }
         return true;
     }
     else if(yaw>0.785 && yaw<=2.355){
-        if(disdance>1.25/sin(yaw)-0.5){
+        if(distance>1.25/sin(yaw)-0.5){
             return false;
         }
         return true;
     }
     else if(yaw>-2.19 && yaw<=-0.95){
-        if(disdance>1.75/abs(sin(yaw))-0.5){
+        if(distance>1.75/abs(sin(yaw))-0.5){
             return false;
         }
         return true;
     }
     else{
-        if(disdance>1.25/abs(cos(yaw))-0.5){
+        if(distance>1.25/abs(cos(yaw))-0.5){
             return false;
         }
         return true;
     }
 }
 
-int MecanumController::turn_and_find_plus(double find_time,int z,double angular_speed){//板子相互遮挡时，直接识别错误板，开到板子后面去
-    result = {-1,-1,-1,-1,-1,-1};
+bool MecanumController::turn_and_find_plus(double find_time,int z,double angular_speed,double& targetx,double& targety,double& targetz,double& targetx2,double& targety2,double& targetz2){//板子相互遮挡时，直接识别错误板，开到板子后面去
+    std::vector<std::vector<int>> result = {{-1},{-1},{-1},{-1},{-1},{-1}};
     double integral = 0, prev_error = 0;
     set_speed_.request.work = true;
     start_time_ = ros::Time::now();
@@ -198,15 +198,14 @@ int MecanumController::turn_and_find_plus(double find_time,int z,double angular_
     nh_.getParam("/myplanernav/turn_find_d",Kd);
 
     bool find = false,the_first = false,center_time = true,exit_flag = false;//标志位判断找到目标没有,非目标板最多就两个
-    double targetx,targety,targetz,targetx2,targety2,targetz2;
 
     set_speed_.request.target_twist.angular.z = angular_speed;
     set_speed_client_.call(set_speed_);
-    while(ros::ok()&&!exit_flag){
+    while(ros::ok()&&!exit_flag  && center_time){
         // ros::Time test_time = ros::Time::now();
         detect(result, z);     // 持续检测目标
         // ROS_INFO("目标检测结果%d",result[4]);遍历视野内所有目标，如果有二维码匹配项，则直接进入对准逻辑，如果没有二维码匹配项，记录第一个超过画面中心的板子
-        if(!find && center_time){//还没找到板子，先定速旋转
+        if(!find){//还没找到板子，先定速旋转
             if ((ros::Time::now() - start_time_).toSec()>find_time){
                 center_time = false;
                 start_time_ = ros::Time::now();
@@ -240,9 +239,10 @@ int MecanumController::turn_and_find_plus(double find_time,int z,double angular_
         }
 
         if(find){
+            int center_x = 0;
             for(size_t i=0;i<result[0].size();i++){
                 if(result[4][i] >= (z-1)*3 && result[4][i] < z*3){
-                    int center_x = (result[0]+result[2])/2;
+                    center_x = (result[0][i]+result[2][i])/2;
                     break;
                 }  // 计算目标误差
             }
@@ -256,7 +256,10 @@ int MecanumController::turn_and_find_plus(double find_time,int z,double angular_
                 set_speed_.request.work = false;
                 set_speed_client_.call(set_speed_);
                 exit_flag = false;
-                return result[4];
+                targetx2 = (board_slope.response.lidar_results[0]-0.6)*cos(position[2])+position[0];
+                targety2 = (board_slope.response.lidar_results[0]-0.6)*sin(position[2])+position[1];
+                targetz2 = position[2];
+                return true;
             } 
             double error = (img_width/2.0 - center_x)/100; 
             
@@ -279,21 +282,15 @@ int MecanumController::turn_and_find_plus(double find_time,int z,double angular_
             prev_error = error;
             // ROS_INFO("耗时%f",(ros::Time::now()-test_time).toSec());
         }
-        if(!center_time){//如果超时了，没有找到板，说明板子被挡住了
-
-        }
-
-        
     }
-    exit_flag = false;
     set_speed_.request.target_twist.linear.z = 0;
     set_speed_.request.work = false;
     set_speed_client_.call(set_speed_);
-    return result[4];
+    return false;
 }
 
 bool MecanumController::forward(int z,double forward_speed){
-    result = {-1,-1,-1,-1,-1,-1};
+    std::vector<std::vector<int>> result = {{-1},{-1},{-1},{-1},{-1},{-1}};
     board_slope.request.lidar_process_start = 1;
     double integral = 0, prev_error = 0;
     set_speed_.request.target_twist.linear.x = 0.15;
@@ -320,7 +317,7 @@ bool MecanumController::forward(int z,double forward_speed){
 }
 
 int MecanumController::adjust(int z,double adjust_speed){
-    result = {-1,-1,-1,-1,-1,-1};//
+    std::vector<std::vector<int>> result = {{-1},{-1},{-1},{-1},{-1},{-1}};
     double integral = 0, prev_error = 0;
     double lidar_integral = 0, lidar_prev_error = 0;
     set_speed_.request.target_twist.linear.x = 0;
@@ -337,17 +334,22 @@ int MecanumController::adjust(int z,double adjust_speed){
     nh_.getParam("/myplanernav/adjust_lidar_P",p1);
     nh_.getParam("/myplanernav/adjust_lidar_I",i1);
     nh_.getParam("/myplanernav/adjust_lidar_D",d1);
+
+    int target_board = -1,center_x;
+    
     while(ros::ok()){
+        bool find = false;
         start_time_ = ros::Time::now();
         detect(result, z);     // 持续检测目标
-        if(result[4] < (z-1)*3 || result[4] >= z*3){
-            continue;
-            failed_conut++;
-            if(failed_conut>5){
-                return -1;
+        for(size_t i=0;i<result[0].size();i++){
+            if(result[4][i] >= (z-1)*3 && result[4][i] < z*3){//如果直接把二维码匹配项找到了，直接进入对准逻辑
+                target_board = result[4][i];
+                find = true;
+                center_x = (result[0][i]+result[2][i])/2;
+                break;
             }
-        }  // 目标丢失则退出
-        int center_x = (result[0]+result[2])/2;
+        }
+        if(!find) continue;//可能会有几帧识别不到
         if(std::abs(center_x - img_width/2) < 20){
             integral = 0;
             ROS_INFO("在视野中心");
@@ -399,7 +401,7 @@ int MecanumController::adjust(int z,double adjust_speed){
             if (count>3){
                 set_speed_.request.work = false;
                 set_speed_client_.call(set_speed_);
-                return result[4];//连续三帧都合格才退出
+                return target_board;//连续三帧都合格才退出
             }
             continue;
         }  // 已经接近目标退出循环

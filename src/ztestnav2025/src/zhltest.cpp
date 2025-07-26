@@ -76,13 +76,13 @@ int main(int argc, char *argv[]){
     int flag=0;//判断雷达识别的点是否和视觉对得上
     double lidar_yaw;
     //视觉识别开始，先传个-1把摄像头打开
-    std::vector<int> a = {-1,-1,-1,-1,-1,-1};
+    std::vector<std::vector<int>> a = {{-1},{-1},{-1},{-1},{-1},{-1}};
     mecanumController.detect(a,-1);
     
     // mecanumController.adjust(2,0.4);//
-    int de = mecanumController.turn_and_find(17,1,-0.4);
+    // int de = mecanumController.turn_and_find(17,1,-0.4);
     ROS_INFO("结束了");
-    ROS_INFO("%d",de);
+    // ROS_INFO("%d",de);
 }
 
 

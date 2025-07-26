@@ -120,61 +120,75 @@ void go_destination(move_base_msgs::MoveBaseGoal &goal,double x,double y,double 
         ROS_INFO("无法到达目标");
 }
 
-// 红绿灯检测和搜索函数
-bool checkTrafficLightWithSearch() {
+bool checkTrafficLightWithSearch(ros::Publisher& cmd_pub) {
     bool greenLightFound = false;
-    double startTime = ros::Time::now().toSec();  // 记录开始时间（秒）
+    ros::Time startTime = ros::Time::now();
+    // 设置发布频率为10Hz
+    ros::Rate control_rate(10);
     
-    // 初始化平移搜索
-    int phase = 0;  // 0: 左移, 1: 右移
-    start_lateral_movement(-0.2);  // 开始左移
+    // 初始化速度消息
+    geometry_msgs::Twist twist_msg;
     
-    // 循环检测，直到超时、找到绿灯或发现红灯
+    // 循环检测，直到超时或找到绿灯
     while (ros::ok()) {
-        double currentTime = ros::Time::now().toSec();
-        double elapsedTime = currentTime - startTime;
+        double elapsedTime = (ros::Time::now()- startTime).toSec();
         
-        // 获取当前交通灯状态
+        // 每次循环都检测红绿灯状态
         int lightStatus = detectTrafficLightStatus();
         
-        // 发现红灯，立即返回false
+        // 发现红灯，立即停止并返回false
         if (lightStatus == 1) {
-            stop_lateral_movement();
+            twist_msg.linear.x = 0.0;
+            twist_msg.linear.y = 0.0;
+            twist_msg.angular.z = 0.0;
+            cmd_pub.publish(twist_msg);  // 发布停止指令
             return false;
         }
         
-        // 找到绿灯
+        // 发现绿灯，立即停止并返回true
         if (lightStatus == 2) {
             greenLightFound = true;
-            stop_lateral_movement();
-            break;
+            twist_msg.linear.x = 0.0;
+            twist_msg.linear.y = 0.0;
+            twist_msg.angular.z = 0.0;
+            cmd_pub.publish(twist_msg);  // 发布停止指令
+            return true;
         }
         
         // 控制平移阶段
         if (elapsedTime < 2.0) {
-            // 前2秒左移
-            if (phase != 0) {
-                start_lateral_movement(-0.2);
-                phase = 0;
-            }
-        } else if (elapsedTime < 6.0) {
-            // 接下来4秒右移
-            if (phase != 1) {
-                start_lateral_movement(0.2);
-                phase = 1;
-            }
-        } else {
-            // 超时（超过6秒）
-            stop_lateral_movement();
+            // 前2秒左移（y轴负方向）
+            twist_msg.linear.x = 0.0;     // 禁止前后移动
+            twist_msg.linear.y = -0.2;    // 左移速度
+            twist_msg.angular.z = 0.0;    // 禁止旋转
+        } 
+        else if (elapsedTime < 6.0) {
+            // 接下来4秒右移（y轴正方向）
+            twist_msg.linear.x = 0.0;     // 禁止前后移动
+            twist_msg.linear.y = 0.2;     // 右移速度
+            twist_msg.angular.z = 0.0;    // 禁止旋转
+        } 
+        else {
+            // 超时（超过6秒），停止移动
+            twist_msg.linear.x = 0.0;
+            twist_msg.linear.y = 0.0;
+            twist_msg.angular.z = 0.0;
+            cmd_pub.publish(twist_msg);  // 确保发送停止指令
             break;
         }
         
-        ros::Duration(0.1).sleep();  // 短暂休眠，避免CPU占用过高
+        // 发布速度指令
+        cmd_pub.publish(twist_msg);
+        
+        // 按照10Hz频率休眠
+        control_rate.sleep();
+        ros::spinOnce();  // 处理可能的回调
     }
     
-    // 最终检查一次红绿灯状态
-    return greenLightFound || detectTrafficLightStatus() == 2;
+    // 超时后再次检查红绿灯状态
+    return detectTrafficLightStatus() == 2;
 }
+
 
 int main(int argc, char *argv[])
 {
@@ -226,6 +240,7 @@ int main(int argc, char *argv[])
     line_client.waitForExistence();
     //发布话题以供仿真通信
     Sim_talkto_car sim_talkto_car(nh);
+    ros::Publisher cmd_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
 
     //--------------------------------------语音唤醒等待--------------------------------//
     AwakeDetector awakeDetector(nh);
@@ -265,101 +280,18 @@ int main(int argc, char *argv[])
 
     //----------------------------------------目标检测区域开始-------------------------------------------//
     ROS_INFO("拣货区域任务开始");
-    size_t board_count;
     int board_name;
     int flag=0;//判断雷达识别的点是否和视觉对得上
-    double lidar_yaw;
     //第一点视觉识别
     //视觉识别开始，先传个-1把摄像头打开
-    std::vector<int> a = {-1,-1,-1,-1,-1,-1};
+    std::vector<std::vector<int>> a = {{-1},{-1},{-1},{-1},{-1},{-1}};
     mecanumController.detect(a,-1);
-    board_name = mecanumController.turn_and_find(7.1,board_class,-0.4);//请求视觉识别板子服务
-    if (board_name != -1) {
-        if (poseget_client.call(pose_result)){
-            ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
-        }
-        else{
-            ROS_ERROR("获取位姿失败");
-        }
-        where_board.request.lidar_process_start = 1;//雷达获取前方障碍物距离
-        client_find_board.call(where_board);
-        ROS_INFO("查看雷达距离%f",where_board.response.lidar_results[0]);
-        if(where_board.response.lidar_results[0] <3.0){
-            double target_x = (where_board.response.lidar_results[0]-0.6)*cos(pose_result.response.pose_at[2])+pose_result.response.pose_at[0];
-            double target_y = (where_board.response.lidar_results[0]-0.6)*sin(pose_result.response.pose_at[2])+pose_result.response.pose_at[1];
-            ROS_INFO("目的地%f,%f,%f",target_x,target_y,pose_result.response.pose_at[2]);
-            go_destination(goal,target_x,target_y,pose_result.response.pose_at[2],q,ac);
-            if(mecanumController.adjust(board_class,0.4)==-1){//要是找不到了再转一下
-                ROS_INFO("没找到，再转一下");
-                mecanumController.turn_and_find(17,board_class,0.4);
-                mecanumController.adjust(board_class,0.4);
-            }
-            if(mecanumController.forward(board_class,0.3)){//直接前进，直到目标检测框高超过230
-                flag = 1;
-            }
-        }
-        else{
-            ROS_INFO("第一点找板板子，但是距离太远不予理会");
-        }
-    }
-    ROS_INFO("第一个找板点是否找到板子%d",flag);
-    if(!flag){
-        //前往区域中心找板子
-        ROS_INFO("前往中心找板");
-        go_destination(goal,1.25,3.75,0,q,ac);
-        board_name = mecanumController.turn_and_find(17,board_class,0.4);//请求视觉识别板子服务
-        if(board_name!=-1){
-            if (poseget_client.call(pose_result)){
-                ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
-            }
-            else{
-                ROS_ERROR("获取位姿失败");
-            }
-            where_board.request.lidar_process_start = 1;//雷达获取前方障碍物距离
-            if (client_find_board.call(where_board)){
-                double target_x = (where_board.response.lidar_results[0]-0.6)*cos(pose_result.response.pose_at[2])+pose_result.response.pose_at[0];
-                double target_y = (where_board.response.lidar_results[0]-0.6)*sin(pose_result.response.pose_at[2])+pose_result.response.pose_at[1];
-                ROS_INFO("目的地%f,%f,%f",target_x,target_y,pose_result.response.pose_at[2]);
-                go_destination(goal,target_x,target_y,pose_result.response.pose_at[2],q,ac);
-            }
-            board_name = mecanumController.adjust(board_class,0.4);
-            if(board_name==-1){//要是找不到了再转一下
-                ROS_INFO("没找到，再转一下");
-                mecanumController.turn_and_find(17,board_class,0.4);
-                mecanumController.adjust(board_class,0.4);
-            }
-            if(mecanumController.forward(board_class,0.3)){//直接前进，直到目标检测框高超过230
-                flag = 1;
-            }
-        }
-    }
-    ROS_INFO("中心找板点是否找到板子%d",flag);
-    if(!flag){
-        //前往第三区域找板子
-        ROS_INFO("前往第三点找板");
-        go_destination(goal,2.0,4.25,0,q,ac);
-        board_name = mecanumController.turn_and_find(17,board_class,0.4);//请求视觉识别板子服务
-        if(board_name!=-1){
-            if (poseget_client.call(pose_result)){
-                ROS_INFO("小车坐标xyz:%f,%f,%f",pose_result.response.pose_at[0],pose_result.response.pose_at[1],pose_result.response.pose_at[2]);
-            }
-            else{
-                ROS_ERROR("获取位姿失败");
-            }
-            where_board.request.lidar_process_start = 1;//雷达获取前方障碍物距离
-            client_find_board.call(where_board);
-            if(where_board.response.lidar_results[0] <3.0){
-                double target_x = (where_board.response.lidar_results[0]-0.6)*cos(pose_result.response.pose_at[2])+pose_result.response.pose_at[0];
-                double target_y = (where_board.response.lidar_results[0]-0.6)*sin(pose_result.response.pose_at[2])+pose_result.response.pose_at[1];
-                ROS_INFO("目的地%f,%f,%f",target_x,target_y,pose_result.response.pose_at[2]);
-                go_destination(goal,target_x,target_y,pose_result.response.pose_at[2],q,ac);
-                mecanumController.adjust(board_class,0.4);
-                if(mecanumController.forward(board_class,0.3)){//直接前进，直到目标检测框高超过230
-                    flag = 1;
-                }
-            }
-        }
-    }
+    
+    //然后去中间，识别目标，或者定位遮挡视野的板子
+    double targetx, targety, targetz, targetx2, targety2, targetz2;
+    if(mecanumController.turn_and_find_plus(17,board_class,0.4,targetx, targety, targetz, targetx2, targety2, targetz2));
+
+
     if (!flag){
         ROS_INFO("找不到板子，直接走了");
     }
@@ -394,8 +326,8 @@ int main(int argc, char *argv[])
 
     //--------------------------------------------前往红绿灯识别区域--------------------------------------------//
     ROS_INFO("前往红绿灯区域路口1");
-    go_destination(goal,3.25,4.50,1.57,q,ac);
-    if (checkTrafficLightWithSearch()){
+    go_destination(goal,3.25,4.50,1.57,q,ac);  
+    if (checkTrafficLightWithSearch(cmd_pub)){
         ROS_INFO("路口1可通过");
         play_audio(voice[3][0]);
         go_destination(goal,2.83,3.5,-1.18,q,ac);
@@ -403,15 +335,14 @@ int main(int argc, char *argv[])
     else {
         ROS_INFO("前往红绿灯区域路口2");
         go_destination(goal,4.25,4.50,1.57,q,ac);
-        if (checkTrafficLightWithSearch()){
+        if (checkTrafficLightWithSearch(cmd_pub)){
             ROS_INFO("路口2可通过");
             play_audio(voice[3][1]);
             go_destination(goal,4.75,3.44,-1.86,q,ac);
         } 
         else {
-            // 两边都没找到绿灯，执行备选方案
             ROS_WARN("两个路口均未找到绿灯，执行备选方案通过路口2");
-            play_audio(voice[3][1]);  // 播报"选择路口2"
+            play_audio(voice[3][1]);
             go_destination(goal,4.75,3.44,-1.86,q,ac);
         }
     }

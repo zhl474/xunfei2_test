@@ -45,22 +45,34 @@
         <!-- 激光参数设置 -->
         <param name="laser_max_range"           value="3.5"/>
         <param name="laser_max_beams"           value="60"/>
-        <param name="laser_z_hit"               value="0.95"/>
-        <!-- <param name="laser_z_short"             value="0.05"/>
-        <param name="laser_z_max"               value="0.05"/> -->
-        <param name="laser_z_rand"              value="0.05"/>
-        <param name="laser_sigma_hit"           value="0.2"/>
-        <param name="laser_lambda_short"        value="0.1"/>
-        <param name="laser_likelihood_max_dist" value="2.0"/>
-        <param name="laser_model_type"          value="likelihood_field_prob"/>
 
+        <!-- 下面这四个概率z参数和必须为1 -->
+        <!-- “一束激光击中了地图上已知障碍物”这部分的权重。权重应为最高 -->
+        <param name="laser_z_hit"               value="0.90"/>
+        <!-- “一束激光击中了未知的、比预期更近的障碍物”的权重。机器人因为地图中没有的动态障碍物导致定位漂移。 -->
+        <param name="laser_z_short"             value="0.05"/>
+        <!-- “一束激光达到了传感器的最大量程”的权重。由于小车的雷达最远距离为5米，而比赛场地的最大长度也为5米，故这个参数设为零即可 -->
+        <!-- <param name="laser_z_max"               value="0.00"/> -->
+        <!-- “一束激光是完全随机的噪声”的权重。这是“兜底”项，用于解释那些无法用以上三种情况解释的、完全离谱的读数（例如传感器故障、镜面反射等）。保持一个较小值即可 -->
+        <param name="laser_z_rand"              value="0.05"/>
+
+        <!-- 定义了激光测量的**“模糊度”或“容忍度”**。当一个激光点落在离地图上障碍物多远的地方以内，我们仍然认为它是一次“好的”匹配。在地图足够精确的情况下可以尽量小一些，不小于雷达噪声的漂移量即可。（目测雷达噪声导致的数据漂移最多在5cm左右） -->
+        <param name="laser_sigma_hit"           value="0.1"/>
+        <!-- 这是 laser_z_short 模型的指数分布参数。它控制了“意外障碍物”概率随距离的衰减速度。 -->
+        <param name="laser_lambda_short"        value="0.1"/>
+        <param name="laser_likelihood_max_dist" value="4.0"/> <!-- 只有当激光点落在离地图障碍物 2.0 米以内时，它才对粒子的权重有贡献。考虑到巡线区比较开阔，可以再大点 -->
+        <param name="laser_model_type"          value="likelihood_field_prob"/> 
         <!-- 里程计模型参数设置 -->
         <param name="odom_model_type"           value="omni"/>
-        <param name="odom_alpha1"               value="0.02"/>
-        <param name="odom_alpha2"               value="0.02"/>
+        <!-- 执行旋转指令时，其实际旋转角度的误差有多大。 -->
+        <param name="odom_alpha1"               value="0.16"/>
+        <!--  当机器人执行直行指令时，其方向发生的意外偏转有多大 -->
+        <param name="odom_alpha2"               value="0.06"/>
+        <!-- 直行指令时，其实际行驶距离的误差有多大。 -->
         <param name="odom_alpha3"               value="0.08"/>
-        <param name="odom_alpha4"               value="0.02"/>
-        <param name="odom_alpha5"               value="0.01"/>
+        <!-- 当机器人执行原地旋转指令时，其中心点发生的意外位移有多大。 -->
+        <param name="odom_alpha4"               value="0.00"/>
+        <param name="odom_alpha5"               value="0.08"/>
         <param name="odom_frame_id"             value="odom"/>
         <param name="base_frame_id"             value="base_link"/>
         <!-- <param name="tf_broadcast" value="false"/>

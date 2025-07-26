@@ -19,14 +19,15 @@ class MecanumController {
 public:
     MecanumController(ros::NodeHandle& nh);
 
-    void detect(std::vector<int>& result, int object_num);
+    void detect(std::vector<std::vector<int>>& result, int object_num);
     void rotateCircle(double rotate,double angular_speed=0.2); //控制小车运动，rotate是弧度,direction逆时针是正向
-    int turn_and_find(double find_time,int z, double angular_speed);//原地旋转小车time秒，执行y次目标检测,寻找z号目标
-    // void PID_change(ztestnav2025::drConfig &config, uint32_t level);    //解析动态参数
+    // int turn_and_find(double find_time,int z, double angular_speed);//原地旋转小车time秒，执行y次目标检测,寻找z号目标
     std::vector<float> getCurrentPose();
     void cap_close();
     bool forward(int z,double forward_speed);
     int adjust(int z,double adjust_speed);
+    bool test_point(double yaw,double distance);
+    bool turn_and_find_plus(double find_time,int z,double angular_speed,double& targetx,double& targety,double& targetz,double& targetx2,double& targety2,double& targetz2);
 
     // bool pid_change_flag=0;
 
@@ -41,7 +42,7 @@ private:
 
     ros::ServiceClient detect_client_;
     ros_nanodet::detect_result_srv start_detect_;//目标检测客户端
-    std::vector<int> result;
+    // std::vector<int> result;
     
     ros::ServiceClient getpose_client_;
     ztestnav2025::getpose_server start_get_pose_;
