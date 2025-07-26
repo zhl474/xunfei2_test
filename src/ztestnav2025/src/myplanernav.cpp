@@ -120,6 +120,62 @@ void go_destination(move_base_msgs::MoveBaseGoal &goal,double x,double y,double 
         ROS_INFO("无法到达目标");
 }
 
+// 红绿灯检测和搜索函数
+bool checkTrafficLightWithSearch() {
+    bool greenLightFound = false;
+    double startTime = ros::Time::now().toSec();  // 记录开始时间（秒）
+    
+    // 初始化平移搜索
+    int phase = 0;  // 0: 左移, 1: 右移
+    start_lateral_movement(-0.2);  // 开始左移
+    
+    // 循环检测，直到超时、找到绿灯或发现红灯
+    while (ros::ok()) {
+        double currentTime = ros::Time::now().toSec();
+        double elapsedTime = currentTime - startTime;
+        
+        // 获取当前交通灯状态
+        int lightStatus = detectTrafficLightStatus();
+        
+        // 发现红灯，立即返回false
+        if (lightStatus == 1) {
+            stop_lateral_movement();
+            return false;
+        }
+        
+        // 找到绿灯
+        if (lightStatus == 2) {
+            greenLightFound = true;
+            stop_lateral_movement();
+            break;
+        }
+        
+        // 控制平移阶段
+        if (elapsedTime < 2.0) {
+            // 前2秒左移
+            if (phase != 0) {
+                start_lateral_movement(-0.2);
+                phase = 0;
+            }
+        } else if (elapsedTime < 6.0) {
+            // 接下来4秒右移
+            if (phase != 1) {
+                start_lateral_movement(0.2);
+                phase = 1;
+            }
+        } else {
+            // 超时（超过6秒）
+            stop_lateral_movement();
+            break;
+        }
+        
+        ros::Duration(0.1).sleep();  // 短暂休眠，避免CPU占用过高
+    }
+    
+    // 最终检查一次红绿灯状态
+    return greenLightFound || detectTrafficLightStatus() == 2;
+}
+
 int main(int argc, char *argv[])
 {
     setlocale(LC_ALL,"");
@@ -339,7 +395,7 @@ int main(int argc, char *argv[])
     //--------------------------------------------前往红绿灯识别区域--------------------------------------------//
     ROS_INFO("前往红绿灯区域路口1");
     go_destination(goal,3.25,4.50,1.57,q,ac);
-    if (detectTrafficLightStatus()==2){
+    if (checkTrafficLightWithSearch()){
         ROS_INFO("路口1可通过");
         play_audio(voice[3][0]);
         go_destination(goal,2.83,3.5,-1.18,q,ac);
@@ -347,11 +403,17 @@ int main(int argc, char *argv[])
     else {
         ROS_INFO("前往红绿灯区域路口2");
         go_destination(goal,4.25,4.50,1.57,q,ac);
-        if (detectTrafficLightStatus()==2){
+        if (checkTrafficLightWithSearch()){
             ROS_INFO("路口2可通过");
             play_audio(voice[3][1]);
             go_destination(goal,4.75,3.44,-1.86,q,ac);
         } 
+        else {
+            // 两边都没找到绿灯，执行备选方案
+            ROS_WARN("两个路口均未找到绿灯，执行备选方案通过路口2");
+            play_audio(voice[3][1]);  // 播报"选择路口2"
+            go_destination(goal,4.75,3.44,-1.86,q,ac);
+        }
     }
 
     //-----------------------------------------视觉巡线---------------------------------------------//

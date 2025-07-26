@@ -22,8 +22,8 @@
         <param name="kld_err"                   value="0.01"/><!-- 0.05 -->
         <param name="kld_z"                     value="0.99"/>
         <!-- 执行筛选器更新之前需要的平移/旋转运动 -->
-        <param name="update_min_d"              value="0.20"/>
-        <param name="update_min_a"              value="0.50"/>
+        <param name="update_min_d"              value="0.10"/>
+        <param name="update_min_a"              value="0.25"/>
         <!-- 重新采样前所需的筛选器更新数 -->
         <param name="resample_interval"         value="1"/>
         <!-- 发布转换数据的有效时间 -->

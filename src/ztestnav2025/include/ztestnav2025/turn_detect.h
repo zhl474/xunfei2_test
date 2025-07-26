@@ -57,8 +57,7 @@ private:
     ros::Timer timer;
     ros::Time start_time_;
     ros::Time now_;
-    bool exit_flag = false;
-    void timerCallback(const ros::TimerEvent&);
+    // bool exit_flag = false;
 
     int img_width = 640;
     int img_height = 480;
