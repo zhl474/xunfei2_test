@@ -55,20 +55,10 @@ while True:
                 # print("find object")
                 x0, y0, x1, y1 = [int(i) for i in bbox[:4]]
                 color = COLOR_MAP.get(label, (0, 255, 255))  # 默认黄色
-                cv2.rectangle(frame, 
-                            (x0, y0), 
-                            (x1, y1),
-                            color, 
-                            thickness=2)
+                cv2.rectangle(frame, (x0, y0), (x1, y1),color, thickness=2)
                 
                 # 绘制标签文本[7](@ref)
-                text = f"{label}: {score:.2f}"
-                cv2.putText(frame, text, 
-                          (x0, y0-10), 
-                          FONT, 
-                          FONT_SCALE,
-                          color,
-                          THICKNESS)
+                text = f"{label}: {score:.2f}"cv2.putText(frame, text, (x0, y0-10), FONT, FONT_SCALE,color,THICKNESS)
     # print(time.time()-start)
     cv2.imshow('Detection Results', frame)
     key = cv2.waitKey(20) & 0xFF

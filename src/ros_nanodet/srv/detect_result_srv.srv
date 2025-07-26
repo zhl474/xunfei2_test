@@ -2,8 +2,14 @@
 int32 detect_start
 ---
 # 服务器响应发送的数据
-int32 class_name
-int32 x0
-int32 y0
-int32 x1
-int32 y1
+#int32 class_name
+#int32 x0
+#int32 y0
+#int32 x1
+#int32 y1
+#把数据全部塞到一个数组里面，找需要的
+int32[] class_name
+int32[] x0
+int32[] y0
+int32[] x1
+int32[] y1

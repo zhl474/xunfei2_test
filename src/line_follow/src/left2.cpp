@@ -521,14 +521,17 @@ bool left_to_right(Mat gray_img,int brightness_threshold,bool& right_ready){//�
 
 int recently_white(Mat gray_img,int brightness_threshold,Mat& visualizeImg){//回到路口的时候，只能看到正前方有白线，通过白线距离来判断怎么走
     int recent = 0;
-    for (int y = 269; y >= 50; y--) {//找到最近的白点
-        for (int x = 300; x <340; x++) {
-            if (gray_img.at<uchar>(y, x) >= brightness_threshold) {
-                recent = y;
-                break;
+    for (int x = 310; x <330; x++) {
+        int max_bright = 0,best_y = 0;
+        for (int y = 269; y >= 50; y--) {//找到最近的白点，一整列下来最亮的是白点
+            if (gray_img.at<uchar>(y, x) >= max_bright) {
+                max_bright = gray_img.at<uchar>(y, x);
+                best_y = y;
             }
         }
+        recent += best_y;
     }
+    recent /= 20;//亮度最大那个点的平均位置
     circle(visualizeImg, Point(320,recent), 9, Scalar(0, 0, 180), -1);
     return recent;
 }
@@ -891,8 +894,14 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
                     int recent = recently_white(gray_img,brightness_threshold,cropped);
                     pass_enter_ready = true;//这个标志用来判断是否已经发生丢线，如果已经发生丢线，再重新看到右线，passenter取消
                     ROS_INFO("回到路口");
-                    twist.linear.x = (200-recent)/500.0;
-                    twist.angular.z = (recent+64)/-320.0;
+                    if(recent<100){
+                        twist.linear.x = 0.3;
+                        twist.angular.z = 0;
+                    }
+                    else{
+                        twist.linear.x = 0;
+                        twist.angular.z = 0.6;
+                    }
                     displayStream <<"z:"<< twist.angular.z<<"x:  "<<twist.linear.x<<"recent:"<<recent;
                     string displayText = displayStream.str();
                     putText(cropped, displayText, Point(50, 50),FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);

@@ -158,6 +158,73 @@ int MecanumController::turn_and_find(double find_time,int z,double angular_speed
     return result[4];
 }
 
+int MecanumController::turn_and_find_plus(double find_time,int z,double angular_speed){//板子相互遮挡时，直接识别错误板，开到板子后面去
+    result = {-1,-1,-1,-1,-1,-1};
+    double integral = 0, prev_error = 0;
+    // ros::Rate rate(20);     // 控制频率20Hz
+    set_speed_.request.work = true;
+    start_time_ = ros::Time::now();
+    double Kp,Ki,Kd;
+    nh_.getParam("/myplanernav/turn_find_p",Kp);
+    nh_.getParam("/myplanernav/turn_find_i",Ki);
+    nh_.getParam("/myplanernav/turn_find_d",Kd);
+    while(ros::ok()&&!exit_flag){
+        // ros::Time test_time = ros::Time::now();
+        detect(result, z);     // 持续检测目标
+        // ROS_INFO("目标检测结果%d",result[4]);
+        if(result[4] < (z-1)*3 || result[4] >= z*3){
+            set_speed_.request.target_twist.angular.z = angular_speed;
+            set_speed_client_.call(set_speed_);
+            integral = 0;
+            if ((ros::Time::now() - start_time_).toSec()>find_time){
+                exit_flag = true;
+                result[4] = -1;
+                ROS_INFO("找板超时");
+            }
+            continue;
+        }  // 目标丢失则旋转寻找目标
+        start_time_ = ros::Time::now();//找到目标就刷新开始时间免得一帧没检测到板子又退出去了
+        // 计算中心点偏差（误差输入）
+        int center_x = (result[0]+result[2])/2;
+        // ROS_INFO("中心点偏差%d",center_x);
+        // 退出条件：误差<7像素
+        if(std::abs(center_x - img_width/2) < 7){
+            ROS_INFO("已经对准");
+            integral = 0;
+            set_speed_.request.target_twist.angular.z = 0;
+            set_speed_.request.work = false;
+            set_speed_client_.call(set_speed_);
+            exit_flag = false;
+            return result[4];
+        } 
+        double error = (img_width/2.0 - center_x)/100; 
+        
+        // 离散PID计算
+        integral += error * 0.2;       // dt=1/20≈0.05
+        integral = clamp(integral, -1.0, 1.0);
+        double derivative = (error - prev_error)/0.2;
+        double output = Kp*error + Ki*integral + Kd*derivative;
+        output = clamp(output, -0.4, 0.4);
+        // ROS_INFO("error:%f",error);
+        // ROS_INFO("P:%f",Kp*error);
+        // ROS_INFO("I:%f",Ki*integral);
+        // ROS_INFO("D:%f",Kd*derivative);
+        ROS_INFO("速度发布:%f",output);
+        
+        // 执行旋转（限制输出范围）
+        set_speed_.request.target_twist.angular.z = output;
+        set_speed_client_.call(set_speed_);
+        
+        prev_error = error;
+        // ROS_INFO("耗时%f",(ros::Time::now()-test_time).toSec());
+    }
+    exit_flag = false;
+    set_speed_.request.target_twist.linear.z = 0;
+    set_speed_.request.work = false;
+    set_speed_client_.call(set_speed_);
+    return result[4];
+}
+
 bool MecanumController::forward(int z,double forward_speed){
     result = {-1,-1,-1,-1,-1,-1};
     board_slope.request.lidar_process_start = 1;

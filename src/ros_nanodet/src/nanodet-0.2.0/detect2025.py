@@ -68,32 +68,6 @@ def open_cap():
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         camera_active = True
         rospy.loginfo("摄像头成功打开")
-
-def visualize(image, x0, y0, x1, y1, name, conf):
-    global out
-    color = (0, 255, 0)  # 绿色边框
-    cv2.rectangle(image, (x0, y0), (x1, y1), color, 2)  # 2是边框粗细
-    label = f"{name}: {conf:.2f}"
-    (text_width, text_height), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)
-    cv2.rectangle(
-        image, 
-        (x0, y0 - text_height - 10),  # 左上角
-        (x0 + text_width, y0),        # 右下角
-        color,
-        cv2.FILLED                     # 填充矩形
-    )
-    cv2.putText(
-        image,
-        label,
-        (x0, y0 - 5),  # 文本位置
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.5,            # 字体大小
-        (0, 0, 0),      # 黑色文本
-        2               # 文本粗细
-    )
-    # cv2.imshow('Detection', image)
-    # cv2.waitKey(1)
-    # out.write(image)
     
 
 #首次启动要发个-1启动摄像头，发送-2关闭摄像头防止冲突
@@ -120,28 +94,22 @@ def detect_start(req):
     res = detect(frame, predictor)
     # print("目标检测耗时")
     # print(time.time()-start_time)
-    max_score = -1.0
-    best_bbox = [-1] * 5 
-    target = -1
     for label in res:
         for bbox in res[label]:
             score = bbox[-1]
-            if score > max_score and score > 0.5:
-                if label >= (req.detect_start-1)*3 and label <req.detect_start*3:
-                    max_score = score
-                    best_bbox = bbox
-                    target = label
-                    # print("检测到目标")
-                    # print(target)
-    x0, y0, x1, y1, conf = [int(coord) for coord in best_bbox]
-    response.x0 = x0
-    response.y0 = y0
-    response.x1 = x1
-    response.y1 = y1
-    response.class_name = target
-    # print((x0+x1)/2)
-    if best_bbox[0] != -1:
-        visualize(frame,x0, y0, x1, y1,target,conf)
+            if score > 0.5:
+                response.x0.append(int(best_bbox[0]))
+                response.y0.append(int(best_bbox[1]))
+                response.x1.append(int(best_bbox[2]))
+                response.x1.append(int(best_bbox[3]))
+                response.class_name.append(int(label))
+                color = (0, 0, 0)  # 绿色边框
+                cv2.rectangle(image, (best_bbox[0], best_bbox[1]), (best_bbox[2], best_bbox[3]), color, 2)  # 2是边框粗细
+                label = f"{label}: {conf:.2f}"
+                (text_width, text_height), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)
+                cv2.rectangle(image, (x0, y0 - text_height - 10),color, thickness=2)
+                cv2.putText(image,label,(x0, y0 + 5), cv2.FONT_HERSHEY_SIMPLEX,0.5,(0, 0, 0),2)
+
     # start_time = time.time()
     out.write(frame)
     # print("完整操作耗时")
