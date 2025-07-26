@@ -2,8 +2,8 @@
 
 # 路径跟随阶段的参数
 path_linear_x_gain: 4.0      # [比例系数] 路径跟随时的x方向线速度比例增益
-path_linear_y_gain: 1     # [比例系数] 路径跟随时的y方向线速度比例增益
-path_angular_gain: 10     # [比例系数] 路径跟随时的角速度比例增益
+path_linear_y_gain: 1.5      # [比例系数] 路径跟随时的y方向线速度比例增益
+path_angular_gain: 11     # [比例系数] 路径跟随时的角速度比例增益
 lookahead_dist: 0.15        # [米] 选取前方临时目标点的距离阈值
 
 # 目标点姿态调整阶段的参数
@@ -22,3 +22,4 @@ visualize_costmap: false  # 是否显示绘制的代价地图，设为 true 开�
 a: 5
 k: -20.0
 angular_limit: 0.08
+angular_enhance: 0.015

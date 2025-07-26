@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
     };
     ROS_INFO("主干代码开始，初始化对象，等待服务中"); 
     //-----------------------------------初始化movebase，实例对象---------------------------//
-    ros::init(argc,argv,"zhltest");
+    ros::init(argc,argv,"myplannernav");
     ros::NodeHandle nh;
     MoveBaseClient ac("move_base", true); 
     tf2::Quaternion q;  

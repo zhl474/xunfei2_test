@@ -63,6 +63,7 @@ namespace my_planner
         private_nh.param("path_linear_x_gain", path_linear_x_gain_, 2.0);
         private_nh.param("path_linear_y_gain", path_linear_y_gain_, 0.5);
         private_nh.param("path_angular_gain", path_angular_gain_, 6.8);
+        private_nh.param("angular_limit", angular_limit_, 0.08); 
         private_nh.param("lookahead_dist", lookahead_dist_, 0.2);
         
         private_nh.param("goal_dist_threshold", goal_dist_threshold_, 0.10);
@@ -77,7 +78,6 @@ namespace my_planner
 
         private_nh.param("a", a_, 7.0);
         private_nh.param("k", k_, -25.0); 
-        private_nh.param("angular_limit", angular_limit_, 0.08); 
         initial_rotation_done_ = false;
         // ROS_INFO("加载参数path_linear_x_gain_=%f",path_linear_x_gain_);
         // ROS_INFO("加载参数path_linear_y_gain_=%f",path_linear_y_gain_);
@@ -339,35 +339,20 @@ namespace my_planner
         dynamic_x_gain = std::max(2.0, dynamic_x_gain); // 最小增益，防止失速
         // dynamic_x_gain = std::min(dynamic_x_gain, path_linear_x_gain_); // 最大增益，防止飙车不需要了，指数本来就限幅
         // ROS_INFO("当前dynamic_x_gain=%f",dynamic_x_gain);
-        ROS_INFO("当前平均curvature=%f",avrage_curvature);
-
-
-
-
+        // ROS_INFO("当前平均curvature=%f",avrage_curvature);
 
 
 
         cmd_vel.linear.x = target_pose.pose.position.x * dynamic_x_gain;//小车运动速度比例系数
-        // cmd_vel.linear.y = target_pose.pose.position.y * path_linear_y_gain_;
-        cmd_vel.angular.z = target_pose.pose.position.y * path_angular_gain_;
+        cmd_vel.linear.y = target_pose.pose.position.y * path_linear_y_gain_;
         if(avrage_curvature < 5)
         {
-            cmd_vel.linear.y = target_pose.pose.position.y * path_linear_y_gain_/(angular_limit_ * avrage_curvature+0.4);   //限制角速度，防止前进时超调摆头
+            cmd_vel.angular.z = target_pose.pose.position.y * path_angular_gain_*(angular_limit_ * avrage_curvature+0.6);   //限制角速度，防止前进时超调摆头
         }
         else
         {
-            cmd_vel.linear.y = target_pose.pose.position.y * path_linear_y_gain_;
+            cmd_vel.angular.z = target_pose.pose.position.y * path_angular_gain_;
         }
-        
-        ROS_INFO("当前速度：%f,%f",cmd_vel.linear.x,cmd_vel.angular.z);
- 
- 
- 
- 
- 
- 
- 
- 
  
         //--------------------------全局路径显示，省去节省算力---------------------------------------------
         // cv::Mat plan_image(600, 600, CV_8UC3, cv::Scalar(0, 0, 0));        

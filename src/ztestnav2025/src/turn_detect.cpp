@@ -256,6 +256,7 @@ bool MecanumController::turn_and_find_plus(double find_time,int z,double angular
                 set_speed_.request.work = false;
                 set_speed_client_.call(set_speed_);
                 exit_flag = false;
+                std::vector<float> position = getCurrentPose();
                 targetx2 = (board_slope.response.lidar_results[0]-0.6)*cos(position[2])+position[0];
                 targety2 = (board_slope.response.lidar_results[0]-0.6)*sin(position[2])+position[1];
                 targetz2 = position[2]-1.57;

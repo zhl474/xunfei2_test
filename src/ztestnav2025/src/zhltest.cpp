@@ -73,12 +73,31 @@ int main(int argc, char *argv[]){
     ROS_INFO("拣货区域任务开始");
     size_t board_count;
     int board_name;
-    int flag=0;//判断雷达识别的点是否和视觉对得上
-    double lidar_yaw;
+    MoveBaseClient ac("move_base", true); 
+    tf2::Quaternion q;  
+    //等待action回应
+    while(!ac.waitForServer()){//这里之前只有等待五秒,
+        ROS_INFO("等待movebase服务中---");
+    } 
+    move_base_msgs::MoveBaseGoal goal;
+    goal.target_pose.header.frame_id = "map";
+    ROS_INFO("拣货区域任务开始");
+    bool flag=false;//判断雷达识别的点是否和视觉对得上
+    //第一点视觉识别
     //视觉识别开始，先传个-1把摄像头打开
     std::vector<std::vector<int>> a = {{-1},{-1},{-1},{-1},{-1},{-1}};
     mecanumController.detect(a,-1);
-    
+    go_destination(goal,1.25,3.75,0,q,ac);  
+    //然后去中间，识别目标，或者定位遮挡视野的板子
+    double targetx, targety, targetz, targetx2, targety2, targetz2;
+    if(mecanumController.turn_and_find_plus(17,4,0.4,targetx, targety, targetz, targetx2, targety2, targetz2)){
+        ROS_INFO("找到");
+        flag=true;
+    }
+    else{
+        ROS_INFO("前往%f,%f,%f",targetx,targety,targetz);
+        go_destination(goal,targetx,targety,targetz,q,ac);  
+    }
     // mecanumController.adjust(2,0.4);//
     // int de = mecanumController.turn_and_find(17,1,-0.4);
     ROS_INFO("结束了");
