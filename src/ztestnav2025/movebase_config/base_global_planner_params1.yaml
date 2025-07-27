@@ -32,7 +32,7 @@ GlobalPlanner:
   old_navfn_behavior: false
 
   lethal_cost: 255     #255
-  neutral_cost: 50     #73义了那些没有被标记为障碍物、但也没有被“膨胀”的自由空间（free space）的代价值。它通常被设置为一个相对较低的值。较低的 neutral_cost: 会让规划器更加关注栅格本身的代价值，即更加注重安全性（远离障碍物）。
+  neutral_cost: 55     #73义了那些没有被标记为障碍物、但也没有被“膨胀”的自由空间（free space）的代价值。它通常被设置为一个相对较低的值。较低的 neutral_cost: 会让规划器更加关注栅格本身的代价值，即更加注重安全性（远离障碍物）。
   cost_factor: 1.449   #1.049值越大，膨胀区域的代价值就越高
   publish_potential: true
   orientation_mode: 1

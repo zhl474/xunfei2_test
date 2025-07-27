@@ -298,6 +298,7 @@ namespace my_planner
 
             // ROS_WARN("调整最终姿态，final_yaw = %.2f",final_yaw);
             cmd_vel.linear.x = pose_final.pose.position.x * final_pose_linear_gain_;//到达目标点附近后调整位姿的速度比例系数
+            // ROS_INFO("开始减速，线速度为%f",cmd_vel.linear.x);
             if(final_yaw>0) cmd_vel.angular.z = std::max(std::min(final_yaw * final_pose_angular_gain_,2.5),0.6);
             else cmd_vel.angular.z = std::min(std::max(final_yaw * final_pose_angular_gain_,-2.5),-0.6);
             if(abs(final_yaw) < goal_yaw_tolerance_)
