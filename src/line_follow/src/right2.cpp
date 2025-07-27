@@ -689,7 +689,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
     Mat image,undistorted;
     Rect roi(0, 210, 640, 270);
 
-    double p,i,d,integration,pre_error,leftpoint_p,leftpoint_I,x_max,other_enter_pointy,other_enter_pointx;
+    double p,i,d,integration,pre_error,leftpoint_p,leftpoint_I,x_max,other_enter_pointy,other_enter_pointx,integration_limit;
     nh.getParam("/right2/right_P", p);
     nh.getParam("/right2/right_I", i);
     nh.getParam("/right2/right_D", d);
@@ -698,6 +698,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
     nh.getParam("/right2/x_max_", x_max);
     nh.getParam("/right2/other_enter_pointy", other_enter_pointy);
     nh.getParam("/right2/other_enter_pointx", other_enter_pointx);
+    nh.getParam("/right2/integration_limit", integration_limit);
     ROS_INFO("参数加载P: %f", x_max);
     integration = 0;
     pre_error = 0;
@@ -856,6 +857,32 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
             }
         }
 
+        //-----------回到路口--------//
+        if(pass_enter_ready){
+            ROS_INFO("回到路口特殊逻辑");
+            int recent = recently_white(gray_img,brightness_threshold,cropped);
+            if(recent<100){
+                twist.linear.x = 0.3;
+                twist.angular.z = 0;
+            }
+            else{
+                twist.linear.x = 0;
+                twist.angular.z = 0.6;
+            }
+            if(pose.response.pose_at[2]>-2.355 && pose.response.pose_at[2]< -0.7){//准备好出圆环后看到80帧画面，就出圆环
+                out_range = true;
+                pass_enter = false;
+                pass_enter_ready = false;
+                ROS_INFO("准备离开圆环");
+            }
+            displayStream <<"z:"<< twist.angular.z<<"x:  "<<twist.linear.x<<"recent:"<<recent;
+            string displayText = displayStream.str();
+            putText(cropped, displayText, Point(50, 50),FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
+            out.write(cropped);
+            cmd_pub.publish(twist);
+            continue;
+        }
+        
         //---------------------------右巡线逻辑--------------------、、
         Point right_edge_point = Point(-1, -1);//
         int last_scanned_y;
@@ -893,21 +920,9 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
                 putText(cropped, displayText, Point(50, 50),FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
                 
                 if(pass_enter){//如果现在是通过路口处
-                    int recent = recently_white(gray_img,brightness_threshold,cropped);
                     pass_enter_ready = true;//这个标志用来判断是否已经发生丢线，如果已经发生丢线，再重新看到右线，passenter取消
                     ROS_INFO("回到路口");
-                    if(recent<100){
-                        twist.linear.x = 0.3;
-                        twist.angular.z = 0;
-                    }
-                    else{
-                        twist.linear.x = 0;
-                        twist.angular.z = 0.6;
-                    }
-                    displayStream <<"z:"<< twist.angular.z<<"x:  "<<twist.linear.x<<"recent:"<<recent;
-                    string displayText = displayStream.str();
-                    putText(cropped, displayText, Point(50, 50),FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
-                    out.write(cropped);
+                    continue;
                 }
                 else{
                     cmd_pub.publish(twist);//
@@ -934,7 +949,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
                 // ROS_INFO("右巡线");
                 first_point_x_last = right_edge_point.x;
                 integration += line_error*0.03;
-                integration = std::max(std::min(integration,1.0),-1.0);
+                integration = std::max(std::min(integration,abs(line_error)/integration_limit+1),-1*abs(line_error)/integration_limit-1);
                 double diff = line_error - pre_error;
                 diff = std::max(std::min(diff,50.0),-50.0);
                 if(avoid_done){
@@ -951,19 +966,8 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
                     twist.angular.z = std::max(std::min(line_error*p+integration*i+diff*d,1.0),-1.0);
                 }
                 pre_error = line_error;
-                displayStream << "error: " << line_error << "z:" << twist.angular.z << "twist.x: " << twist.linear.x << "d: " << diff*d;
+                displayStream << "error: " << line_error << "z:" << twist.angular.z << "twist.x: " << twist.linear.x << "d: " << diff*d<< "integration"<<integration*i;
 
-
-                if(pass_enter_ready){
-                    out_ready_count++;
-                    displayStream << "out_ready_count: "<< out_ready_count;
-                    if(out_ready_count>25){//准备好出圆环后看到80帧画面，就出圆环
-                        out_range = true;
-                        pass_enter = false;
-                        pass_enter_ready = false;
-                        ROS_INFO("准备离开圆环");
-                    }
-                }
                 string displayText = displayStream.str();
                 putText(cropped, displayText, Point(50, 50),FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 0), 1);
                 out.write(cropped);

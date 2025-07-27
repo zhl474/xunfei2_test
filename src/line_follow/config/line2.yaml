@@ -1,6 +1,6 @@
-right_P: 0.007
+right_P: 0.009
 right_I: 0.05
-right_D: 0.017
+right_D: 0.023
 integration_limit: 20
 
 leftpoint_p: 0.004
