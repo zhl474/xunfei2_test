@@ -11,6 +11,9 @@
 
     <node pkg="amcl" type="amcl" name="amcl" clear_params="true">
 
+        <param name="diagnostic_period" value="0.5"/> <!-- 每0.5秒输出诊断 -->
+        <param name="do_diagnostics" value="true"/>   <!-- 启用详细诊断 -->
+        
         <param name="use_map_topic" value="false"/>  
         <!-- //当设置为true时，AMCL将会订阅map话题，而不是调用服务返回地图。也就是说，当设置为true时，有另外一个节点实时的发布map话题，也就是机器人在实时的进行地图构建，并供给amcl话题使用；当设置为false时，通过map server，也就是调用已经构建完成的地图。在navigation 1.4.2中新加入的参数。 -->
         <param name="first_map_only" value="true"/>  
@@ -66,7 +69,7 @@
         <!-- 里程计模型参数设置 -->
         <param name="odom_model_type"           value="omni"/>
         <!-- 执行旋转指令时，其实际旋转角度的误差有多大。 -->
-        <param name="odom_alpha1"               value="0.08"/>
+        <param name="odom_alpha1"               value="0.16"/>
         <!--  当机器人执行直行指令时，其方向发生的意外偏转有多大 -->
         <param name="odom_alpha2"               value="0.06"/>
         <!-- 直行指令时，其实际行驶距离的误差有多大。 -->

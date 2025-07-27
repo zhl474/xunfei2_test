@@ -98,17 +98,17 @@ def detect_start(req):
         for bbox in res[label]:
             score = bbox[-1]
             if score > 0.5:
-                response.x0.append(int(best_bbox[0]))
-                response.y0.append(int(best_bbox[1]))
-                response.x1.append(int(best_bbox[2]))
-                response.x1.append(int(best_bbox[3]))
+                response.x0.append(int(bbox[0]))
+                response.y0.append(int(bbox[1]))
+                response.x1.append(int(bbox[2]))
+                response.y1.append(int(bbox[3]))
                 response.class_name.append(int(label))
                 color = (0, 0, 0)  # 绿色边框
-                cv2.rectangle(image, (best_bbox[0], best_bbox[1]), (best_bbox[2], best_bbox[3]), color, 2)  # 2是边框粗细
-                label = f"{label}: {conf:.2f}"
+                cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)  # 2是边框粗细
+                label = f"{label}: {score:.2f}"
                 (text_width, text_height), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)
-                cv2.rectangle(image, (x0, y0 - text_height - 10),color, thickness=2)
-                cv2.putText(image,label,(x0, y0 + 5), cv2.FONT_HERSHEY_SIMPLEX,0.5,(0, 0, 0),2)
+                cv2.rectangle(frame,  (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),color, thickness=2)
+                cv2.putText(frame,label,(int(bbox[0]), int(bbox[1])+ 5), cv2.FONT_HERSHEY_SIMPLEX,0.5,(0, 0, 0),2)
 
     # start_time = time.time()
     out.write(frame)

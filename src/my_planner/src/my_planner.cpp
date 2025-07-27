@@ -100,6 +100,25 @@ namespace my_planner
         // std::cin.ignore(); // 清除缓冲区
         // std::cin.get();    // 等待回车
         // ROS_INFO("查看全局路径规划");
+        // ROS_INFO("起点%f,%f",global_plan_[0].pose.position.x,global_plan_[0].pose.position.y);
+        // geometry_msgs::PoseStamped pose;
+        // tf::StampedTransform transform;
+        // try {
+        //     tf_listener_->lookupTransform("map", "base_link", ros::Time(0), transform);
+        //     pose.header.frame_id = "map";
+        //     pose.header.stamp = ros::Time::now();
+        //     pose.pose.position.x = transform.getOrigin().x();
+        //     pose.pose.position.y = transform.getOrigin().y();
+        //     pose.pose.orientation = tf::createQuaternionMsgFromYaw(
+        //         tf::getYaw(transform.getRotation()));
+        // } catch (tf::TransformException &ex) {
+        //     ROS_ERROR("获取机器人位姿失败: %s", ex.what());
+        // }
+        // ROS_INFO("实际机器人位置: (%.3f, %.3f)", pose.pose.position.x,pose.pose.position.y);
+        // size_t number = global_plan_.size();
+        // for(int i=0;i<20;i++){
+        //     ROS_INFO("全局规划特殊点x%f,y%f",global_plan_[number*i/20].pose.position.x,global_plan_[number*i/20].pose.position.y);
+        // }
         // ROS_INFO("目的地%f,%f,%f",global_plan_[global_plan_.size()-1].pose.position.x,global_plan_[global_plan_.size()-1].pose.position.y,tf2::getYaw(global_plan_[global_plan_.size()-1].pose.orientation));
         return true;
     }
@@ -107,89 +126,89 @@ namespace my_planner
     bool MyPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
     {
         //可以通过planner_frequency定期重新全局规划实现动态避障，这部分就不需要了
-        // // 获取代价地图的数据
-        // costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
-        // unsigned char* map_data = costmap->getCharMap();
-        // unsigned int size_x = costmap->getSizeInCellsX();
-        // unsigned int size_y = costmap->getSizeInCellsY();
+        // 获取代价地图的数据
+        costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
+        unsigned char* map_data = costmap->getCharMap();
+        unsigned int size_x = costmap->getSizeInCellsX();
+        unsigned int size_y = costmap->getSizeInCellsY();
 
-        // // 使用 OpenCV 绘制代价地图
-        // cv::Mat map_image;
+        // 使用 OpenCV 绘制代价地图
+        cv::Mat map_image;
         
-        // map_image.create(size_y, size_x, CV_8UC3);
-        // for (unsigned int y = 0; y < size_y; y++)
-        // {
-        //     for (unsigned int x = 0; x < size_x; x++)
-        //     {
-        //         int map_index = y * size_x + x;
-        //         unsigned char cost = map_data[map_index];               // 从代价地图数据取值
-        //         cv::Vec3b& pixel = map_image.at<cv::Vec3b>(map_index);  // 获取彩图对应像素地址
+        map_image.create(size_y, size_x, CV_8UC3);
+        for (unsigned int y = 0; y < size_y; y++)
+        {
+            for (unsigned int x = 0; x < size_x; x++)
+            {
+                int map_index = y * size_x + x;
+                unsigned char cost = map_data[map_index];               // 从代价地图数据取值
+                cv::Vec3b& pixel = map_image.at<cv::Vec3b>(map_index);  // 获取彩图对应像素地址
             
-        //         if (cost == 0)          // 可通行区域
-        //             pixel = cv::Vec3b(128, 128, 128); // 灰色
-        //         else if (cost == 254)   // 障碍物
-        //             pixel = cv::Vec3b(0, 0, 0);       // 黑色
-        //         else if (cost == 253)   // 禁行区域 
-        //             pixel = cv::Vec3b(255, 255, 0);   // 浅蓝色
-        //         else
-        //         {
-        //             // 根据灰度值显示从红色到蓝色的渐变
-        //             unsigned char blue = 255 - cost;
-        //             unsigned char red = cost;
-        //             pixel = cv::Vec3b(blue, 0, red);
-        //         }
-        //     }
-        // }
+                if (cost == 0)          // 可通行区域
+                    pixel = cv::Vec3b(128, 128, 128); // 灰色
+                else if (cost == 254)   // 障碍物
+                    pixel = cv::Vec3b(0, 0, 0);       // 黑色
+                else if (cost == 253)   // 禁行区域 
+                    pixel = cv::Vec3b(255, 255, 0);   // 浅蓝色
+                else
+                {
+                    // 根据灰度值显示从红色到蓝色的渐变
+                    unsigned char blue = 255 - cost;
+                    unsigned char red = cost;
+                    pixel = cv::Vec3b(blue, 0, red);
+                }
+            }
+        }
         
 
-        // // 在代价地图上遍历导航路径点
-        // cv::Mat flipped_image(size_x, size_y, CV_8UC3, cv::Scalar(128, 128, 128));
-        // for(int i=0;i<global_plan_.size();i++)
-        // {
-        //     geometry_msgs::PoseStamped pose_in_map;
-        //     global_plan_[i].header.stamp = ros::Time(0);
-        //     tf_listener_->transformPose("map",global_plan_[i],pose_in_map);
-        //     double map_x = pose_in_map.pose.position.x;
-        //     double map_y = pose_in_map.pose.position.y;
+        // 在代价地图上遍历导航路径点
+        cv::Mat flipped_image(size_x, size_y, CV_8UC3, cv::Scalar(128, 128, 128));
+        for(int i=0;i<global_plan_.size();i++)
+        {
+            geometry_msgs::PoseStamped pose_in_map;
+            global_plan_[i].header.stamp = ros::Time(0);
+            tf_listener_->transformPose("map",global_plan_[i],pose_in_map);
+            double map_x = pose_in_map.pose.position.x;
+            double map_y = pose_in_map.pose.position.y;
 
-        //     double origin_x = costmap->getOriginX();
-        //     double origin_y = costmap->getOriginY();
-        //     double local_x = map_x - origin_x;
-        //     double local_y = map_y - origin_y;
-        //     int x = local_x / costmap->getResolution();
-        //     int y = local_y / costmap->getResolution();
-        //     cv::circle(map_image, cv::Point(x,y), 0, cv::Scalar(255,0,255));    // 导航路径点
+            double origin_x = costmap->getOriginX();
+            double origin_y = costmap->getOriginY();
+            double local_x = map_x - origin_x;
+            double local_y = map_y - origin_y;
+            int x = local_x / costmap->getResolution();
+            int y = local_y / costmap->getResolution();
+            cv::circle(map_image, cv::Point(x,y), 0, cv::Scalar(255,0,255));    // 导航路径点
 
-        //     // 检测前方路径点是否在禁行区域或者障碍物里
-        //     if(i >= target_index_ && i < target_index_ + collision_check_lookahead_points_)
-        //     {
-        //         cv::circle(map_image, cv::Point(x,y), 0, cv::Scalar(0,255,255));// 检测路径点
-        //         int map_index = y * size_x + x;
-        //         unsigned char cost = map_data[map_index];
-        //         if(cost >= 253)
-        //         {
-        //             ROS_INFO("重新规划路径");
-        //             initial_rotation_done_ = false;//路径结束判断：遇到障碍物或者完成最终姿态调整
-        //             return false;//重新规划全局路径，实现动态避障的效果
-        //         }
-        //     }
-        // }
+            // 检测前方路径点是否在禁行区域或者障碍物里
+            if(i >= target_index_ && i < target_index_ + collision_check_lookahead_points_)
+            {
+                cv::circle(map_image, cv::Point(x,y), 0, cv::Scalar(0,255,255));// 检测路径点
+                int map_index = y * size_x + x;
+                unsigned char cost = map_data[map_index];
+                if(cost >= 253)
+                {
+                    ROS_INFO("重新规划路径");
+                    initial_rotation_done_ = false;//路径结束判断：遇到障碍物或者完成最终姿态调整
+                    return false;//重新规划全局路径，实现动态避障的效果
+                }
+            }
+        }
 
-        // map_image.at<cv::Vec3b>(size_y/2, size_x/2) = cv::Vec3b(0, 255, 0); // 机器人位置
+        map_image.at<cv::Vec3b>(size_y/2, size_x/2) = cv::Vec3b(0, 255, 0); // 机器人位置
         
         
         
-        // // 翻转地图
-        // flipped_image = cv::Mat(size_x, size_y, CV_8UC3, cv::Scalar(128, 128, 128));
-        // cv::flip(map_image, map_image, 0);//使用cvflip代替原本的for循环，运行速度更快
-        // if(visualize_costmap_)
-        // {
-        //     // 显示代价地图
-        //     cv::namedWindow("Map");
-        //     cv::resize(map_image, map_image, cv::Size(size_y*5, size_x*5), 0, 0, cv::INTER_NEAREST);
-        //     cv::resizeWindow("Map", size_y*5, size_x*5);
-        //     cv::imshow("Map", map_image);
-        // }
+        // 翻转地图
+        flipped_image = cv::Mat(size_x, size_y, CV_8UC3, cv::Scalar(128, 128, 128));
+        cv::flip(map_image, map_image, 0);//使用cvflip代替原本的for循环，运行速度更快
+        if(visualize_costmap_)
+        {
+            // 显示代价地图
+            cv::namedWindow("Map");
+            cv::resize(map_image, map_image, cv::Size(size_y*5, size_x*5), 0, 0, cv::INTER_NEAREST);
+            cv::resizeWindow("Map", size_y*5, size_x*5);
+            cv::imshow("Map", map_image);
+        }
         
         
 
@@ -247,14 +266,15 @@ namespace my_planner
         double dxt = target_pose.pose.position.x;
         double dyt = target_pose.pose.position.y;
         double distt = std::sqrt(dxt*dxt + dyt*dyt);
-        if(distt<0.1){//小于10cm才会触发重新规划
+        if(distt<0.7)
+        {//小于10cm才会触发重新规划
             for(int i=target_index_;i<global_plan_.size();i++)
             {
                 geometry_msgs::PoseStamped pose_base;
                 global_plan_[i].header.stamp = ros::Time(0);
                 tf_listener_->transformPose("base_link",global_plan_[i],pose_base);
-                
-                
+                // ROS_WARN("检查地图坐标x%f,y%f",global_plan_[i].pose.position.x,global_plan_[i].pose.position.y);
+                // ROS_INFO("检查baselink坐标x%f,y%f",pose_base.pose.position.x,pose_base.pose.position.y);
 
 
                 double dx = pose_base.pose.position.x;
@@ -265,7 +285,7 @@ namespace my_planner
                 {
                     target_pose = pose_base;
                     target_index_ = i;
-                    ROS_WARN("选择第 %d 个路径点作为临时目标，坐标x%f,y%f",target_index_,global_plan_[i].pose.position.x,global_plan_[i].pose.position.x);
+                    // ROS_WARN("选择第 %d 个路径点作为临时目标，坐标x%f,y%f",target_index_,global_plan_[i].pose.position.x,global_plan_[i].pose.position.y);
                     break;
                 }
 
@@ -274,6 +294,7 @@ namespace my_planner
                 }
             }
         }
+
         if (!initial_rotation_done_) //如果还未进行过初始姿态调整，说明是第一个目标点
         {
             double angle_to_target = atan2(target_pose.pose.position.y, target_pose.pose.position.x);
@@ -302,11 +323,12 @@ namespace my_planner
         // 在 [0, target_index_] 区间内计算最大曲率
         // 需要至少3个点(i-1, i, i+1)来计算曲率，所以 target_index_ 必须至少为2
         int cur_final = std::min(target_index_+15,final_index);//多看10cm
+        int cur_start = std::max(target_index_ - 15 , 0 );
         if (target_index_ >= 2) 
         {
             // 循环遍历从路径起点到 target_index 的前一个点
             // 计算点 i 处的曲率，需要 p_i-1, p_i, p_i+1
-            for (int i = 1; i < cur_final; ++i)
+            for (int i = cur_start; i < cur_final; ++i)
             {
                 const auto& p0 = global_plan_[i-1].pose.position;
                 const auto& p1 = global_plan_[i].pose.position;
@@ -332,7 +354,7 @@ namespace my_planner
                 }
             }
         }
-        avrage_curvature = avrage_curvature/cur_final;
+        avrage_curvature = avrage_curvature/(cur_final - cur_start );
         // 根据最大曲率调整速度增益
         // if (max_curvature > 10.0) // 设置一个阈值，避免在近似直线上过度反应，曲率超过阈值才会减速
         // {
@@ -361,7 +383,7 @@ namespace my_planner
         {
             cmd_vel.angular.z = target_pose.pose.position.y * path_angular_gain_;
         }
-        ROS_INFO("速度:x%f,y%f,z%f",cmd_vel.linear.x,cmd_vel.linear.y,cmd_vel.angular.z);
+        // ROS_INFO("速度:x%f,y%f,z%f",cmd_vel.linear.x,cmd_vel.linear.y,cmd_vel.angular.z);
     
         //--------------------------全局路径显示，省去节省算力---------------------------------------------
         // cv::Mat plan_image(600, 600, CV_8UC3, cv::Scalar(0, 0, 0));        

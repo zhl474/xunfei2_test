@@ -85,6 +85,7 @@ int main(int argc, char *argv[]){
     bool flag=false;//判断雷达识别的点是否和视觉对得上
     //第一点视觉识别
     //视觉识别开始，先传个-1把摄像头打开
+    go_destination(goal,1.25,3.75,0,q,ac);
     std::vector<std::vector<int>> a = {{-1},{-1},{-1},{-1},{-1},{-1}};
     mecanumController.detect(a,-1);
     go_destination(goal,1.25,3.75,0,q,ac);  

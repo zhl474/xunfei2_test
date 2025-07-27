@@ -14,7 +14,7 @@ global_costmap:
 
   
   static_map: true
-  rolling_window: false
+  rolling_window: true
   transform_tolerance: 2.0
   track_unknown_space: false
   plugins:
