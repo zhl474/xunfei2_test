@@ -29,6 +29,7 @@ rospy.init_node("nanodet_detect", anonymous=True)
 frame = cv2.imread('/home/ucar/ucar_car/ypicture/picture_14.jpg')
 _ = detect(frame,predictor)# 识别
 _ = detect(frame,predictor)# 识别2次
+_ = detect(frame,predictor)
 print("warm up done")
 
 # 全局变量管理摄像头状态
@@ -68,6 +69,9 @@ def open_cap():
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         camera_active = True
         rospy.loginfo("摄像头成功打开")
+def clear_cap_buffer():
+    global cap
+    cap.grab()#摄像头会缓存n帧，把这丢掉才是最新的照片
     
 
 #首次启动要发个-1启动摄像头，发送-2关闭摄像头防止冲突
@@ -80,7 +84,8 @@ def detect_start(req):
     if req.detect_start==-2:
         shutdown_cap(response)
         return response
-    cap.grab()#摄像头会缓存一帧，把这一帧丢掉才是最新的照片
+    if req.detect_start==-3:
+        clear_cap_buffer()#清空缓存区
     
     rec, frame = cap.read()
     frame = whitebalance.process(frame)

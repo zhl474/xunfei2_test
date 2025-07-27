@@ -8,6 +8,7 @@
     <node pkg="qr_01" type="aruco" name="aruco" output="screen"/>
 
     <arg name="map" default="mapname.yaml" />
+    <!-- <arg name="map" default="map100.yaml" /> -->
     <!-- 运行地图服务器，并且加载设置的地图-->
     <node name="map_server" pkg="map_server" type="map_server" args="$(find ztestnav2025)/map/$(arg map)"/>
     <include file="$(find ztestnav2025)/launch/amcl.launch" />

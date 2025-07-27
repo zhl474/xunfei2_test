@@ -521,6 +521,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
     }
     cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
+    cap.set(cv::CAP_PROP_BUFFERSIZE, 5);
     Mat map1, map2;
     Mat optimalMatrix = getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, Size(640, 480), 1,Size(640, 480));
     initUndistortRectifyMap(
@@ -567,6 +568,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
     int width = 640;
     int scan_rows = 180;  // 向上搜索的行数
 
+    bool avoid_done = false;
     while(ros::ok()){
         // ROS_INFO("耗时:%f",(ros::Time::now()-frame_start).toSec());
         // frame_start = ros::Time::now();
@@ -609,14 +611,13 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
             ROS_INFO("坐标变换结果: (%.2f, %.2f, %.2f)",goal.target_pose.pose.position.x, point_base.point.y, goal_yaw);
             ac.sendGoal(goal);
             ac.waitForResult();
-            
+            cap.grab(); cap.grab(); cap.grab(); cap.grab(); cap.grab();//把缓冲区的东西丢掉，免得停车了
             ROS_INFO("避障结束");
         }
 
 
         //----------------------------------巡线逻辑----------------------------//
         displayStream.str("");
-        cap.grab();
         cap.read(image);
         if (image.empty()) continue;
         remap(image, undistorted, map1, map2, INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
@@ -732,7 +733,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
             }
         }
         int test;
-        if(pose.response.pose_at[2]>-1.8&&pose.response.pose_at[2]<-1.3&&pose.response.pose_at[0]>3.3&&pose.response.pose_at[0]<4.2&&pose.response.pose_at[1]<1){
+        if(avoid_done && pose.response.pose_at[2]>-1.8&&pose.response.pose_at[2]<-1.3&&pose.response.pose_at[0]>3.3&&pose.response.pose_at[0]<4.2&&pose.response.pose_at[1]<1){
             if(stop_car(gray_img,brightness_threshold,test,cropped)){
                 ROS_INFO("巡线结束");
                 twist.linear.x = 0;

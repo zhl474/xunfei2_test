@@ -673,6 +673,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
     }
     cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
+    cap.set(cv::CAP_PROP_BUFFERSIZE, 5);
     Mat map1, map2;
     Mat optimalMatrix = getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, Size(640, 480), 1,Size(640, 480));
     initUndistortRectifyMap(
@@ -801,14 +802,13 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
                 ac.waitForResult();
             }
             
-            
+            cap.grab(); cap.grab(); cap.grab(); cap.grab(); cap.grab();//把缓冲区的东西丢掉，免得停车了
             avoid_done = true;
             ROS_INFO("避障结束");
         }
 
         //----------------------------------巡线逻辑----------------------------//
         displayStream.str("");
-        cap.grab();
         cap.read(image);
         if (image.empty()) {
             ROS_INFO("获取图片失败");

@@ -704,7 +704,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
     }
     cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
-    cap.set(cv::CAP_PROP_BUFFERSIZE, 1);
+    cap.set(cv::CAP_PROP_BUFFERSIZE, 5);
     Mat map1, map2;
     Mat optimalMatrix = getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, Size(640, 480), 1,Size(640, 480));
     initUndistortRectifyMap(
@@ -757,7 +757,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
     bool out_range = false,start = true;//出圆环判断标志,开始巡线标志，movabese可能导致巡线一开始就压线，先导航到外面，让他自己进来
     bool other_enter = false,pass_out = false,pass_enter = false,out_ready = false,pass_enter_ready = false;//绕环岛期间左巡线
     int out_ready_count = 0;//检测到右线25帧后判定离开
-    bool left_ready;//判断是否进入圆环需要一个标志位辅助，两边线都看到才算进圆环否则离圆环太远容易出问题
+    bool left_ready,avoid_done=false;//判断是否进入圆环需要一个标志位辅助，两边线都看到才算进圆环否则离圆环太远容易出问题,先避障再停车
 
     Point other_enter_last_conner = Point(700,700);//另一个入口的角点储存
     while(ros::ok()){
@@ -830,13 +830,12 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
                 ac.sendGoal(goal);
                 ac.waitForResult();
             }
-
+            cap.grab(); cap.grab(); cap.grab(); cap.grab(); cap.grab();//把缓冲区的东西丢掉，免得停车了
             ROS_INFO("避障结束");
         }
 
         //----------------------------------巡线逻辑----------------------------//
         displayStream.str("");
-        cap.grab();
         cap.read(image);
         if (image.empty()) {
             ROS_INFO("获取图片失败");
@@ -1055,7 +1054,7 @@ bool line_server_callback(line_follow::line_follow::Request& req,line_follow::li
         }
 
         int test;
-        if(pose.response.pose_at[2]>-1.8&&pose.response.pose_at[2]<-1.3&&pose.response.pose_at[0]>3.3&&pose.response.pose_at[0]<4.2&&pose.response.pose_at[1]<1){
+        if(avoid_done && pose.response.pose_at[2]>-1.8&&pose.response.pose_at[2]<-1.3&&pose.response.pose_at[0]>3.3&&pose.response.pose_at[0]<4.2&&pose.response.pose_at[1]<1){
             if(stop_car(gray_img,brightness_threshold,test,cropped)){
                 ROS_INFO("巡线结束");
                 twist.linear.x = 0;

@@ -28,8 +28,10 @@ public:
     int adjust(int z,double adjust_speed);
     bool test_point(double yaw,double distance);
     bool turn_and_find_plus(double find_time,int z,double angular_speed,double& targetx,double& targety,double& targetz,double& targetx2,double& targety2,double& targetz2);
-
+    void cap_buffer_clear();
     // bool pid_change_flag=0;
+    std::vector<std::string> class_names = {"chili", "tomato", "potato", "banana", "apple","watermelon","cola","cake","milk"};
+
 
     ros::Publisher cmd_pub_;
 
